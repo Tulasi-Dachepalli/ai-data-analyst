@@ -1,0 +1,56 @@
+databases:
+  - name: ai-data-analyst-db
+    # "free" is fine for trying this out, but genuinely not fit for a real
+    # company's data: Render's free Postgres caps out at 1GB, expires after
+    # 30 days, has no backups, and can be temporarily unavailable. Before any
+    # real usage, change this to a paid plan (see README > Deployment for the
+    # tradeoffs) — everything else in this blueprint works unchanged either way.
+    plan: free
+    databaseName: aida
+    user: aida
+
+services:
+  - type: web
+    name: ai-data-analyst-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # Auto-wired to the database block above — Render injects the real
+      # connection string, you don't set this yourself.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ai-data-analyst-db
+          property: connectionString
+      # Render generates a real random value for this on first deploy —
+      # you don't need to (and shouldn't) set it yourself either.
+      - key: JWT_SECRET
+        generateValue: true
+      # Render's managed Postgres requires TLS.
+      - key: PGSSL
+        value: "true"
+      - key: PORT
+        value: "3001"
+      # Set these two in the Render dashboard after the first deploy:
+      # - ANTHROPIC_API_KEY: your Anthropic API key
+      # - ALLOWED_ORIGIN: your frontend's deployed URL (e.g. your Vercel
+      #   domain). Comma-separate multiple origins if you have more than one
+      #   (e.g. production domain + a staging/preview URL).
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false
+      # Same story for email (Step 6C) — set these once you have a Resend
+      # account and know your deployed URLs. Leaving RESEND_API_KEY unset
+      # doesn't break anything; it just logs emails instead of sending them,
+      # which you probably don't want in production.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: BACKEND_URL
+        sync: false
