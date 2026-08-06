@@ -139,6 +139,8 @@ router.post("/", async (req, res) => {
       outputTokens
     });
 
+    console.log(`[AI Response] Type: ${safeRequestType}, Text:`, text);
+
     return res.json({ text });
   } catch (err) {
     console.error("Error calling Anthropic API:", err);
