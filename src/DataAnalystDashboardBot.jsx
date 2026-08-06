@@ -1157,6 +1157,8 @@ export default function DataAnalystDashboardBot() {
         stats: d.stats,
         quality: d.quality,
         dashboard: d.dashboard,
+        isRawText: d.isRawText || false,
+        rawText: d.rawText || "",
         messages: d.messages && d.messages.length
           ? d.messages
           : [{ role: "user", kind: "file", fileName: prev.name, rowCount: d.rows.length, colCount: d.columns.length }],
