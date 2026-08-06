@@ -226,13 +226,36 @@ function parseJSONSafe(text) {
 function parseFile(file) {
   return new Promise((resolve, reject) => {
     const ext = file.name.split(".").pop().toLowerCase();
+    
     if (ext === "csv" || ext === "tsv") {
       Papa.parse(file, {
         header: true, dynamicTyping: true, skipEmptyLines: true,
         complete: (res) => resolve({ rows: res.data, columns: res.meta.fields || [] }),
         error: reject
       });
+    } else if (ext === "json") {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (Array.isArray(parsed)) {
+            resolve({ rows: parsed, columns: Object.keys(parsed[0] || {}) });
+          } else {
+            resolve({ rows: [], columns: [], isRawText: true, rawText: JSON.stringify(parsed, null, 2) });
+          }
+        } catch (err) { reject(err); }
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    } else if (["txt", "md", "log", "xml", "html"].includes(ext)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        resolve({ rows: [], columns: [], isRawText: true, rawText: e.target.result });
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
     } else {
+      // Excel with text fallback
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
@@ -241,7 +264,15 @@ function parseFile(file) {
           const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
           const columns = rows.length ? Object.keys(rows[0]) : [];
           resolve({ rows, columns });
-        } catch (err) { reject(err); }
+        } catch (err) {
+          // If Excel parsing fails, read it as plain text fallback
+          const txtReader = new FileReader();
+          txtReader.onload = (evt) => {
+            resolve({ rows: [], columns: [], isRawText: true, rawText: evt.target.result });
+          };
+          txtReader.onerror = () => reject(err);
+          txtReader.readAsText(file);
+        }
       };
       reader.onerror = reject;
       reader.readAsBinaryString(file);
@@ -371,6 +402,15 @@ function CorrelationBlock({ correlations }) {
 }
 
 function DashboardBlock({ dashboard, innerRef }) {
+  if (dashboard && dashboard.isRawText) {
+    return (
+      <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 15, color: "#2B2A27" }}>📝 Document Analysis Report</div>
+        <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "#2B2A27" }}>{dashboard.narrative}</div>
+      </div>
+    );
+  }
+
   return (
     <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ fontWeight: 700, fontSize: 15, color: "#2B2A27" }}>📊 Dashboard</div>
@@ -511,7 +551,24 @@ export default function DataAnalystDashboardBot() {
     persistThread(serverId, { dashboard: dashboardObj, messages: finalMessages });
   };
 
-  const generateOverview = async (id, stats, rowCount, rows, quality, serverId) => {
+  const generateOverview = async (id, stats, rowCount, rows, quality, serverId, isRawText, rawText) => {
+    if (isRawText) {
+      setLoadingLabel("Analyzing document…");
+      const systemPrompt = "You are a professional management consultant and data analyst. You have been uploaded a raw text/document file. Read the content carefully and write a highly professional corporate summary report. Organize it with clear paragraphs and actionable takeaways. Maintain a formal executive tone. Plain conversational text, no markdown headers, no JSON.";
+      const text = await callClaude(systemPrompt, rawText.slice(0, 15000), { requestType: "overview", datasetId: serverId });
+      
+      const dashboardObj = { narrative: text || "Analysis completed.", kpis: [], categoryCharts: [], trend: null, distributions: [], quality: null, outliers: {}, correlations: [], isRawText: true, rawText };
+      
+      let finalMessages = null;
+      updateThread(id, t => {
+        finalMessages = [...t.messages, { role: "assistant", kind: "text", content: text || "Here is the analysis of your document." }, { role: "assistant", kind: "dashboard" }];
+        return { ...t, dashboard: dashboardObj, messages: finalMessages };
+      });
+      setLoading(false);
+      persistThread(serverId, { dashboard: dashboardObj, messages: finalMessages });
+      return;
+    }
+
     setLoadingLabel("Reading your data…");
     const system = "You are a professional corporate data analyst. Given a dataset's schema, verified summary statistics, and a computed data quality score (trust these exactly, never invent numbers), write a polished, professional executive overview (2-3 sentences). Describe what business entities/processes the dataset contains, call out any critical data quality issues (such as missing values or anomalies) that impact business decisions, and maintain a formal corporate tone. Plain conversational text, no markdown headers, no JSON.";
     const userText = JSON.stringify({ columns: stats, rowCount, quality });
@@ -525,7 +582,7 @@ export default function DataAnalystDashboardBot() {
     const files = Array.from(fileList);
     for (const file of files) {
       try {
-        const { rows, columns } = await parseFile(file);
+        const { rows, columns, isRawText, rawText } = await parseFile(file);
         const cleanCols = columns.filter(c => c && c.trim() !== "");
         const stats = cleanCols.map(c => computeColumnStats(rows, c));
         const quality = calculateDataQuality(rows, cleanCols);
@@ -533,7 +590,7 @@ export default function DataAnalystDashboardBot() {
         const initialMessages = [{ role: "user", kind: "file", fileName: file.name, rowCount: rows.length, colCount: cleanCols.length }];
         const thread = {
           id, name: file.name, rows, columns: cleanCols, stats, quality, dashboard: null,
-          messages: initialMessages, loaded: true, serverId: null
+          messages: initialMessages, loaded: true, serverId: null, isRawText, rawText
         };
         setThreads(prev => [thread, ...prev]);
         setActiveId(id);
@@ -541,14 +598,14 @@ export default function DataAnalystDashboardBot() {
 
         let serverId = null;
         try {
-          const created = await api.createDataset({ name: file.name, rows, columns: cleanCols, stats, quality, messages: initialMessages });
+          const created = await api.createDataset({ name: file.name, rows, columns: cleanCols, stats, quality, messages: initialMessages, isRawText, rawText });
           serverId = created?.dataset?.id || null;
           if (serverId) updateThread(id, t => ({ ...t, serverId }));
         } catch (err) {
           console.error("Failed to save dataset — continuing without persistence:", err);
         }
 
-        generateOverview(id, stats, rows.length, rows, quality, serverId);
+        generateOverview(id, stats, rows.length, rows, quality, serverId, isRawText, rawText);
       } catch (err) { console.error(err); }
     }
   };
@@ -565,6 +622,19 @@ export default function DataAnalystDashboardBot() {
     setLoadingLabel("Analyzing…");
 
     try {
+      if (active.isRawText) {
+        const systemPrompt = "You are a professional management consultant and senior analyst. Answer the user's question about the uploaded document based on the text contents: \n\n" + (active.rawText || "").slice(0, 15000);
+        const narrative = await callClaude(systemPrompt, question, { requestType: "chat_narrative", datasetId: serverId });
+        let finalMessages = null;
+        updateThread(id, t => {
+          finalMessages = [...t.messages, { role: "assistant", kind: "text", content: narrative || "I couldn't find an answer in the document." }];
+          return { ...t, messages: finalMessages };
+        });
+        setLoading(false);
+        persistThread(serverId, { messages: finalMessages });
+        return;
+      }
+
       const recentHistory = active.messages.filter(m => m.kind === "text").slice(-6).map(m => `${m.role}: ${m.content}`).join("\n");
       const planSystem = "You are a rigorous data analyst assistant in an ongoing chat. You are given a dataset's schema and verified summary statistics (already computed accurately from the FULL dataset — trust these numbers exactly, never invent your own), plus recent conversation history for follow-ups. Respond with ONLY a single JSON object, no markdown fences: {\"mode\":\"direct\"|\"aggregate\",\"directAnswer\":string|null,\"groupBy\":string|null,\"metric\":string|null,\"agg\":\"sum\"|\"avg\"|\"count\"|\"min\"|\"max\"|null,\"chartType\":\"bar\"|\"line\"|\"pie\"|\"none\"}. Use 'direct' with directAnswer when the stats already answer it. Use 'aggregate' when it needs grouping — groupBy/metric must be exact column names.";
       const planUser = JSON.stringify({ question, conversationHistory: recentHistory, rowCount: active.rows.length, columns: active.stats, sampleRows: active.rows.slice(0, 5) });

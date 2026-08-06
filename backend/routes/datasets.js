@@ -27,6 +27,8 @@ function toFullItem(row) {
     columns: data.columns || [],
     stats: data.stats || [],
     quality: data.quality || null,
+    isRawText: data.isRawText || false,
+    rawText: data.rawText || "",
     dashboard: row.dashboard_json || null,
     messages: row.messages_json || [],
     createdAt: row.created_at,
@@ -68,13 +70,20 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/datasets — create a new dataset record right after a file is parsed
 router.post("/", async (req, res) => {
-  const { name, rows, columns, stats, quality, messages } = req.body || {};
+  const { name, rows, columns, stats, quality, messages, isRawText, rawText } = req.body || {};
 
   if (!name || !Array.isArray(rows) || !Array.isArray(columns)) {
     return res.status(400).json({ error: "name, rows, and columns are required." });
   }
 
-  const dataJson = JSON.stringify({ rows, columns, stats: stats || [], quality: quality || null });
+  const dataJson = JSON.stringify({ 
+    rows, 
+    columns, 
+    stats: stats || [], 
+    quality: quality || null,
+    isRawText: !!isRawText,
+    rawText: rawText || ""
+  });
   const messagesJson = JSON.stringify(messages || []);
   if (dataJson.length > MAX_JSON_LENGTH || messagesJson.length > MAX_JSON_LENGTH) {
     return res.status(413).json({ error: "Dataset is too large to store." });

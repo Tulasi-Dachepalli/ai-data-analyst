@@ -31,10 +31,10 @@ export function getDataset(id) {
   return request(`/api/datasets/${id}`);
 }
 
-export function createDataset({ name, rows, columns, stats, quality, messages }) {
+export function createDataset(payload) {
   return request("/api/datasets", {
     method: "POST",
-    body: JSON.stringify({ name, rows, columns, stats, quality, messages })
+    body: JSON.stringify(payload)
   });
 }
 
