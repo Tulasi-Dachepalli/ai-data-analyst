@@ -497,7 +497,7 @@ export default function DataAnalystDashboardBot() {
       .map(([colA, colB]) => ({ colA, colB, r: correlation(rows, colA, colB) }))
       .filter(c => c.r !== null && Math.abs(c.r) >= 0.5);
 
-    const narrateSystem = "You are a data analyst producing a short executive dashboard summary. Given verified computed aggregates (trust these exactly, never invent numbers), write 4-6 sentences covering the key patterns: notable KPI values, differences across the category breakdowns, the trend over time if present, and anything noteworthy from data quality, outliers, or correlations. Plain conversational text, no markdown headers, no JSON.";
+    const narrateSystem = "You are a senior data analyst and management consultant producing a professional executive dashboard summary. Given verified computed aggregates (trust these exactly, never invent numbers), write 4-6 sentences in a highly professional, business-consulting tone. Focus on high-level corporate insights: highlight key KPI metrics, explain significant variances across categories, outline the general trend line, and call out any operational risks or data quality concerns that deserve executive attention. Plain conversational text, no markdown headers, no JSON.";
     const narrateUser = JSON.stringify({ rowCount: rows.length, kpis, categoryCharts, trend, quality, outlierSummary: Object.entries(outliers).map(([k, o]) => ({ column: k, count: o.rows.length })), correlations });
     const narrative = await callClaude(narrateSystem, narrateUser, { requestType: "dashboard_narrative", datasetId: serverId });
 
@@ -513,7 +513,7 @@ export default function DataAnalystDashboardBot() {
 
   const generateOverview = async (id, stats, rowCount, rows, quality, serverId) => {
     setLoadingLabel("Reading your data…");
-    const system = "You are a data analyst chatbot. Given a dataset's schema, verified summary statistics, and a computed data quality score (trust these exactly, never invent numbers), write a short friendly overview: 2-3 sentences on what the dataset contains and any data quality issues (missing values etc). Plain conversational text, no markdown headers, no JSON.";
+    const system = "You are a professional corporate data analyst. Given a dataset's schema, verified summary statistics, and a computed data quality score (trust these exactly, never invent numbers), write a polished, professional executive overview (2-3 sentences). Describe what business entities/processes the dataset contains, call out any critical data quality issues (such as missing values or anomalies) that impact business decisions, and maintain a formal corporate tone. Plain conversational text, no markdown headers, no JSON.";
     const userText = JSON.stringify({ columns: stats, rowCount, quality });
     const text = await callClaude(system, userText, { requestType: "overview", datasetId: serverId });
     updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "assistant", kind: "text", content: text || "Here's your data." }] }));
@@ -588,7 +588,7 @@ export default function DataAnalystDashboardBot() {
         });
       } else {
         const result = computeAggregate(active.rows, plan.groupBy, plan.metric, plan.agg || "sum");
-        const narrateSystem = "You are a data analyst chatbot writing a short conversational answer, given the user's question and an already-computed verified aggregation result (trust exactly). Write 3-6 sentences or a short bullet list referencing specific values. No JSON, no markdown headers.";
+        const narrateSystem = "You are a senior corporate data analyst chatbot. Respond to the user's question with a highly professional, structured business analysis based on the computed aggregation results (trust these exactly). Provide clear corporate context, reference specific values and percentages, explain the business implications, and offer actionable insights or recommendations. Write in a polished business tone using a concise, professional structure or a short, bulleted highlights section. No JSON, no markdown headers.";
         const narrateUser = JSON.stringify({ question, groupBy: plan.groupBy, metric: plan.metric, agg: plan.agg, result });
         const narrative = await callClaude(narrateSystem, narrateUser, { requestType: "chat_narrative", datasetId: serverId });
         updateThread(id, t => {

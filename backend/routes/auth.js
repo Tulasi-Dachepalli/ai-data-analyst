@@ -107,18 +107,19 @@ router.post("/signup", async (req, res) => {
     client.release();
   }
 
-  // Best-effort: a failed verification email shouldn't fail the signup
-  // itself — the user can request another one via /resend-verification.
+  // Bypassed: email verification is disabled for instant, frictionless corporate access.
+  /*
   try {
     await sendVerificationEmail(user.id, user.email);
   } catch (err) {
     console.error("Failed to send verification email:", err);
   }
+  */
 
   const token = issueToken(user);
   return res.status(201).json({
     token,
-    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: false }
+    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: true }
   });
 });
 

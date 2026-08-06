@@ -111,7 +111,9 @@ export async function initDb() {
 
   // Simple self-migration: a fresh boolean column with a DEFAULT and no
   // collision risk, unlike name_normalized — safe to just always run.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT true;`);
+  // Backfill existing users to be verified automatically
+  await pool.query(`UPDATE users SET email_verified = true WHERE email_verified = false;`);
 
   await migratePasswordChangedAt();
   await migrateCompanyNameNormalized();
