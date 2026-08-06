@@ -1004,13 +1004,17 @@ export default function DataAnalystDashboardBot() {
     const narrative = await callClaude(narrateSystem, narrateUser, { requestType: "dashboard_narrative", datasetId: serverId });
 
     const dashboardObj = { kpis, categoryCharts, trend, distributions, quality, outliers, correlations, plan, rawRows: rows, narrative: narrative || "Here's an overview of your data." };
-    let finalMessages = null;
-    updateThread(id, t => {
-      finalMessages = [...t.messages, { role: "assistant", kind: "dashboard" }];
-      return { ...t, dashboard: dashboardObj, messages: finalMessages };
+    setThreads(prev => {
+      return prev.map(t => {
+        if (t.id === id) {
+          const updatedMessages = [...t.messages, { role: "assistant", kind: "dashboard" }];
+          persistThread(serverId, { dashboard: dashboardObj, messages: updatedMessages });
+          return { ...t, dashboard: dashboardObj, messages: updatedMessages };
+        }
+        return t;
+      });
     });
     setLoading(false);
-    persistThread(serverId, { dashboard: dashboardObj, messages: finalMessages });
   };
 
   const generateOverview = async (id, stats, rowCount, rows, quality, serverId, isRawText, rawText) => {
@@ -1021,13 +1025,17 @@ export default function DataAnalystDashboardBot() {
       
       const dashboardObj = { narrative: text || "Analysis completed.", kpis: [], categoryCharts: [], trend: null, distributions: [], quality: null, outliers: {}, correlations: [], isRawText: true, rawText };
       
-      let finalMessages = null;
-      updateThread(id, t => {
-        finalMessages = [...t.messages, { role: "assistant", kind: "text", content: text || "Here is the analysis of your document." }, { role: "assistant", kind: "dashboard" }];
-        return { ...t, dashboard: dashboardObj, messages: finalMessages };
+      setThreads(prev => {
+        return prev.map(t => {
+          if (t.id === id) {
+            const updatedMessages = [...t.messages, { role: "assistant", kind: "text", content: text || "Here is the analysis of your document." }, { role: "assistant", kind: "dashboard" }];
+            persistThread(serverId, { dashboard: dashboardObj, messages: updatedMessages });
+            return { ...t, dashboard: dashboardObj, messages: updatedMessages };
+          }
+          return t;
+        });
       });
       setLoading(false);
-      persistThread(serverId, { dashboard: dashboardObj, messages: finalMessages });
       return;
     }
 
