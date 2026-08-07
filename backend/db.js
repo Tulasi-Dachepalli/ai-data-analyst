@@ -115,6 +115,9 @@ export async function initDb() {
   // Backfill existing users to be verified automatically
   await pool.query(`UPDATE users SET email_verified = true WHERE email_verified = false;`);
 
+  // Add subscription tier to companies table
+  await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'free';`);
+
   // Migrate ai_usage.dataset_id to CASCADE on delete so deleting a dataset removes its usage records
   await pool.query(`
     ALTER TABLE ai_usage DROP CONSTRAINT IF EXISTS ai_usage_dataset_id_fkey;

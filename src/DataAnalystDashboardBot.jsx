@@ -1036,8 +1036,10 @@ const SAMPLE_DATASETS = [
 
 // ---------------- main component ----------------
 export default function DataAnalystDashboardBot() {
+  const user = JSON.parse(localStorage.getItem("aida_user") || "null");
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState("Analyzing…");
@@ -1182,6 +1184,10 @@ export default function DataAnalystDashboardBot() {
   };
 
   const handleFiles = async (fileList) => {
+    if (user && user.tier === "free" && threads.length >= 3) {
+      setShowUpgradeModal(true);
+      return;
+    }
     const files = Array.from(fileList);
     for (const file of files) {
       try {
@@ -1214,6 +1220,10 @@ export default function DataAnalystDashboardBot() {
   };
 
   const handleLoadSample = async (sample) => {
+    if (user && user.tier === "free" && threads.length >= 3) {
+      setShowUpgradeModal(true);
+      return;
+    }
     try {
       setLoading(true);
       setLoadingLabel("Loading sample dataset…");
@@ -1618,7 +1628,13 @@ ${chartsHTML}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
     >
       <div style={{ width: 220, background: "linear-gradient(180deg, #F8F6F1 0%, #EDEAE3 100%)", borderRight: "1px solid #E4E0D8", display: "flex", flexDirection: "column", padding: 12, gap: 10 }}>
-        <button onClick={() => fileInputRef.current && fileInputRef.current.click()}
+        <button onClick={() => {
+          if (user && user.tier === "free" && threads.length >= 3) {
+            setShowUpgradeModal(true);
+          } else if (fileInputRef.current) {
+            fileInputRef.current.click();
+          }
+        }}
           style={{ display: "flex", alignItems: "center", gap: 8, background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(62, 111, 142, 0.25)" }}>
           <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
         </button>
@@ -1754,6 +1770,70 @@ ${chartsHTML}
           </div>
         </div>
       </div>
+
+      {showUpgradeModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(43,42,39,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
+          <div style={{ background: "#FFFFFF", borderRadius: 16, width: "100%", maxWidth: 640, padding: 24, boxShadow: "0 20px 50px rgba(0,0,0,0.15)", position: "relative" }}>
+            <button onClick={() => setShowUpgradeModal(false)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 18, color: "#8A8580", cursor: "pointer" }}>✕</button>
+            
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#C98A3E", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Premium SaaS Upgrade</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#2B2A27" }}>Unlock Unlimited AI Data Insights</div>
+              <p style={{ fontSize: 13.5, color: "#8A8580", marginTop: 6 }}>You have used all 3 free trial file uploads. Upgrade your plan to continue.</p>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              {/* Free Plan */}
+              <div style={{ border: "1px solid #E4E0D8", borderRadius: 12, padding: 16, background: "#FDFCFA" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#5C584F" }}>Free Trial</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#2B2A27", margin: "10px 0" }}>$0 <span style={{ fontSize: 12, fontWeight: 400, color: "#8A8580" }}>/ month</span></div>
+                <ul style={{ fontSize: 12, color: "#8A8580", paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <li>Max 3 file uploads</li>
+                  <li>Basic summary reports</li>
+                  <li>Standard bar & pie charts</li>
+                </ul>
+                <button disabled style={{ width: "100%", marginTop: 24, padding: "8px 12px", border: "1px solid #DDD8CE", borderRadius: 8, background: "#F7F5F0", color: "#A6A196", fontSize: 12.5, fontWeight: 600 }}>Active Plan</button>
+              </div>
+
+              {/* Professional Plan */}
+              <div style={{ border: "2px solid #C98A3E", borderRadius: 12, padding: 16, background: "#FFFFFF", position: "relative", boxShadow: "0 4px 20px rgba(201,138,62,0.08)" }}>
+                <div style={{ position: "absolute", top: -10, right: 12, background: "#C98A3E", color: "#fff", fontSize: 9.5, fontWeight: 700, padding: "2px 8px", borderRadius: 10, textTransform: "uppercase" }}>Popular</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#C98A3E" }}>Professional Pro</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#2B2A27", margin: "10px 0" }}>$49 <span style={{ fontSize: 12, fontWeight: 400, color: "#8A8580" }}>/ month</span></div>
+                <ul style={{ fontSize: 12, color: "#5C584F", paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <li><strong>Unlimited</strong> uploads & analyses</li>
+                  <li>ML Sandbox Predictor models</li>
+                  <li>Excel, HTML & Word Reports</li>
+                  <li>Numeric Correlation Heatmaps</li>
+                </ul>
+                <button
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      setLoadingLabel("Upgrading subscription…");
+                      const res = await api.upgradeSubscription("pro");
+                      if (res && res.success) {
+                        const nextUser = { ...user, tier: "pro" };
+                        localStorage.setItem("aida_user", JSON.stringify(nextUser));
+                        setShowUpgradeModal(false);
+                        alert("🎉 Congratulations! You have successfully upgraded to Professional Pro plan! Unlimited uploads unlocked.");
+                        window.location.reload();
+                      }
+                    } catch (err) {
+                      alert("Failed to upgrade subscription: " + err.message);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                  style={{ width: "100%", marginTop: 24, padding: "8px 12px", border: "none", borderRadius: 8, background: "#C98A3E", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}
+                >
+                  Upgrade to Pro
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

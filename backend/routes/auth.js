@@ -119,7 +119,7 @@ router.post("/signup", async (req, res) => {
   const token = issueToken(user);
   return res.status(201).json({
     token,
-    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: true }
+    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: true, tier: company.tier || 'free' }
   });
 });
 
@@ -139,7 +139,7 @@ router.post("/login", async (req, res) => {
     const token = issueToken(user);
     return res.json({
       token,
-      user: { email: user.email, role: user.role, companyName: company?.name || "", emailVerified: user.email_verified }
+      user: { email: user.email, role: user.role, companyName: company?.name || "", emailVerified: user.email_verified, tier: company?.tier || 'free' }
     });
   } catch (err) {
     console.error("Login error:", err);

@@ -93,3 +93,10 @@ export function resetPassword(token, password) {
 export function resendVerification() {
   return request("/api/auth/resend-verification", { method: "POST" });
 }
+
+export function upgradeSubscription(tier) {
+  return request("/api/admin/upgrade", {
+    method: "POST",
+    body: JSON.stringify({ tier })
+  });
+}

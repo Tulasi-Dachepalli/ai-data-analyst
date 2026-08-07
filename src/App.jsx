@@ -47,8 +47,11 @@ export default function App() {
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}>
       <div style={{ width: "100%", maxWidth: 900 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 4px" }}>
-          <div style={{ fontSize: 12.5, color: "#8A8580" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#8A8580" }}>
             {user?.companyName} · {user?.email}
+            {user?.tier === "pro" && (
+              <span style={{ background: "#C98A3E", color: "#fff", fontSize: 9.5, fontWeight: 700, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.02em" }}>PRO</span>
+            )}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {isAdmin && view === "dashboard" && (

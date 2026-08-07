@@ -230,4 +230,25 @@ router.get("/datasets", async (req, res) => {
   }
 });
 
+// POST /api/admin/upgrade — Upgrade company subscription tier
+router.post("/upgrade", async (req, res) => {
+  const companyId = req.user.companyId;
+  const { tier } = req.body || {};
+
+  if (!tier || !["free", "pro", "enterprise"].includes(tier)) {
+    return res.status(400).json({ error: "Invalid tier specified." });
+  }
+
+  try {
+    await pool.query(
+      "UPDATE companies SET tier = $1 WHERE id = $2",
+      [tier, companyId]
+    );
+    res.json({ success: true, tier });
+  } catch (err) {
+    console.error("Upgrade error:", err);
+    res.status(500).json({ error: "Could not upgrade tier." });
+  }
+});
+
 export default router;
