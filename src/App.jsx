@@ -41,7 +41,7 @@ export default function App() {
   }
 
   const isAdmin = user?.role === "admin";
-  const showVerifyBanner = user && user.emailVerified === false && resendState !== "sent";
+  const showVerifyBanner = false;
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}>

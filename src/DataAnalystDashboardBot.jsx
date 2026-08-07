@@ -1324,20 +1324,28 @@ export default function DataAnalystDashboardBot() {
     try {
       const res = await api.getDataset(t.serverId);
       const d = res.dataset;
-      updateThread(t.id, prev => ({
-        ...prev,
-        rows: d.rows,
-        columns: d.columns,
-        stats: d.stats,
-        quality: d.quality,
-        dashboard: d.dashboard,
-        isRawText: d.isRawText || false,
-        rawText: d.rawText || "",
-        messages: d.messages && d.messages.length
-          ? d.messages
-          : [{ role: "user", kind: "file", fileName: prev.name, rowCount: d.rows.length, colCount: d.columns.length }],
-        loaded: true
-      }));
+      updateThread(t.id, prev => {
+        let finalMsgs = d.messages || [];
+        if (finalMsgs.length <= 1 && d.dashboard) {
+          finalMsgs = [
+            { role: "user", kind: "file", fileName: prev.name || t.name, rowCount: d.rows ? d.rows.length : 0, colCount: d.columns ? d.columns.length : 0 },
+            { role: "assistant", kind: "text", content: d.dashboard.narrative || "Here is the summary of your data." },
+            { role: "assistant", kind: "dashboard" }
+          ];
+        }
+        return {
+          ...prev,
+          rows: d.rows,
+          columns: d.columns,
+          stats: d.stats,
+          quality: d.quality,
+          dashboard: d.dashboard,
+          isRawText: d.isRawText || false,
+          rawText: d.rawText || "",
+          messages: finalMsgs,
+          loaded: true
+        };
+      });
     } catch (err) {
       console.error("Failed to load saved dataset:", err);
     }
