@@ -1272,7 +1272,7 @@ export default function DataAnalystDashboardBot() {
       }
 
       const recentHistory = active.messages.filter(m => m.kind === "text").slice(-6).map(m => `${m.role}: ${m.content}`).join("\n");
-      const planSystem = "You are a rigorous data analyst assistant in an ongoing chat. You are given a dataset's schema and verified summary statistics (already computed accurately from the FULL dataset — trust these numbers exactly, never invent your own), plus recent conversation history for follow-ups. Respond with ONLY a single JSON object, no markdown fences: {\"mode\":\"direct\"|\"aggregate\",\"directAnswer\":string|null,\"groupBy\":string|null,\"metric\":string|null,\"agg\":\"sum\"|\"avg\"|\"count\"|\"min\"|\"max\"|null,\"chartType\":\"bar\"|\"line\"|\"pie\"|\"none\"}. Use 'direct' with directAnswer when the stats already answer it. Use 'aggregate' when it needs grouping — groupBy/metric must be exact column names.";
+      const planSystem = "You are a rigorous data analyst assistant. You are given a dataset's schema and statistics, plus recent conversation history. Respond with ONLY a single JSON object (no markdown, no quotes around JSON): {\"mode\":\"direct\"|\"aggregate\"|\"rows\",\"directAnswer\":string|null,\"groupBy\":string|null,\"metric\":string|null,\"agg\":\"sum\"|\"avg\"|\"count\"|\"min\"|\"max\"|null,\"chartType\":\"bar\"|\"line\"|\"pie\"|\"none\",\"sortBy\":string|null,\"sortOrder\":\"asc\"|\"desc\"|null,\"limit\":number|null,\"filterCol\":string|null,\"filterVal\":string|null}. Use 'rows' mode when the user asks to sort, list, order, show top/bottom rows, or search/filter rows. Set sortBy/sortOrder/limit/filterCol/filterVal to specify client-side sorting/filtering operations on the raw rows.";
       const planUser = JSON.stringify({ question, conversationHistory: recentHistory, rowCount: active.rows.length, columns: active.stats, sampleRows: active.rows.slice(0, 5) });
       const planText = await callClaude(planSystem, planUser, { requestType: "chat_plan", datasetId: serverId });
       const plan = parseJSONSafe(planText);
@@ -1290,6 +1290,44 @@ export default function DataAnalystDashboardBot() {
       if (plan.mode === "direct") {
         updateThread(id, t => {
           finalMessages = [...t.messages, { role: "assistant", kind: "text", content: plan.directAnswer || "I don't have enough in this data to answer that." }];
+          return { ...t, messages: finalMessages };
+        });
+      } else if (plan.mode === "rows") {
+        let computedRows = [...active.rows];
+        if (plan.filterCol && plan.filterVal !== undefined && plan.filterVal !== null) {
+          computedRows = computedRows.filter(r => {
+            const val = r[plan.filterCol];
+            return String(val ?? "").toLowerCase().includes(String(plan.filterVal).toLowerCase());
+          });
+        }
+        if (plan.sortBy) {
+          computedRows.sort((a, b) => {
+            const valA = a[plan.sortBy];
+            const valB = b[plan.sortBy];
+            const numA = Number(valA);
+            const numB = Number(valB);
+            if (!isNaN(numA) && !isNaN(numB)) {
+              return plan.sortOrder === "desc" ? numB - numA : numA - numB;
+            }
+            return plan.sortOrder === "desc"
+              ? String(valB || "").localeCompare(String(valA || ""))
+              : String(valA || "").localeCompare(String(valB || ""));
+          });
+        }
+        const rowLimit = plan.limit || 15;
+        computedRows = computedRows.slice(0, rowLimit);
+
+        const narrateSystem = "You are a senior data analyst. You are given a sorted/filtered list of raw rows computed client-side (trust this data exactly). Summarize the answer to the user's question, highlighting the top items, values, or trends. Maintain a highly professional executive tone. Plain conversational text, no markdown headers, no JSON.";
+        const narrateUser = JSON.stringify({ question, resultCount: computedRows.length, columns: active.columns, rows: computedRows });
+        const narrative = await callClaude(narrateSystem, narrateUser, { requestType: "chat_narrative", datasetId: serverId });
+
+        updateThread(id, t => {
+          finalMessages = [...t.messages, {
+            role: "assistant",
+            kind: "text+table",
+            content: narrative || "Here are the matching results:",
+            table: { columns: active.columns.slice(0, 7), rows: computedRows }
+          }];
           return { ...t, messages: finalMessages };
         });
       } else {
@@ -1574,14 +1612,14 @@ ${chartsHTML}
   };
 
   return (
-    <div style={{ display: "flex", height: 600, borderRadius: 10, overflow: "hidden", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", border: "1px solid #E4E0D8", background: "#FFFFFF" }}
+    <div style={{ display: "flex", height: 700, borderRadius: 16, overflow: "hidden", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", border: "1px solid #E6E2D8", background: "#FFFFFF", boxShadow: "0 12px 40px rgba(43, 42, 39, 0.08)" }}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
     >
-      <div style={{ width: 220, background: "#F7F5F0", borderRight: "1px solid #E4E0D8", display: "flex", flexDirection: "column", padding: 12, gap: 10 }}>
+      <div style={{ width: 220, background: "linear-gradient(180deg, #F8F6F1 0%, #EDEAE3 100%)", borderRight: "1px solid #E4E0D8", display: "flex", flexDirection: "column", padding: 12, gap: 10 }}>
         <button onClick={() => fileInputRef.current && fileInputRef.current.click()}
-          style={{ display: "flex", alignItems: "center", gap: 8, background: "#2B2A27", color: "#fff", border: "none", borderRadius: 8, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+          style={{ display: "flex", alignItems: "center", gap: 8, background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(62, 111, 142, 0.25)" }}>
           <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
         </button>
         <input ref={fileInputRef} type="file" accept=".csv,.tsv,.xlsx,.xls,.txt,.json,.xml,.md,.log,.html,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
@@ -1676,6 +1714,24 @@ ${chartsHTML}
                       <ChartBlock chartType={m.chart.type} data={m.chart.data} metricLabel={m.chart.metricLabel} />
                     </div>
                   )}
+                  {m.kind === "text+table" && m.table && (
+                    <div style={{ marginTop: 10, background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10, overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, background: "#fff", border: "1px solid #EAE7E0" }}>
+                        <thead>
+                          <tr style={{ background: "#F7F5F0" }}>
+                            {m.table.columns.map(c => <th key={c} style={{ padding: "6px 8px", border: "1px solid #EAE7E0", textAlign: "left" }}>{c}</th>)}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {m.table.rows.map((row, rowIdx) => (
+                            <tr key={rowIdx}>
+                              {m.table.columns.map(c => <td key={c} style={{ padding: "6px 8px", border: "1px solid #EAE7E0" }}>{String(row[c] ?? "")}</td>)}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1685,15 +1741,15 @@ ${chartsHTML}
 
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 8, background: "#F7F5F0", border: "1px solid #E4E0D8", borderRadius: 16, padding: "8px 8px 8px 14px" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 10, background: "#FFFFFF", border: "1px solid #DDD8CE", borderRadius: 24, padding: "8px 10px 8px 16px", boxShadow: "0 3px 16px rgba(43, 42, 39, 0.04)" }}>
               <button onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Attach a file"
-                style={{ width: 30, height: 30, borderRadius: "50%", border: "1px solid #DDD8CE", background: "#fff", color: "#8A8580", fontSize: 16, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 2 }}>+</button>
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #DDD8CE", background: "#fff", color: "#8A8580", fontSize: 16, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 1, transition: "all 0.2s ease" }}>+</button>
               <textarea ref={textareaRef} value={input} onChange={(e) => { setInput(e.target.value); autoGrow(e); }}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder={active ? "Ask about your data…" : "Upload a file to begin, then ask away…"} rows={1}
                 style={{ flex: 1, resize: "none", border: "none", outline: "none", background: "transparent", fontSize: 14, lineHeight: 1.5, padding: "6px 0", fontFamily: "inherit", maxHeight: 140 }} />
               <button onClick={handleSend} disabled={loading || !input.trim()}
-                style={{ width: 30, height: 30, borderRadius: "50%", border: "none", background: (loading || !input.trim()) ? "#DDD8CE" : "#2B2A27", color: "#fff", cursor: (loading || !input.trim()) ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, marginBottom: 2 }}>↑</button>
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: (loading || !input.trim()) ? "#EAE7E0" : "#3E6F8E", color: "#fff", cursor: (loading || !input.trim()) ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, marginBottom: 1, transition: "all 0.2s ease" }}>↑</button>
             </div>
           </div>
         </div>
