@@ -595,6 +595,8 @@ function trainTestSplitAndFit(rows, columns, stats) {
 
 function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef }) {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [dataPage, setDataPage] = useState(0);
+  const [sandboxVal, setSandboxVal] = useState("");
 
   if (dashboard && dashboard.isRawText) {
     return (
@@ -708,6 +710,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         >
           🤖 ML Modeling
         </button>
+        <button
+          onClick={() => { setActiveTab("data"); setDataPage(0); }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "data" ? "2px solid #3E6F8E" : "none", color: activeTab === "data" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+        >
+          📋 Raw Data
+        </button>
       </div>
 
       {activeTab === "dashboard" && (
@@ -791,6 +799,38 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
             <OutlierBlock outliers={outliers} />
             <CorrelationBlock correlations={correlations} />
           </div>
+
+          {stats && stats.filter(s => s.type === "numeric").length >= 2 && (
+            <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5C584F", marginBottom: 8 }}>📊 Numeric Correlations Heatmap</div>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 11, background: "#fff", border: "1px solid #EAE7E0" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ background: "#F7F5F0", border: "1px solid #EAE7E0", padding: 6 }}></th>
+                      {stats.filter(s => s.type === "numeric").map(s => <th key={s.name} style={{ background: "#F7F5F0", border: "1px solid #EAE7E0", padding: 6 }}>{s.name}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.filter(s => s.type === "numeric").map(rowCol => (
+                      <tr key={rowCol.name}>
+                        <td style={{ background: "#F7F5F0", border: "1px solid #EAE7E0", padding: 6, fontWeight: 600 }}>{rowCol.name}</td>
+                        {stats.filter(s => s.type === "numeric").map(colCol => {
+                          const r = rowCol.name === colCol.name ? 1 : correlation(currentRows, rowCol.name, colCol.name);
+                          const color = r === 1 ? "#fff" : (r > 0 ? `rgba(110, 143, 99, ${Math.abs(r) * 0.45})` : `rgba(184, 92, 92, ${Math.abs(r) * 0.45})`);
+                          return (
+                            <td key={colCol.name} style={{ border: "1px solid #EAE7E0", padding: 6, textAlign: "center", background: color, fontWeight: 600 }}>
+                              {r !== null ? r.toFixed(2) : "-"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -893,8 +933,69 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   </tbody>
                 </table>
               </div>
+              {ml.slope !== undefined && (
+                <div style={{ background: "#fff", border: "1px solid #EAE7E0", borderRadius: 6, padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#5C584F" }}>🔮 Interactive Model Simulator Sandbox</div>
+                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "#2B2A27" }}>Input value for Predictor <strong>{ml.predictorCol}</strong>:</span>
+                    <input
+                      type="number"
+                      value={sandboxVal}
+                      onChange={(e) => setSandboxVal(e.target.value)}
+                      placeholder="e.g. 10"
+                      style={{ width: 90, padding: "5px 8px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 12 }}
+                    />
+                    {sandboxVal !== "" && !isNaN(Number(sandboxVal)) && (
+                      <span style={{ fontSize: 12.5, color: "#3E6F8E", fontWeight: 600 }}>
+                        ➔ Predicted Output for {ml.targetCol}: <u>{(ml.slope * Number(sandboxVal) + ml.intercept).toFixed(2)}</u>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === "data" && (
+        <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#2B2A27" }}>📋 Raw Dataset Viewer</div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "#fff", border: "1px solid #EAE7E0" }}>
+              <thead>
+                <tr style={{ background: "#F7F5F0" }}>
+                  {columns.map(c => <th key={c} style={{ padding: "8px 10px", border: "1px solid #EAE7E0", textAlign: "left" }}>{c}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {currentRows.slice(dataPage * 15, (dataPage + 1) * 15).map((r, rIdx) => (
+                  <tr key={rIdx} style={{ borderBottom: "1px solid #F7F5F0" }}>
+                    {columns.map(c => <td key={c} style={{ padding: "8px 10px", border: "1px solid #EAE7E0" }}>{String(r[c] ?? "")}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+            <span style={{ fontSize: 12, color: "#8A8580" }}>Page {dataPage + 1} of {Math.ceil(currentRows.length / 15) || 1} ({currentRows.length} total rows)</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                disabled={dataPage === 0}
+                onClick={() => setDataPage(p => p - 1)}
+                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #DDD8CE", background: "#fff", cursor: dataPage === 0 ? "default" : "pointer", fontSize: 12 }}
+              >
+                Previous
+              </button>
+              <button
+                disabled={dataPage >= Math.ceil(currentRows.length / 15) - 1}
+                onClick={() => setDataPage(p => p + 1)}
+                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #DDD8CE", background: "#fff", cursor: dataPage >= Math.ceil(currentRows.length / 15) - 1 ? "default" : "pointer", fontSize: 12 }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1397,6 +1498,68 @@ ${chartsHTML}
     URL.revokeObjectURL(url);
   };
 
+  const handleDownloadWord = (thread) => {
+    if (!thread || !thread.dashboard) return;
+    const sampleRows = thread.rows.slice(0, 50);
+    const tableHead = thread.columns.map(c => `<th style="background:#F7F5F0;border:1px solid #EAE7E0;padding:6px;">${c}</th>`).join("");
+    const tableBody = sampleRows.map(r => `<tr>${thread.columns.map(c => `<td style="border:1px solid #EAE7E0;padding:6px;">${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
+    const generatedDate = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+    const cleaning = performDataCleaning(thread.rows, thread.columns, thread.stats);
+    const ml = trainTestSplitAndFit(thread.rows, thread.columns, thread.stats);
+
+    const docContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head><title>Data Analysis Executive Report</title>
+      <style>
+        body { font-family: 'Calibri', 'Arial', sans-serif; line-height: 1.4; color: #2B2A27; }
+        h1 { font-size: 24pt; color: #3E6F8E; margin-bottom: 2pt; }
+        h2 { font-size: 16pt; color: #5C584F; border-bottom: 1px solid #DDD8CE; padding-bottom: 3pt; margin-top: 20pt; }
+        table { border-collapse: collapse; width: 100%; margin-top: 10pt; }
+        th, td { border: 1px solid #DDD8CE; padding: 6pt; text-align: left; font-size: 10pt; }
+      </style>
+      </head>
+      <body>
+        <h1>EXECUTIVE DATA ANALYSIS REPORT</h1>
+        <p style="color:#8A8580;font-size:10pt;">Dataset: ${thread.name} &middot; Rows: ${thread.rows.length} &middot; Columns: ${thread.columns.length} &middot; Generated: ${generatedDate}</p>
+        
+        <h2>1. Executive Summary</h2>
+        <p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
+
+        <h2>2. Data Cleaning Operations</h2>
+        <p>Dropped Columns: ${cleaning.droppedCols.join(", ") || "None"}</p>
+        <ul>
+          ${cleaning.imputedLog.map(l => `<li>${l}</li>`).join("") || "<li>No corrections required.</li>"}
+        </ul>
+
+        <h2>3. Machine Learning Predictor Model</h2>
+        ${ml ? `
+          <p><strong>Algorithm:</strong> ${ml.type}</p>
+          <p><strong>Predicting:</strong> ${ml.targetCol} using ${ml.predictorCol || ml.predictors?.join(", ")}</p>
+          <p><strong>Model Accuracy (R²):</strong> ${(ml.testR2 * 100).toFixed(1)}%</p>
+          <p><strong>Equation:</strong> ${ml.targetCol} = (${ml.slope} * ${ml.predictorCol}) + ${ml.intercept}</p>
+        ` : "<p>No numeric columns available for regression modeling.</p>"}
+
+        <h2>4. Data Preview (First 50 Rows)</h2>
+        <table>
+          <thead><tr>${tableHead}</tr></thead>
+          <tbody>${tableBody}</tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(['\ufeff' + docContent], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = thread.name.replace(/\.[^.]+$/, "") + "-executive-report.doc";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const autoGrow = (e) => {
     e.target.style.height = "auto";
     e.target.style.height = Math.min(e.target.scrollHeight, 140) + "px";
@@ -1461,6 +1624,10 @@ ${chartsHTML}
             <button onClick={() => handleDownloadReport(active)} disabled={!active.dashboard}
               style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "#2B2A27" : "#C7C2B8", background: "#F7F5F0", border: "1px solid #E4E0D8", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
               ⬇ HTML Report
+            </button>
+            <button onClick={() => handleDownloadWord(active)} disabled={!active.dashboard}
+              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "#2B2A27" : "#C7C2B8", background: "#F7F5F0", border: "1px solid #E4E0D8", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
+              ⬇ Word Report
             </button>
           </div>
         )}
