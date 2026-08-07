@@ -901,6 +901,38 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   );
 }
 
+// ---------------- Sample Datasets Definition ----------------
+const SAMPLE_DATASETS = [
+  {
+    name: "Sales Performance Sample",
+    rows: [
+      { Date: "2026-01-01", Category: "Electronics", Product: "Laptop", Sales: 1200, Quantity: 1, Region: "North" },
+      { Date: "2026-01-02", Category: "Electronics", Product: "Phone", Sales: 800, Quantity: 1, Region: "South" },
+      { Date: "2026-01-03", Category: "Furniture", Product: "Chair", Sales: 150, Quantity: 2, Region: "East" },
+      { Date: "2026-01-04", Category: "Furniture", Product: "Desk", Sales: 450, Quantity: 1, Region: "West" },
+      { Date: "2026-01-05", Category: "Electronics", Product: "Laptop", Sales: 2400, Quantity: 2, Region: "North" },
+      { Date: "2026-01-06", Category: "Office", Product: "Paper", Sales: 50, Quantity: 5, Region: "Central" },
+      { Date: "2026-01-07", Category: "Electronics", Product: "Headphones", Sales: 150, Quantity: 1, Region: "South" },
+      { Date: "2026-01-08", Category: "Furniture", Product: "Sofa", Sales: 950, Quantity: 1, Region: "East" },
+      { Date: "2026-01-09", Category: "Office", Product: "Pen", Sales: 10, Quantity: 10, Region: "West" },
+      { Date: "2026-01-10", Category: "Electronics", Product: "Phone", Sales: 1600, Quantity: 2, Region: "Central" }
+    ],
+    columns: ["Date", "Category", "Product", "Sales", "Quantity", "Region"]
+  },
+  {
+    name: "Audit Operations Sample",
+    rows: [
+      { Code: "AUD-101", Name: "Inventory Review", Auditor: "Sarah", Region: "North", Risk: "Medium", Status: "Completed", DelayDays: 2, Findings: 3 },
+      { Code: "AUD-102", Name: "Tax Compliance", Auditor: "John", Region: "South", Risk: "High", Status: "In Progress", DelayDays: 5, Findings: 1 },
+      { Code: "AUD-103", Name: "IT Security", Auditor: "Alex", Region: "East", Risk: "High", Status: "Completed", DelayDays: 0, Findings: 8 },
+      { Code: "AUD-104", Name: "HR Audit", Auditor: "Sarah", Region: "West", Risk: "Low", Status: "Completed", DelayDays: 1, Findings: 0 },
+      { Code: "AUD-105", Name: "Facility Safety", Auditor: "Emma", Region: "Central", Risk: "Medium", Status: "Delayed", DelayDays: 12, Findings: 4 },
+      { Code: "AUD-106", Name: "Asset Tracking", Auditor: "John", Region: "North", Risk: "Low", Status: "Completed", DelayDays: 0, Findings: 1 }
+    ],
+    columns: ["Code", "Name", "Auditor", "Region", "Risk", "Status", "DelayDays", "Findings"]
+  }
+];
+
 // ---------------- main component ----------------
 export default function DataAnalystDashboardBot() {
   const [threads, setThreads] = useState([]);
@@ -1077,6 +1109,39 @@ export default function DataAnalystDashboardBot() {
 
         generateOverview(id, stats, rows.length, rows, quality, serverId, isRawText, rawText);
       } catch (err) { console.error(err); }
+    }
+  };
+
+  const handleLoadSample = async (sample) => {
+    try {
+      setLoading(true);
+      setLoadingLabel("Loading sample dataset…");
+      const { rows, columns } = sample;
+      const cleanCols = columns.filter(c => c && c.trim() !== "");
+      const stats = cleanCols.map(c => computeColumnStats(rows, c));
+      const quality = calculateDataQuality(rows, cleanCols);
+      const id = Date.now() + "-" + sample.name;
+      const initialMessages = [{ role: "user", kind: "file", fileName: sample.name, rowCount: rows.length, colCount: cleanCols.length }];
+      const thread = {
+        id, name: sample.name, rows, columns: cleanCols, stats, quality, dashboard: null,
+        messages: initialMessages, loaded: true, serverId: null, isRawText: false, rawText: ""
+      };
+      setThreads(prev => [thread, ...prev]);
+      setActiveId(id);
+
+      let serverId = null;
+      try {
+        const created = await api.createDataset({ name: sample.name, rows, columns: cleanCols, stats, quality, messages: initialMessages, isRawText: false, rawText: "" });
+        serverId = created?.dataset?.id || null;
+        if (serverId) updateThread(id, t => ({ ...t, serverId }));
+      } catch (err) {
+        console.error("Failed to save sample dataset:", err);
+      }
+
+      generateOverview(id, stats, rows.length, rows, quality, serverId, false, "");
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
     }
   };
 
@@ -1348,10 +1413,10 @@ ${chartsHTML}
           style={{ display: "flex", alignItems: "center", gap: 8, background: "#2B2A27", color: "#fff", border: "none", borderRadius: 8, padding: "9px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
           <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
         </button>
-        <input ref={fileInputRef} type="file" accept=".csv,.tsv,.xlsx,.xls" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
-        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "#A6A196", marginTop: 6, padding: "0 4px" }}>Datasets</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto" }}>
-          {threads.length === 0 && <div style={{ fontSize: 11.5, color: "#A6A196", padding: "6px 4px" }}>No files yet</div>}
+        <input ref={fileInputRef} type="file" accept=".csv,.tsv,.xlsx,.xls,.txt,.json,.xml,.md,.log,.html,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
+        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "#A6A196", marginTop: 6, padding: "0 4px" }}>Recent</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: 1 }}>
+          {threads.length === 0 && <div style={{ fontSize: 11.5, color: "#A6A196", padding: "6px 4px" }}>No recent files</div>}
           {threads.map(t => (
             <div key={t.id} onClick={() => handleSelectThread(t)}
               style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12.5, background: t.id === activeId ? "#EDEAE3" : "transparent", color: "#2B2A27" }}>
@@ -1362,6 +1427,21 @@ ${chartsHTML}
               </button>
             </div>
           ))}
+        </div>
+        <div style={{ borderTop: "1px solid #E4E0D8", paddingTop: 10, marginTop: "auto" }}>
+          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "#A6A196", padding: "0 4px", marginBottom: 6 }}>Samples</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {SAMPLE_DATASETS.map((sample, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleLoadSample(sample)}
+                disabled={loading}
+                style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "#fff", border: "1px solid #DDD8CE", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, color: "#2B2A27", fontWeight: 500, cursor: loading ? "default" : "pointer", textAlign: "left" }}
+              >
+                📊 {sample.name.replace(" Sample", "")}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1390,7 +1470,7 @@ ${chartsHTML}
             {!active && (
               <div style={{ textAlign: "center", color: "#A6A196", fontSize: 13.5, marginTop: 100, lineHeight: 1.7 }}>
                 <div style={{ fontSize: 17, color: "#2B2A27", fontWeight: 600, marginBottom: 6 }}>Data Analyst</div>
-                Upload a CSV or Excel file — I'll build a dashboard and you can ask follow-up questions.
+                Upload your file (csv or excel or pdf or word) - I'll build a dashboard and you can ask follow-up questions.
               </div>
             )}
             {active && active.messages.map((m, i) => {
