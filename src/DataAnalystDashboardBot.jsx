@@ -1653,6 +1653,24 @@ ${chartsHTML}
             </div>
           ))}
         </div>
+        {user && user.tier === "free" && (
+          <div style={{ background: "linear-gradient(135deg, #FFFDF9 0%, #F6F0EC 100%)", border: "1px solid #E9D9AE", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#8A7038", textTransform: "uppercase" }}>Free Version</span>
+              <span style={{ fontSize: 11, color: "#8A8580" }}>{threads.length}/3 Uploads</span>
+            </div>
+            <button onClick={() => setShowUpgradeModal(true)}
+              style={{ width: "100%", background: "#C98A3E", color: "#fff", border: "none", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}>
+              Upgrade to Pro ➔
+            </button>
+          </div>
+        )}
+        {user && user.tier === "pro" && (
+          <div style={{ background: "linear-gradient(135deg, #F0F6F9 0%, #E6EDF2 100%)", border: "1px solid #B9CDE3", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 4, margin: "6px 0", textAlign: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#3E6F8E", textTransform: "uppercase" }}>Pro Version Active</span>
+            <span style={{ fontSize: 11, color: "#5C7F99" }}>Unlimited uploads unlocked</span>
+          </div>
+        )}
         <div style={{ borderTop: "1px solid #E4E0D8", paddingTop: 10, marginTop: "auto" }}>
           <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "#A6A196", padding: "0 4px", marginBottom: 6 }}>Samples</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
