@@ -1,7 +1,8 @@
 import { Router } from "express";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import pool from "../db.js";
+import pool, { logAction } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { generateToken, hashToken } from "../lib/tokens.js";
 import { sendEmail, verificationEmailHtml, passwordResetEmailHtml } from "../lib/email.js";
@@ -43,9 +44,13 @@ async function sendVerificationEmail(userId, email) {
 // company with zero users.
 router.post("/signup", async (req, res) => {
   const { companyName, email, password } = req.body || {};
+  const inviteToken = req.query.invite;
 
-  if (!companyName || !email || !password) {
-    return res.status(400).json({ error: "companyName, email, and password are all required." });
+  if (!email || !password) {
+    return res.status(400).json({ error: "Email and password are required." });
+  }
+  if (!inviteToken && !companyName) {
+    return res.status(400).json({ error: "companyName is required to register a new organization." });
   }
   if (!EMAIL_RE.test(email)) {
     return res.status(400).json({ error: "Enter a valid email address." });
@@ -55,37 +60,81 @@ router.post("/signup", async (req, res) => {
   }
 
   const normalizedEmail = email.toLowerCase();
-  const displayCompanyName = companyName.trim();
-  const normalizedCompanyName = displayCompanyName.toLowerCase();
-  // Hash outside the transaction — it's CPU-bound and doesn't touch the DB,
-  // so there's no reason to hold a transaction/lock open while it runs.
-  const passwordHash = bcrypt.hashSync(password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const client = await pool.connect();
-  let user, company;
+  let user, company, invite;
   try {
     await client.query("BEGIN");
 
+    // Assert user uniqueness
     const existingUser = await client.query("SELECT id FROM users WHERE email = $1", [normalizedEmail]);
     if (existingUser.rows[0]) {
       await client.query("ROLLBACK");
       return res.status(409).json({ error: "An account with that email already exists." });
     }
 
-    company = (await client.query(
-      "SELECT * FROM companies WHERE name_normalized = $1",
-      [normalizedCompanyName]
-    )).rows[0];
     let role = "member";
-    if (!company) {
+
+    if (inviteToken) {
+      const inviteHash = crypto.createHash("sha256").update(inviteToken).digest("hex");
+      // Atomic increment & verification check to prevent race conditions
+      const inviteRes = await client.query(
+        `UPDATE invites 
+         SET use_count = use_count + 1 
+         WHERE token = $1 AND expires_at > now() AND use_count < max_uses 
+         RETURNING *`,
+        [inviteHash]
+      );
+      invite = inviteRes.rows[0];
+      if (!invite) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "Invalid or expired invitation link." });
+      }
+
+      if (invite.email && invite.email.toLowerCase() !== normalizedEmail) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "This invite is only valid for a different email address." });
+      }
+
+      // Fetch the company
+      const companyRes = await client.query("SELECT * FROM companies WHERE id = $1", [invite.company_id]);
+      company = companyRes.rows[0];
+      if (!company) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Company workspace no longer exists." });
+      }
+      if (company.deleted_at) {
+        await client.query("ROLLBACK");
+        return res.status(403).json({ error: "This company workspace is scheduled for deletion. Access is disabled." });
+      }
+
+      role = invite.role;
+    } else {
+      // Registering a new organization
+      const displayCompanyName = companyName.trim();
+      // Collapse duplicate internal spaces to prevent near-identical name creation/spoofing
+      const normalizedCompanyName = displayCompanyName.toLowerCase().replace(/\s+/g, ' ');
+
+      // Check if company already exists
+      const existingCompany = await client.query(
+        "SELECT id FROM companies WHERE name_normalized = $1",
+        [normalizedCompanyName]
+      );
+      if (existingCompany.rows[0]) {
+        await client.query("ROLLBACK");
+        return res.status(400).json({ error: "That company workspace already exists. To join it, please ask your administrator for an invitation link." });
+      }
+
       const created = await client.query(
         "INSERT INTO companies (name, name_normalized) VALUES ($1, $2) RETURNING *",
         [displayCompanyName, normalizedCompanyName]
       );
       company = created.rows[0];
-      role = "admin"; // first person to register a company becomes its admin
+      role = "admin"; // First user becomes admin/owner
     }
 
+    // Insert user
     const inserted = await client.query(
       "INSERT INTO users (company_id, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *",
       [company.id, normalizedEmail, passwordHash, role]
@@ -95,47 +144,52 @@ router.post("/signup", async (req, res) => {
     await client.query("COMMIT");
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});
-    if (err.code === UNIQUE_VIOLATION) {
-      if (err.constraint === "companies_name_normalized_key") {
-        return res.status(409).json({ error: "That company name was just taken — try signing up again." });
-      }
-      return res.status(409).json({ error: "An account with that email already exists." });
-    }
     console.error("Signup error:", err);
     return res.status(500).json({ error: "Could not create account." });
   } finally {
     client.release();
   }
 
-  // Bypassed: email verification is disabled for instant, frictionless corporate access.
-  /*
+  // Log successful event
+  if (invite) {
+    await logAction(company.id, user.id, user.email, "ACCEPT_INVITE", `Joined workspace via invite code`, req);
+  } else {
+    await logAction(company.id, user.id, user.email, "SIGNUP_NEW_ORG", `Created and registered new company workspace "${company.name}"`, req);
+  }
+
   try {
     await sendVerificationEmail(user.id, user.email);
   } catch (err) {
     console.error("Failed to send verification email:", err);
   }
-  */
 
   const token = issueToken(user);
   return res.status(201).json({
     token,
-    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: true, tier: company.tier || 'free' }
+    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: false, tier: company.tier || 'free' }
   });
 });
 
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ error: "Email and password are required." });
-  }
+  if (!email || !password) return res.status(400).json({ error: "Email and password are required." });
 
   try {
     const user = (await pool.query("SELECT * FROM users WHERE email = $1", [email.toLowerCase()])).rows[0];
-    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+    if (!user) {
       return res.status(401).json({ error: "Incorrect email or password." });
     }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Incorrect email or password." });
+    }
+
     const company = (await pool.query("SELECT * FROM companies WHERE id = $1", [user.company_id])).rows[0];
+    if (company && company.deleted_at) {
+      return res.status(403).json({ error: "This workspace is scheduled for deletion. Access is disabled." });
+    }
     const token = issueToken(user);
     return res.json({
       token,
@@ -257,11 +311,10 @@ router.post("/forgot-password", async (req, res) => {
       );
       const resetUrl = `${FRONTEND_URL}/?reset_token=${raw}`;
       await sendEmail({ to: user.email, subject: "Reset your password", html: passwordResetEmailHtml(resetUrl) });
+      await logAction(user.company_id, user.id, user.email, "REQUEST_PASSWORD_RESET", "Requested password reset email link", req);
     }
   } catch (err) {
     console.error("Forgot-password error:", err);
-    // Still return the generic response — don't leak whether something broke
-    // for a specific email vs. it simply not existing.
   }
   return res.json(generic);
 });
@@ -277,18 +330,12 @@ router.post("/reset-password", async (req, res) => {
   }
 
   const hash = hashToken(token);
-  // Hash the new password before opening the transaction — it's CPU-bound
-  // and doesn't touch the DB, no reason to hold a transaction open for it.
-  const passwordHash = bcrypt.hashSync(password, 10);
+  const passwordHash = await bcrypt.hash(password, 10);
 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
 
-    // Same atomic-claim pattern as verify-email above: this DELETE either
-    // consumes the token and returns the owning user, or matches nothing —
-    // no gap between checking validity and consuming it for a second
-    // concurrent request to slip through.
     const consumed = await client.query(
       `DELETE FROM password_reset_tokens
        WHERE token_hash = $1 AND expires_at > now()
@@ -313,14 +360,23 @@ router.post("/reset-password", async (req, res) => {
     }
 
     const userId = consumed.rows[0].user_id;
+
+    // Fetch user details for compliance logging
+    const userRes = await client.query("SELECT email, company_id FROM users WHERE id = $1", [userId]);
+    const user = userRes.rows[0];
+
     await client.query(
       "UPDATE users SET password_hash = $1, password_changed_at = now() WHERE id = $2",
       [passwordHash, userId]
     );
-    // Any other pending reset tokens for this user are now moot too.
     await client.query("DELETE FROM password_reset_tokens WHERE user_id = $1", [userId]);
 
     await client.query("COMMIT");
+
+    if (user) {
+      await logAction(user.company_id, userId, user.email, "RESET_PASSWORD", "Successfully reset account password", req);
+    }
+
     res.json({ reset: true });
   } catch (err) {
     await client.query("ROLLBACK").catch(() => {});

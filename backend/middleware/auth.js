@@ -27,28 +27,27 @@ export async function requireAuth(req, res, next) {
   }
 
   try {
+    // Single query fetches role, companyId, password status, and company soft-delete status
     const { rows } = await pool.query(
-      "SELECT role, password_changed_at FROM users WHERE id = $1",
+      `SELECT u.role, u.company_id, u.password_changed_at, c.deleted_at
+       FROM users u
+       LEFT JOIN companies c ON c.id = u.company_id
+       WHERE u.id = $1`,
       [payload.userId]
     );
     const dbUser = rows[0];
     if (!dbUser) {
       return res.status(401).json({ error: "This account no longer exists." });
     }
+    if (dbUser.deleted_at) {
+      return res.status(403).json({ error: "This workspace has been scheduled for deletion. Access is disabled." });
+    }
 
-    // jwt's `iat` only has whole-second precision (it's seconds since
-    // epoch, per the JWT spec), while password_changed_at is a real
-    // Postgres timestamp with millisecond precision. Comparing in
-    // milliseconds mixes two different precisions — floor the DB timestamp
-    // down to whole seconds first so the comparison is explicit about what
-    // it's actually comparing, rather than relying on iat's lost
-    // sub-second precision to happen to work out. A JWT issued before the
-    // most recent password change is a session from before that change and
-    // should not still work, regardless of its own expiry. A small grace
-    // window absorbs minor clock skew between the app server and the
-    // database server (typically different machines) without meaningfully
-    // weakening the invalidation — a stolen token still dies within
-    // seconds of a reset, not days.
+    // Assert that the user's current database company matches the JWT payload's company context
+    if (dbUser.company_id !== payload.companyId) {
+      return res.status(401).json({ error: "Your workspace authorization has changed — please log in again." });
+    }
+
     const CLOCK_SKEW_GRACE_SECONDS = 5;
     const issuedAtSeconds = Number(payload.iat);
     const changedAtSeconds = Math.floor(new Date(dbUser.password_changed_at).getTime() / 1000);
@@ -56,7 +55,13 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ error: "Your session has expired — please log in again." });
     }
 
-    req.user = { ...payload, role: dbUser.role }; // role read fresh, not trusted from the token
+    // Build req.user entirely from database properties, not trusting state from the client token
+    req.user = {
+      userId: payload.userId,
+      email: payload.email,
+      companyId: dbUser.company_id,
+      role: dbUser.role
+    };
     next();
   } catch (err) {
     console.error("requireAuth session check failed:", err);

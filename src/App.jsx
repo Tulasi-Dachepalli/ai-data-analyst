@@ -2,6 +2,8 @@ import { useState } from "react";
 import DataAnalystDashboardBot from "./DataAnalystDashboardBot";
 import AuthPage from "./AuthPage";
 import AdminPage from "./AdminPage";
+import TrustPage from "./TrustPage";
+import AppShell from "./components/layout/AppShell";
 import * as api from "./api";
 
 export default function App() {
@@ -9,7 +11,7 @@ export default function App() {
   const [user, setUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem("aida_user")); } catch { return null; }
   });
-  const [view, setView] = useState("dashboard"); // "dashboard" | "admin"
+  const [view, setView] = useState("dashboard"); // "dashboard" | "admin" | "trust"
   const [resendState, setResendState] = useState("idle"); // "idle" | "sending" | "sent" | "error"
 
   const handleAuthenticated = (t, u) => {
@@ -41,48 +43,47 @@ export default function App() {
   }
 
   const isAdmin = user?.role === "admin";
-  const showVerifyBanner = false;
+  const showVerifyBanner = user && !user.emailVerified;
+
+  const renderContent = () => {
+    if (view === "admin-members" && isAdmin) {
+      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="invites" />;
+    }
+    if (view === "admin-audit" && isAdmin) {
+      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="audit" />;
+    }
+    if (view === "admin-security" && isAdmin) {
+      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="danger" />;
+    }
+    if (view === "settings") {
+      // Map global settings view to AdminPage general configurations if admin, else TrustPage
+      return isAdmin ? (
+        <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="dashboard" />
+      ) : (
+        <TrustPage onBack={() => setView("dashboard")} />
+      );
+    }
+    if (view === "trust") {
+      return <TrustPage onBack={() => setView("dashboard")} />;
+    }
+
+    // Default view targets the AI analyst dashboard workspace
+    return <DataAnalystDashboardBot currentView={view} setView={setView} />;
+  };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, boxSizing: "border-box" }}>
-      <div style={{ width: "100%", maxWidth: 900 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, padding: "0 4px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#8A8580" }}>
-            {user?.companyName} · {user?.email}
-            {user?.tier === "pro" && (
-              <span style={{ background: "#C98A3E", color: "#fff", fontSize: 9.5, fontWeight: 700, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.02em" }}>PRO</span>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {isAdmin && view === "dashboard" && (
-              <button onClick={() => setView("admin")}
-                style={{ fontSize: 12, fontWeight: 600, color: "#2B2A27", background: "none", border: "1px solid #E4E0D8", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
-                Admin
-              </button>
-            )}
-            <button onClick={handleLogout}
-              style={{ fontSize: 12, fontWeight: 600, color: "#8A8580", background: "none", border: "1px solid #E4E0D8", borderRadius: 7, padding: "5px 10px", cursor: "pointer" }}>
-              Log out
-            </button>
-          </div>
+    <AppShell user={user} currentView={view} setView={setView} onLogout={handleLogout}>
+      {showVerifyBanner && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: "#FBF3E3", border: "1px solid #E9D9AE", borderRadius: 8, padding: "8px 12px", marginBottom: 16, fontSize: 12.5, color: "#7A5C1E" }}>
+          <span>Please verify your email address ({user.email}) — check your inbox for a verification link.</span>
+          <button onClick={handleResendVerification} disabled={resendState === "sending"}
+            style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, color: "#7A5C1E", background: "none", border: "1px solid #E9D9AE", borderRadius: 6, padding: "4px 9px", cursor: resendState === "sending" ? "default" : "pointer" }}>
+            {resendState === "sending" ? "Sending…" : resendState === "error" ? "Try again" : "Resend email"}
+          </button>
         </div>
+      )}
 
-        {showVerifyBanner && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, background: "#FBF3E3", border: "1px solid #E9D9AE", borderRadius: 8, padding: "8px 12px", marginBottom: 10, fontSize: 12.5, color: "#7A5C1E" }}>
-            <span>Please verify your email address ({user.email}) — check your inbox for a verification link.</span>
-            <button onClick={handleResendVerification} disabled={resendState === "sending"}
-              style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, color: "#7A5C1E", background: "none", border: "1px solid #E9D9AE", borderRadius: 6, padding: "4px 9px", cursor: resendState === "sending" ? "default" : "pointer" }}>
-              {resendState === "sending" ? "Sending…" : resendState === "error" ? "Try again" : "Resend email"}
-            </button>
-          </div>
-        )}
-
-        {view === "admin" && isAdmin ? (
-          <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} />
-        ) : (
-          <DataAnalystDashboardBot />
-        )}
-      </div>
-    </div>
+      {renderContent()}
+    </AppShell>
   );
 }

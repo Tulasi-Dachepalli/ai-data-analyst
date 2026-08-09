@@ -93,11 +93,18 @@ app.use((err, req, res, next) => {
   if (err && err.message && err.message.includes("not allowed by CORS")) {
     return res.status(403).json({ error: "Origin not allowed." });
   }
+  if (err && err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({ error: "File too large. Maximum allowed size is 10MB." });
+  }
   console.error("Unhandled error:", err);
   res.status(500).json({ error: "Something went wrong." });
 });
 
 async function start() {
+  if (!process.env.JWT_SECRET) {
+    console.error("CRITICAL: JWT_SECRET environment variable is not configured!");
+    process.exit(1);
+  }
   try {
     await initDb();
     console.log("Database schema ready.");

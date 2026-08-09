@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import * as api from "./api";
+import Table from "./components/ui/Table";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Treemap
+  XAxis, YAxis, CartesianGrid, Tooltip, Treemap, ScatterChart, Scatter
 } from "recharts";
 
 const COLORS = ["#3E6F8E", "#C98A3E", "#8B6BA8", "#6E8F63", "#B85C5C", "#4C9A9A", "#7A7A7A"];
@@ -47,6 +48,31 @@ function computeColumnStats(rows, col) {
     return { ...base, min: times.length ? new Date(Math.min(...times)).toISOString().slice(0, 10) : null, max: times.length ? new Date(Math.max(...times)).toISOString().slice(0, 10) : null };
   }
   return base;
+}
+
+function mapBackendStats(backendStats) {
+  if (!Array.isArray(backendStats)) return [];
+  return backendStats.map(s => {
+    let type = "categorical";
+    const dtype = String(s.dtype || "").toLowerCase();
+    if (dtype.includes("int") || dtype.includes("float") || dtype.includes("num")) {
+      type = "numeric";
+    } else if (dtype.includes("date") || dtype.includes("time")) {
+      type = "date";
+    }
+    return {
+      name: s.name,
+      type: type,
+      dtype: s.dtype,
+      missing: s.nulls ?? 0,
+      unique: s.unique_count ?? 0,
+      mean: s.mean,
+      median: s.median,
+      min: s.min,
+      max: s.max,
+      outlier_count: s.outlier_count ?? 0
+    };
+  });
 }
 
 function calculateDataQuality(rows, columns) {
@@ -466,16 +492,20 @@ function CorrelationBlock({ correlations }) {
 
 // ---------------- Data Cleaning & ML Helpers ----------------
 function performDataCleaning(rows, columns, stats) {
-  const droppedCols = stats ? stats.filter(s => s.missing === rows.length).map(s => s.name) : [];
-  const cleanCols = columns.filter(c => !droppedCols.includes(c));
+  const safeRows = rows || [];
+  const safeCols = columns || [];
+  const safeStats = stats || [];
+
+  const droppedCols = safeStats.filter(s => s.missing === safeRows.length).map(s => s.name);
+  const cleanCols = safeCols.filter(c => !droppedCols.includes(c));
   
   const imputedLog = [];
-  const cleanedRows = rows.map((row, rIdx) => {
+  const cleanedRows = safeRows.map((row, rIdx) => {
     const newRow = { ...row };
     cleanCols.forEach(col => {
       const val = row[col];
       if (val === null || val === undefined || String(val).trim() === "") {
-        const colStat = stats ? stats.find(s => s.name === col) : null;
+        const colStat = safeStats.find(s => s.name === col);
         if (colStat && colStat.type === "numeric") {
           newRow[col] = colStat.median || 0;
           imputedLog.push(`Row ${rIdx + 1}: Imputed missing value in "${col}" with median (${colStat.median || 0})`);
@@ -593,10 +623,247 @@ function trainTestSplitAndFit(rows, columns, stats) {
   };
 }
 
-function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef }) {
+function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated }) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dataPage, setDataPage] = useState(0);
   const [sandboxVal, setSandboxVal] = useState("");
+  const [sortKey, setSortKey] = useState(null);
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  // Data cleaning state hooks
+  const [cleaningStage, setCleaningStage] = useState("idle"); // "idle" | "cleaning" | "preview" | "completed" | "error"
+  const [cleaningSummary, setCleaningSummary] = useState(null);
+  const [cleanedProfile, setCleanedProfile] = useState(null);
+  const [cleanedDatasetInfo, setCleanedDatasetInfo] = useState(null);
+  const [cleaningError, setCleaningError] = useState("");
+
+  // Automated EDA state hooks
+  const [edaStage, setEdaStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
+  const [edaCharts, setEdaCharts] = useState([]);
+  const [edaError, setEdaError] = useState("");
+
+  // Automated Statistics state hooks
+  const [statsStage, setStatsStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
+  const [statisticsData, setStatisticsData] = useState(null);
+  const [statsError, setStatsError] = useState("");
+
+  // AutoML state hooks
+  const [mlAnalyzeStage, setMlAnalyzeStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
+  const [mlAnalysisData, setMlAnalysisData] = useState(null);
+  const [mlAnalyzeError, setMlAnalyzeError] = useState("");
+
+  const [selectedTask, setSelectedTask] = useState("");
+  const [selectedTarget, setSelectedTarget] = useState("");
+  const [selectedFeatures, setSelectedFeatures] = useState([]);
+  const [testSize, setTestSize] = useState(0.2);
+  const [cvFolds, setCvFolds] = useState(5);
+
+  const [mlTrainStage, setMlTrainStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
+  const [mlTrainResult, setMlTrainResult] = useState(null);
+  const [mlTrainError, setMlTrainError] = useState("");
+
+  const [predictionInput, setPredictionInput] = useState("");
+  const [predictionResult, setPredictionResult] = useState(null);
+  const [predictionStage, setPredictionStage] = useState("idle"); // "idle" | "predicting" | "completed" | "error"
+  const [predictionError, setPredictionError] = useState("");
+
+  // Forecasting state hooks
+  const [forecastAnalyzeStage, setForecastAnalyzeStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
+  const [forecastAnalysisData, setForecastAnalysisData] = useState(null);
+  const [forecastAnalyzeError, setForecastAnalyzeError] = useState("");
+
+  const [selectedDateCol, setSelectedDateCol] = useState("");
+  const [selectedTargetCol, setSelectedTargetCol] = useState("");
+  const [selectedFreq, setSelectedFreq] = useState("");
+  const [forecastHorizon, setForecastHorizon] = useState(12);
+  const [forecastStage, setForecastStage] = useState("detect"); // "detect" | "configure" | "compare" | "forecast" | "insights"
+
+  const [forecastTrainStage, setForecastTrainStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
+  const [forecastTrainResult, setForecastTrainResult] = useState(null);
+  const [forecastTrainError, setForecastTrainError] = useState("");
+
+  // AI Insights state hooks
+  const [insightsStage, setInsightsStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
+  const [insightsData, setInsightsData] = useState(null);
+  const [insightsError, setInsightsError] = useState("");
+
+  useEffect(() => {
+    setMlAnalyzeStage("idle");
+    setMlAnalysisData(null);
+    setMlAnalyzeError("");
+    setSelectedTask("");
+    setSelectedTarget("");
+    setSelectedFeatures([]);
+    setMlTrainStage("idle");
+    setMlTrainResult(null);
+    setMlTrainError("");
+    setPredictionInput("");
+    setPredictionResult(null);
+    setPredictionStage("idle");
+    setPredictionError("");
+
+    setForecastAnalyzeStage("idle");
+    setForecastAnalysisData(null);
+    setForecastAnalyzeError("");
+    setSelectedDateCol("");
+    setSelectedTargetCol("");
+    setSelectedFreq("");
+    setForecastHorizon(12);
+    setForecastStage("detect");
+    setForecastTrainStage("idle");
+    setForecastTrainResult(null);
+    setForecastTrainError("");
+
+    setInsightsStage("idle");
+    setInsightsData(null);
+    setInsightsError("");
+  }, [serverId]);
+
+  useEffect(() => {
+    if (activeTab === "ml" && mlAnalyzeStage === "idle" && serverId) {
+      setMlAnalyzeStage("loading");
+      setMlAnalyzeError("");
+      api.analyzeMlTasks(serverId)
+        .then(res => {
+          if (res && (res.classification_candidates || res.regression_candidates)) {
+            setMlAnalysisData(res);
+            setMlAnalyzeStage("loaded");
+          } else {
+            throw new Error("Invalid ML recommendations payload from server.");
+          }
+        })
+        .catch(err => {
+          console.error("ML analyze error:", err);
+          setMlAnalyzeError(err.message || "Failed to analyze dataset machine learning options.");
+          setMlAnalyzeStage("error");
+        });
+    }
+  }, [activeTab, serverId, mlAnalyzeStage]);
+
+  useEffect(() => {
+    if (activeTab === "forecast" && forecastAnalyzeStage === "idle" && serverId) {
+      setForecastAnalyzeStage("loading");
+      setForecastAnalyzeError("");
+      api.analyzeForecastOption(serverId)
+        .then(res => {
+          if (res && (res.forecastable !== undefined || res.frequency_details)) {
+            setForecastAnalysisData(res);
+            setSelectedDateCol(res.date_column || "");
+            setSelectedTargetCol(res.target_column || "");
+            setSelectedFreq(res.frequency || "");
+            setForecastAnalyzeStage("loaded");
+          } else {
+            throw new Error("Invalid forecasting recommendations from server.");
+          }
+        })
+        .catch(err => {
+          console.error("Forecasting analyze error:", err);
+          setForecastAnalyzeError(err.message || "Failed to analyze time-series details.");
+          setForecastAnalyzeStage("error");
+        });
+    }
+  }, [activeTab, serverId, forecastAnalyzeStage]);
+
+  useEffect(() => {
+    if (activeTab === "insights_tab" && insightsStage === "idle" && serverId) {
+      setInsightsStage("loading");
+      setInsightsError("");
+      api.getDatasetInsights(serverId)
+        .then(res => {
+          if (res && res.success) {
+            setInsightsData(res);
+            setInsightsStage("loaded");
+          } else {
+            throw new Error("Failed to load automated AI insights from server.");
+          }
+        })
+        .catch(err => {
+          console.error("AI Insights fetch error:", err);
+          setInsightsError(err.message || "Failed to retrieve dataset insights report.");
+          setInsightsStage("error");
+        });
+    }
+  }, [activeTab, serverId, insightsStage]);
+
+  useEffect(() => {
+    setStatsStage("idle");
+    setStatisticsData(null);
+    setStatsError("");
+  }, [serverId]);
+
+  useEffect(() => {
+    if (activeTab === "stats" && statsStage === "idle" && serverId) {
+      setStatsStage("loading");
+      setStatsError("");
+      api.getDatasetStatistics(serverId)
+        .then(res => {
+          if (res && res.success && res.statistics) {
+            setStatisticsData(res.statistics);
+            setStatsStage("loaded");
+          } else {
+            throw new Error("Invalid statistics data returned from server.");
+          }
+        })
+        .catch(err => {
+          console.error("Statistics retrieval error:", err);
+          setStatsError(err.message || "Failed to load descriptive statistics metrics.");
+          setStatsStage("error");
+        });
+    }
+  }, [activeTab, serverId, statsStage]);
+
+  useEffect(() => {
+    setEdaStage("idle");
+    setEdaCharts([]);
+    setEdaError("");
+  }, [serverId]);
+
+  useEffect(() => {
+    if (activeTab === "eda" && edaStage === "idle" && serverId) {
+      setEdaStage("loading");
+      setEdaError("");
+      api.getDatasetEda(serverId)
+        .then(res => {
+          if (res && res.success && Array.isArray(res.charts)) {
+            setEdaCharts(res.charts);
+            setEdaStage("loaded");
+          } else {
+            throw new Error("Invalid charts data returned from server.");
+          }
+        })
+        .catch(err => {
+          console.error("EDA retrieval error:", err);
+          setEdaError(err.message || "Failed to load exploratory data analysis recommendations.");
+          setEdaStage("error");
+        });
+    }
+  }, [activeTab, serverId, edaStage]);
+
+  const handleSort = (key) => {
+    if (sortKey === key) {
+      if (sortOrder === "asc") {
+        setSortOrder("desc");
+      } else {
+        setSortKey(null);
+      }
+    } else {
+      setSortKey(key);
+      setSortOrder("asc");
+    }
+    setDataPage(0); // Reset pagination page on sort triggers
+  };
+
+  useEffect(() => {
+    if (currentView === "datasets") {
+      setActiveTab("data");
+    } else if (currentView === "dashboards") {
+      setActiveTab("dashboard");
+    } else if (currentView === "insights") {
+      setActiveTab("eda");
+    } else if (currentView === "reports") {
+      setActiveTab("stats");
+    }
+  }, [currentView]);
 
   if (dashboard && dashboard.isRawText) {
     return (
@@ -610,6 +877,126 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   // Calculate stats dynamically on filtered rows
   const plan = dashboard ? dashboard.plan : null;
   const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
+
+  // Sort dataset globally prior to viewport page slicing
+  const sortedRows = useMemo(() => {
+    if (!sortKey) return currentRows;
+    const sorted = [...currentRows];
+    sorted.sort((a, b) => {
+      const valA = a[sortKey];
+      const valB = b[sortKey];
+
+      if (valA === undefined || valA === null) return 1;
+      if (valB === undefined || valB === null) return -1;
+
+      if (typeof valA === "number" && typeof valB === "number") {
+        return sortOrder === "asc" ? valA - valB : valB - valA;
+      }
+      return sortOrder === "asc"
+        ? String(valA).localeCompare(String(valB))
+        : String(valB).localeCompare(String(valA));
+    });
+    return sorted;
+  }, [currentRows, sortKey, sortOrder]);
+
+  const changePreviewRows = useMemo(() => {
+    if (!cleaningSummary || !cleanedProfile) return [];
+    
+    const originalRows = currentRows || [];
+    const cleanedRows = cleanedProfile.rows_data || [];
+    const cols = columns || [];
+    
+    const previewList = [];
+    
+    // Compare up to 10 sample rows for transformations feedback display
+    for (let i = 0; i < Math.min(originalRows.length, 10); i++) {
+      const origRow = originalRows[i];
+      const cleanRow = cleanedRows[i];
+      if (!origRow || !cleanRow) continue;
+      
+      for (const col of cols) {
+        const origVal = origRow[col];
+        const cleanVal = cleanRow[col];
+        
+        let changeType = "None";
+        if (origVal === null || origVal === undefined || origVal === "") {
+          if (cleanVal !== null && cleanVal !== undefined && cleanVal !== "") {
+            const colStat = stats ? stats.find(s => s.name === col) : null;
+            const isNumeric = colStat && (colStat.dtype.includes("int") || colStat.dtype.includes("float"));
+            changeType = isNumeric ? "Imputed (Median)" : "Imputed (Mode)";
+          }
+        } else if (String(origVal) !== String(cleanVal)) {
+          if (String(origVal).trim() !== String(cleanVal).trim() || String(origVal).replace(/\s+/g, ' ') !== String(cleanVal)) {
+            changeType = "Whitespace Normalized";
+          } else {
+            changeType = "Value Normalized";
+          }
+        }
+        
+        if (changeType !== "None" || (previewList.length < 5 && col === cols[0])) {
+          previewList.push({
+            column: col,
+            original: origVal === null || origVal === undefined ? "null" : String(origVal),
+            cleaned: cleanVal === null || cleanVal === undefined ? "null" : String(cleanVal),
+            change: changeType
+          });
+        }
+      }
+    }
+    
+    return previewList;
+  }, [cleaningSummary, currentRows, columns, cleanedProfile, stats]);
+
+  const triggerClean = async () => {
+    if (!serverId) {
+      alert("This dataset is not saved on the server. Please verify connections.");
+      return;
+    }
+    setCleaningStage("cleaning");
+    setCleaningError("");
+    try {
+      const res = await api.cleanDataset(serverId);
+      if (res && res.success) {
+        setCleaningSummary(res.summary);
+        setCleanedProfile(res.profile);
+        setCleanedDatasetInfo(res.cleanedDataset);
+        setCleaningStage("preview");
+      } else {
+        throw new Error("Failed to execute data cleaning endpoint.");
+      }
+    } catch (err) {
+      console.error("Automated cleaning trigger error:", err);
+      setCleaningError(err.message || "An unexpected error occurred during cleaning.");
+      setCleaningStage("error");
+    }
+  };
+
+  const applyClean = () => {
+    if (!cleanedProfile || !cleanedDatasetInfo) return;
+    
+    const stub = {
+      id: `srv-${cleanedDatasetInfo.id}`,
+      serverId: cleanedDatasetInfo.id,
+      name: cleanedDatasetInfo.name,
+      rows: cleanedProfile.rows_data,
+      columns: cleanedProfile.columns_list,
+      stats: mapBackendStats(cleanedProfile.columns_info),
+      quality: {
+        score: cleanedProfile.quality_score,
+        missingCells: cleanedProfile.missing_cells,
+        missingRate: cleanedProfile.missing_percentage,
+        duplicateRows: cleanedProfile.duplicate_rows
+      },
+      dashboard: null,
+      messages: [],
+      loaded: true
+    };
+    
+    if (onDatasetCreated) {
+      onDatasetCreated(stub);
+    }
+    setCleaningStage("completed");
+  };
 
   const slicerCols = stats ? stats.filter(s => {
     return s.type === "categorical" && s.unique > 1 && s.unique <= 15;
@@ -705,10 +1092,34 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           🧹 Data Cleaning
         </button>
         <button
+          onClick={() => setActiveTab("eda")}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "eda" ? "2px solid #3E6F8E" : "none", color: activeTab === "eda" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+        >
+          🔍 EDA Insights
+        </button>
+        <button
+          onClick={() => setActiveTab("stats")}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "stats" ? "2px solid #3E6F8E" : "none", color: activeTab === "stats" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+        >
+          📊 Stats Report
+        </button>
+        <button
           onClick={() => setActiveTab("ml")}
           style={{ background: "none", border: "none", borderBottom: activeTab === "ml" ? "2px solid #3E6F8E" : "none", color: activeTab === "ml" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           🤖 ML Modeling
+        </button>
+        <button
+          onClick={() => setActiveTab("forecast")}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "forecast" ? "2px solid #3E6F8E" : "none", color: activeTab === "forecast" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+        >
+          📈 Forecasting
+        </button>
+        <button
+          onClick={() => setActiveTab("insights_tab")}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "insights_tab" ? "2px solid #3E6F8E" : "none", color: activeTab === "insights_tab" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+        >
+          💡 AI Insights
         </button>
         <button
           onClick={() => { setActiveTab("data"); setDataPage(0); }}
@@ -835,121 +1246,457 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       )}
 
       {activeTab === "cleaning" && (
-        <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: "var(--radius-lg, 12px)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#2B2A27" }}>🧹 Data Cleaning Log</div>
-            <button
-              onClick={handleDownloadCleanedCSV}
-              style={{ background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-            >
-              📥 Download Cleaned CSV
-            </button>
-          </div>
-          <p style={{ fontSize: 13, color: "#5C584F" }}>The dataset was processed to resolve missing values and structural irregularities:</p>
-          <div style={{ background: "#fff", border: "1px solid #EAE7E0", borderRadius: 6, padding: 10, maxHeight: 200, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
-            {cleaning.droppedCols.length > 0 && (
-              <div style={{ fontSize: 12.5, color: "#B85C5C", fontWeight: 600 }}>
-                🗑 Dropped {cleaning.droppedCols.length} fully empty columns: {cleaning.droppedCols.join(", ")}
-              </div>
-            )}
-            {cleaning.imputedLog.length > 0 ? (
-              cleaning.imputedLog.map((log, idx) => (
-                <div key={idx} style={{ fontSize: 12, color: "#2B2A27", borderBottom: "1px solid #F7F5F0", paddingBottom: 4 }}>
-                  {log}
-                </div>
-              ))
-            ) : (
-              <div style={{ fontSize: 12.5, color: "#6E8F63", fontWeight: 600 }}>
-                ✨ No missing values detected! The dataset is structurally clean.
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>🧹 Automated Data Cleaning Engine</div>
+            {cleaningStage === "preview" && (
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={() => setCleaningStage("idle")}
+                  style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={applyClean}
+                  style={{ background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Apply & Load Dataset
+                </button>
               </div>
             )}
           </div>
-          <div style={{ fontSize: 11.5, color: "#8A8580", marginTop: 4 }}>
-            *Missing numbers are replaced with their column's median value. Categorical missing cells are labeled as "Unknown".
-          </div>
-        </div>
-      )}
 
-      {activeTab === "ml" && (
-        <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#2B2A27" }}>🤖 Train/Test Machine Learning Modeling</div>
-          
-          {!ml ? (
-            <p style={{ fontSize: 13, color: "#8A8580" }}>Your dataset requires at least one numeric column (e.g. DelayDays) and a baseline sample size to train a model.</p>
-          ) : (
+          {cleaningStage === "idle" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontSize: 13, color: "#5C584F" }}>
-                Split type: **80% Training / 20% Testing**. A model was fitted to predict **{ml.targetCol}** using **{ml.predictorCol || ml.predictors?.join(", ")}**:
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
+                Identify structural anomalies, duplicate rows, missing entries, and whitespace discrepancies before analysis:
               </p>
-
-              {/* Evaluation Metrics */}
-              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ background: "#fff", border: "1px solid #EAE7E0", borderRadius: 8, padding: "10px 14px", flex: 1, minWidth: 120 }}>
-                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, fontWeight: 600, color: "#3E6F8E" }}>{ml.trainR2 * 100}%</div>
-                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "#8A8580", marginTop: 2 }}>Training Accuracy (R²)</div>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: (quality?.duplicateRows > 0) ? "var(--warning, #F59E0B)" : "var(--success, #10B981)" }}>
+                    {quality?.duplicateRows ?? 0}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Duplicate Rows</div>
                 </div>
-                <div style={{ background: "#fff", border: "1px solid #EAE7E0", borderRadius: 8, padding: "10px 14px", flex: 1, minWidth: 120 }}>
-                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, fontWeight: 600, color: "#6E8F63" }}>{ml.testR2 * 100}%</div>
-                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "#8A8580", marginTop: 2 }}>Test Set Validation (R²)</div>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: (quality?.missingCells > 0) ? "var(--warning, #F59E0B)" : "var(--success, #10B981)" }}>
+                    {quality?.missingCells ?? 0}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Missing Cells</div>
                 </div>
-                <div style={{ background: "#fff", border: "1px solid #EAE7E0", borderRadius: 8, padding: "10px 14px", flex: 1, minWidth: 120 }}>
-                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, fontWeight: 600, color: "#2B2A27" }}>{ml.trainSize} / {ml.testSize}</div>
-                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "#8A8580", marginTop: 2 }}>Train / Test Split Rows</div>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
+                    {currentRows.length.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Total Rows</div>
+                </div>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, textAlign: "center" }}>
+                  <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
+                    {columns.length}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Total Columns</div>
                 </div>
               </div>
 
-              {ml.slope !== undefined && (
-                <div style={{ background: "#fff", border: "1px solid #EAE7E0", borderRadius: 6, padding: 10, fontSize: 12.5 }}>
-                  🎯 **Fitted Equation**: <code style={{ background: "#F7F5F0", padding: "2px 4px", borderRadius: 3 }}>{ml.targetCol} = ({ml.slope} * {ml.predictorCol}) + {ml.intercept}</code>
+              {cleaningError && (
+                <div style={{ color: "var(--danger, #EF4444)", fontSize: 12.5, fontWeight: 600, background: "rgba(239, 68, 68, 0.05)", padding: "10px 14px", borderRadius: "var(--radius-md)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                  ⚠ {cleaningError}
                 </div>
               )}
 
-              {/* Sample Test Predictions */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#5C584F" }}>📊 Test Set Predictions (Actual vs Predicted)</div>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "#fff", border: "1px solid #EAE7E0" }}>
-                  <thead>
-                    <tr style={{ background: "#F7F5F0" }}>
-                      <th style={{ padding: "6px 8px", border: "1px solid #EAE7E0", textAlign: "left" }}>Predictor Value ({ml.predictorCol || "Input"})</th>
-                      <th style={{ padding: "6px 8px", border: "1px solid #EAE7E0", textAlign: "left" }}>Actual Value ({ml.targetCol})</th>
-                      <th style={{ padding: "6px 8px", border: "1px solid #EAE7E0", textAlign: "left" }}>Predicted Value</th>
-                      <th style={{ padding: "6px 8px", border: "1px solid #EAE7E0", textAlign: "left" }}>Error Margin</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {ml.testPredictions.map((pred, idx) => {
-                      const err = Number(pred.actual) - Number(pred.predicted);
-                      return (
-                        <tr key={idx} style={{ borderBottom: "1px solid #F7F5F0" }}>
-                          <td style={{ padding: "6px 8px", border: "1px solid #EAE7E0" }}>{pred.input}</td>
-                          <td style={{ padding: "6px 8px", border: "1px solid #EAE7E0", fontWeight: 500 }}>{pred.actual}</td>
-                          <td style={{ padding: "6px 8px", border: "1px solid #EAE7E0", color: "#3E6F8E", fontWeight: 500 }}>{pred.predicted}</td>
-                          <td style={{ padding: "6px 8px", border: "1px solid #EAE7E0", color: Math.abs(err) > 5 ? "#B85C5C" : "#6E8F63" }}>
-                            {err >= 0 ? "+" : ""}{err.toFixed(2)}
+              <button
+                onClick={triggerClean}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "var(--accent-color, #0F172A)",
+                  color: "var(--accent-text, #fff)",
+                  border: "none",
+                  borderRadius: "var(--radius-sm)",
+                  padding: "8px 16px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "opacity 0.15s ease"
+                }}
+              >
+                🔍 Analyze & Preview Cleaning
+              </button>
+            </div>
+          )}
+
+          {cleaningStage === "cleaning" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 10px", gap: 12 }}>
+              <div style={{
+                width: 28,
+                height: 28,
+                border: "3px solid var(--border-color)",
+                borderTopColor: "var(--text-primary)",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite"
+              }} />
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-secondary)" }}>Running Python Pandas cleaning transformations on server...</div>
+            </div>
+          )}
+
+          {cleaningStage === "preview" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--success, #10B981)", marginBottom: 8 }}>📋 Cleaning Summary Preview</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, fontSize: 13, color: "var(--text-secondary)" }}>
+                  <div>• Rows: <strong>{cleaningSummary.originalRows} ➔ {cleaningSummary.cleanedRows}</strong></div>
+                  <div>• Columns: <strong>{cleaningSummary.originalColumns} ➔ {cleaningSummary.cleanedColumns}</strong></div>
+                  <div>• Duplicates Dropped: <strong>{cleaningSummary.duplicatesRemoved}</strong></div>
+                  <div>• Missing Cells Imputed: <strong>{cleaningSummary.missingValuesFilled}</strong></div>
+                  <div>• Spaces Normalized: <strong>{cleaningSummary.whitespaceNormalized}</strong></div>
+                  <div>• Constant/Empty Columns: <strong>{cleaningSummary.emptyColumnsRemoved + cleaningSummary.constantColumnsRemoved}</strong></div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>🔍 Visual Diff Change Logs</div>
+              <Table
+                headers={[
+                  { key: "column", label: "Column", sortable: true },
+                  { key: "original", label: "Original Value" },
+                  { key: "cleaned", label: "Cleaned Value" },
+                  { key: "change", label: "Transformation" }
+                ]}
+                data={changePreviewRows}
+                density="compact"
+              />
+            </div>
+          )}
+
+          {cleaningStage === "completed" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 10px", gap: 10 }}>
+              <div style={{ fontSize: 32 }}>✨</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--success, #10B981)" }}>Cleaned Dataset Successfully Cloned!</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center" }}>The new lineage dataset has been loaded into your active workspace thread.</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "eda" && (
+        <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: "var(--radius-lg, 12px)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>🔍 Exploratory Data Analysis & Auto-Visualizations</div>
+          </div>
+          
+          {edaStage === "loading" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 10px", gap: 14 }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                border: "3px solid var(--border-color)",
+                borderTopColor: "var(--text-primary)",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite"
+              }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>Generating EDA specifications...</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", animation: "pulse 1.5s infinite" }}>Analyzing column distributions, frequencies, and relationships</div>
+              </div>
+            </div>
+          )}
+
+          {edaStage === "error" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ color: "var(--danger, #EF4444)", fontSize: 13, fontWeight: 600, background: "rgba(239, 68, 68, 0.05)", padding: "12px 16px", borderRadius: "var(--radius-md)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                ⚠ EDA generation failed: {edaError}
+              </div>
+              <button
+                onClick={() => setEdaStage("idle")}
+                style={{ alignSelf: "flex-start", background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                🔄 Try Again
+              </button>
+            </div>
+          )}
+
+          {edaStage === "loaded" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Dataset Overview and Insights Block */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+                {/* Columns Metrics Overview */}
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>📊 Dataset Metrics</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Total Rows</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{currentRows.length.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Columns</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{columns.length}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Numeric Cols</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
+                        {stats ? stats.filter(c => c.dtype && (c.dtype.includes("int") || c.dtype.includes("float"))).length : 0}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Categorical Cols</div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
+                        {stats ? stats.filter(c => c.type === "categorical").length : 0}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dynamic Insights Bullet List */}
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>💡 Potential Analysis Insights</div>
+                  <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: 4 }}>
+                    {(() => {
+                      const list = [];
+                      if (stats) {
+                        stats.forEach(c => {
+                          if (c.outlier_count > 0) {
+                            list.push(`Column "${c.name}" contains ${c.outlier_count} detected outliers (IQR check).`);
+                          }
+                          if (c.type === "categorical") {
+                            if (c.unique > 15) {
+                              list.push(`Column "${c.name}" contains high cardinality (${c.unique} unique tags). SKIPPED complex breakdowns.`);
+                            } else if (c.unique > 1) {
+                              list.push(`Column "${c.name}" contains ${c.unique} unique categories.`);
+                            }
+                          }
+                        });
+                        const dates = stats.filter(c => c.name.toLowerCase().includes("date") || c.name.toLowerCase().includes("time"));
+                        if (dates.length > 0) {
+                          list.push(`Time-series chronological aggregations generated using "${dates[0].name}".`);
+                        }
+                        const nums = stats.filter(c => c.dtype && (c.dtype.includes("int") || c.dtype.includes("float")));
+                        if (nums.length >= 2) {
+                          list.push(`Numeric bivariate relationships analyzed for pair "${nums[0].name}" vs "${nums[1].name}".`);
+                        }
+                      }
+                      if (list.length === 0) return <li>No significant anomalies or categories detected in sample data.</li>;
+                      return list.map((item, idx) => <li key={idx}>{item}</li>);
+                    })()}
+                  </ul>
+                </div>
+              </div>
+
+              {/* Automatic Recharts Grid */}
+              {edaCharts.length === 0 ? (
+                <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 13, padding: "20px 0" }}>
+                  Not enough compatible columns to generate automated exploratory visualizations.
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 16 }}>
+                  {edaCharts.map((chart, idx) => (
+                    <div key={idx} style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{chart.title}</div>
+                      <div style={{ width: "100%", height: 200 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          {chart.type === "bar" ? (
+                            <BarChart data={chart.data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                              <XAxis dataKey={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                              <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                              <Tooltip contentStyle={{ fontSize: 11, background: "#fff", border: "1px solid var(--border-color)", borderRadius: 4 }} />
+                              <Bar dataKey={chart.yAxis} fill="#3E6F8E" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          ) : chart.type === "line" ? (
+                            <LineChart data={chart.data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                              <XAxis dataKey={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                              <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                              <Tooltip contentStyle={{ fontSize: 11, background: "#fff", border: "1px solid var(--border-color)", borderRadius: 4 }} />
+                              <Line type="monotone" dataKey={chart.yAxis} stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+                            </LineChart>
+                          ) : chart.type === "scatter" ? (
+                            <ScatterChart margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                              <XAxis type="number" dataKey={chart.xAxis} name={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                              <YAxis type="number" dataKey={chart.yAxis} name={chart.yAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                              <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ fontSize: 11 }} />
+                              <Scatter name="Data Correlation" data={chart.data} fill="#3E6F8E" />
+                            </ScatterChart>
+                          ) : (
+                            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", fontSize: 12, color: "var(--text-muted)" }}>
+                              Unsupported chart specifications type
+                            </div>
+                          )}
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "stats" && (
+        <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: "var(--radius-lg, 12px)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📈 Descriptive & Categorical Statistics Report</div>
+          </div>
+          
+          {statsStage === "loading" && (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 10px", gap: 14 }}>
+              <div style={{
+                width: 32,
+                height: 32,
+                border: "3px solid var(--border-color)",
+                borderTopColor: "var(--text-primary)",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite"
+              }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-secondary)" }}>Computing descriptive statistics...</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)", animation: "pulse 1.5s infinite" }}>Calculating column variance, standard deviations, distributions, and correlation matrices</div>
+              </div>
+            </div>
+          )}
+
+          {statsStage === "error" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ color: "var(--danger, #EF4444)", fontSize: 13, fontWeight: 600, background: "rgba(239, 68, 68, 0.05)", padding: "12px 16px", borderRadius: "var(--radius-md)", border: "1px solid rgba(239, 68, 68, 0.2)" }}>
+                ⚠ Statistics calculation failed: {statsError}
+              </div>
+              <button
+                onClick={() => setStatsStage("idle")}
+                style={{ alignSelf: "flex-start", background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "8px 16px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                🔄 Try Again
+              </button>
+            </div>
+          )}
+
+          {statsStage === "loaded" && statisticsData && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Columns Overview Section */}
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 14px", flex: 1, minWidth: 120, textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#3E6F8E" }}>{statisticsData.numeric_count}</div>
+                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginTop: 2 }}>Numeric Columns</div>
+                </div>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 14px", flex: 1, minWidth: 120, textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#C98A3E" }}>{statisticsData.categorical_count}</div>
+                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginTop: 2 }}>Categorical Columns</div>
+                </div>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 14px", flex: 1, minWidth: 120, textAlign: "center" }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: "#6E8F63" }}>{statisticsData.datetime_count}</div>
+                  <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)", marginTop: 2 }}>Datetime Columns</div>
+                </div>
+              </div>
+
+              {/* Numeric Statistics Table */}
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📊 Descriptive Statistics (Numeric)</div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border-color)" }}>
+                        <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Column</th>
+                        <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Mean</th>
+                        <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Median</th>
+                        <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Min / Max</th>
+                        <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Std Dev</th>
+                        <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Skewness</th>
+                        <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Outliers</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(statisticsData.numeric_stats).map(([col, s]) => (
+                        <tr key={col} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                          <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-primary)" }}>{col}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{s.mean != null ? s.mean.toLocaleString() : "-"}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{s.median != null ? s.median.toLocaleString() : "-"}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{s.min != null ? `${s.min} / ${s.max}` : "-"}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{s.std != null ? s.std.toLocaleString() : "-"}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{s.skewness != null ? s.skewness : "-"}</td>
+                          <td style={{ padding: "8px 10px", color: s.outlier_count > 0 ? "var(--warning)" : "var(--text-muted)" }}>
+                            {s.outlier_count > 0 ? `${s.outlier_count} detected` : "0"}
                           </td>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-              {ml.slope !== undefined && (
-                <div style={{ background: "#fff", border: "1px solid #EAE7E0", borderRadius: 6, padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "#5C584F" }}>🔮 Interactive Model Simulator Sandbox</div>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12, color: "#2B2A27" }}>Input value for Predictor <strong>{ml.predictorCol}</strong>:</span>
-                    <input
-                      type="number"
-                      value={sandboxVal}
-                      onChange={(e) => setSandboxVal(e.target.value)}
-                      placeholder="e.g. 10"
-                      style={{ width: 90, padding: "5px 8px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 12 }}
-                    />
-                    {sandboxVal !== "" && !isNaN(Number(sandboxVal)) && (
-                      <span style={{ fontSize: 12.5, color: "#3E6F8E", fontWeight: 600 }}>
-                        ➔ Predicted Output for {ml.targetCol}: <u>{(ml.slope * Number(sandboxVal) + ml.intercept).toFixed(2)}</u>
-                      </span>
-                    )}
+
+              {/* Categorical Breakdowns Grid */}
+              {Object.keys(statisticsData.categorical_stats).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>🏷 Categorical Frequencies Summary</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                    {Object.entries(statisticsData.categorical_stats).map(([col, s]) => (
+                      <div key={col} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", borderBottom: "1px solid var(--border-color)", paddingBottom: 4, marginBottom: 6 }}>
+                          {col} <span style={{ fontSize: 10.5, fontWeight: 400, color: "var(--text-muted)" }}>({s.unique} unique)</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11.5 }}>
+                          {s.frequencies.map((f, idx) => (
+                            <div key={idx} style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
+                              <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: 140 }}>{f.value}</span>
+                              <span style={{ fontWeight: 600 }}>{f.count} ({f.percentage}%)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bivariate Correlation Grid */}
+              {statisticsData.correlation.columns.length > 0 && (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+                  {/* Correlation Heatmap Grid */}
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>🔗 Bivariate Correlation Matrix (Pearson)</div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, textAlign: "center" }}>
+                        <thead>
+                          <tr style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border-color)" }}>
+                            <th style={{ padding: "6px 8px", textAlign: "left", color: "var(--text-secondary)" }}></th>
+                            {statisticsData.correlation.columns.map(col => (
+                              <th key={col} style={{ padding: "6px 8px", fontWeight: 600, color: "var(--text-secondary)" }}>{col}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {statisticsData.correlation.columns.map((rowCol, rowIndex) => (
+                            <tr key={rowCol} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                              <td style={{ padding: "6px 8px", fontWeight: 600, textAlign: "left", color: "var(--text-primary)" }}>{rowCol}</td>
+                              {statisticsData.correlation.columns.map((colCol, colIndex) => {
+                                const r = statisticsData.correlation.matrix[rowIndex][colIndex];
+                                const color = r === 1 ? "var(--bg-primary)" : (r > 0 ? `rgba(16, 185, 129, ${Math.abs(r) * 0.25})` : `rgba(239, 68, 68, ${Math.abs(r) * 0.25})`);
+                                return (
+                                  <td key={colCol} style={{ padding: "6px 8px", background: color, fontWeight: 600, color: "var(--text-secondary)" }}>
+                                    {r != null ? r.toFixed(2) : "-"}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Bivariate Relationship Insights */}
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>💡 Statistical Relationship Insights</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {statisticsData.correlation.relationships.length === 0 ? (
+                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No cross-column correlations detected.</div>
+                      ) : (
+                        statisticsData.correlation.relationships.map((rel, idx) => (
+                          <div key={idx} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 6, padding: "8px 10px", fontSize: 12, color: "var(--text-secondary)" }}>
+                            • <strong>{rel.column}</strong> has a <strong>{rel.strength} {rel.direction}</strong> relationship with <strong>{rel.with}</strong> (r = {rel.value})
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -958,25 +1705,1189 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         </div>
       )}
 
+      {activeTab === "ml" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Stage 1: Task and Target Analysis */}
+          {mlAnalyzeStage === "loading" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-secondary)" }}>Running Automated ML task detection...</div>
+            </div>
+          )}
+
+          {mlAnalyzeStage === "error" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>⚠ Analysis Failed: {mlAnalyzeError}</div>
+              <button onClick={() => setMlAnalyzeStage("idle")} style={{ alignSelf: "flex-start", background: "var(--accent-color)", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>Retry</button>
+            </div>
+          )}
+
+          {mlAnalyzeStage === "loaded" && mlAnalysisData && !selectedTask && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>🤖 Automated ML Task Decision Engine</div>
+                <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>We analyzed your dataset schema to identify viable machine learning candidates. Select a target column recommendation below:</p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+                {/* Classification Candidates */}
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#3E6F8E" }}>🎯 Classification Target Candidates</div>
+                  {mlAnalysisData.classification_candidates.length === 0 ? (
+                    <p style={{ fontSize: 11.5, color: "var(--text-muted)" }}>No low-cardinality categorical target columns recommended.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {mlAnalysisData.classification_candidates.map(cand => (
+                        <div key={cand.column} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
+                          <div>
+                            <strong style={{ color: "var(--text-primary)" }}>{cand.column}</strong>
+                            <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({Math.round(cand.confidence * 100)}% conf)</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedTask("classification");
+                              setSelectedTarget(cand.column);
+                              setSelectedFeatures(columns.filter(c => c !== cand.column && !anyIdKeywords(c)));
+                            }}
+                            style={{ background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+                          >
+                            Select Target
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Regression Candidates */}
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#6E8F63" }}>📈 Regression Target Candidates</div>
+                  {mlAnalysisData.regression_candidates.length === 0 ? (
+                    <p style={{ fontSize: 11.5, color: "var(--text-muted)" }}>No high-cardinality numeric features found suitable for continuous target fitting.</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {mlAnalysisData.regression_candidates.map(cand => (
+                        <div key={cand.column} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
+                          <div>
+                            <strong style={{ color: "var(--text-primary)" }}>{cand.column}</strong>
+                            <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({Math.round(cand.confidence * 100)}% conf)</span>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedTask("regression");
+                              setSelectedTarget(cand.column);
+                              setSelectedFeatures(columns.filter(c => c !== cand.column && !anyIdKeywords(c)));
+                            }}
+                            style={{ background: "#6E8F63", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+                          >
+                            Select Target
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Clustering Candidate */}
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#C98A3E" }}>🏷 Unsupervised Clustering</div>
+                  <p style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>{mlAnalysisData.clustering.reason}</p>
+                  {mlAnalysisData.clustering.available ? (
+                    <button
+                      onClick={() => {
+                        setSelectedTask("clustering");
+                        setSelectedTarget("");
+                        setSelectedFeatures(mlAnalysisData.clustering.numeric_features);
+                      }}
+                      style={{ background: "#C98A3E", color: "#fff", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 11.5, cursor: "pointer", fontWeight: 600, marginTop: "auto" }}
+                    >
+                      Configure K-Means Clustering
+                    </button>
+                  ) : (
+                    <button disabled style={{ background: "#E5E7EB", color: "#9CA3AF", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 11.5, cursor: "not-allowed", marginTop: "auto" }}>Clustering Unavailable</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 2: Configure and Train Model */}
+          {selectedTask && mlTrainStage === "idle" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>⚙ Configure & Train ML Pipeline</div>
+                <button onClick={() => { setSelectedTask(""); setSelectedTarget(""); setSelectedFeatures([]); }} style={{ background: "none", border: "none", color: "#3E6F8E", fontSize: 12.5, cursor: "pointer", fontWeight: 600 }}>← Back to Tasks Selection</button>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 20, alignItems: "start" }}>
+                {/* Configuration parameters */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, background: "var(--bg-primary)", padding: 14, borderRadius: "var(--radius-md)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.5px" }}>Model Specifications</div>
+                  
+                  {/* Task type select */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Machine Learning Task</label>
+                    <select value={selectedTask} onChange={(e) => { setSelectedTask(e.target.value); setSelectedTarget(""); setSelectedFeatures([]); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
+                      <option value="classification">Classification (Predict discrete label)</option>
+                      <option value="regression">Regression (Predict continuous value)</option>
+                      <option value="clustering">Clustering (Group similar rows)</option>
+                    </select>
+                  </div>
+
+                  {/* Target selector */}
+                  {selectedTask !== "clustering" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Target Variable (Column to Predict)</label>
+                      <select value={selectedTarget} onChange={(e) => { setSelectedTarget(e.target.value); setSelectedFeatures(columns.filter(c => c !== e.target.value && !anyIdKeywords(c))); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
+                        <option value="">-- Select target column --</option>
+                        {columns.map(col => (
+                          <option key={col} value={col}>{col}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Test Size */}
+                  {selectedTask !== "clustering" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Validation Holdout Size (Test split: {Math.round(testSize * 100)}%)</label>
+                      <input type="range" min="0.1" max="0.4" step="0.05" value={testSize} onChange={(e) => setTestSize(parseFloat(e.target.value))} style={{ width: "100%", cursor: "pointer" }} />
+                    </div>
+                  )}
+
+                  {/* CV Folds */}
+                  {selectedTask !== "clustering" && (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Cross-Validation Folds ({cvFolds} folds)</label>
+                      <select value={cvFolds} onChange={(e) => setCvFolds(parseInt(e.target.value))} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
+                        <option value="3">3 Folds (Smaller datasets)</option>
+                        <option value="5">5 Folds (Balanced accuracy)</option>
+                        <option value="10">10 Folds (Thorough check)</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Features Predictors Checklist */}
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "0.5px" }}>Feature Predictors ({selectedFeatures.length} selected)</span>
+                    <button
+                      onClick={() => {
+                        const candidates = columns.filter(c => c !== selectedTarget && !anyIdKeywords(c));
+                        if (selectedFeatures.length === candidates.length) {
+                          setSelectedFeatures([]);
+                        } else {
+                          setSelectedFeatures(candidates);
+                        }
+                      }}
+                      style={{ background: "none", border: "none", color: "#3E6F8E", fontSize: 11.5, cursor: "pointer", fontWeight: 600 }}
+                    >
+                      {selectedFeatures.length === columns.filter(c => c !== selectedTarget && !anyIdKeywords(c)).length ? "Deselect All" : "Select All Candidates"}
+                    </button>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflowY: "auto", padding: "4px 0" }}>
+                    {columns.filter(col => col !== selectedTarget).map(col => {
+                      const isChecked = selectedFeatures.includes(col);
+                      const isId = anyIdKeywords(col);
+                      return (
+                        <label key={col} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: isId ? "var(--text-muted)" : "var(--text-primary)", cursor: "pointer" }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              if (isChecked) {
+                                setSelectedFeatures(f => f.filter(x => x !== col));
+                              } else {
+                                setSelectedFeatures(f => [...f, col]);
+                              }
+                            }}
+                          />
+                          <span>{col} {isId && <span style={{ fontSize: 10, color: "var(--warning)" }}>(ID Column flag)</span>}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Train Execution Button */}
+              {mlTrainError && (
+                <div style={{ color: "var(--danger)", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 6, padding: "8px 12px", fontSize: 12.5 }}>
+                  ⚠ Model training calculation failed: {mlTrainError}
+                </div>
+              )}
+
+              <button
+                disabled={selectedTask !== "clustering" && !selectedTarget}
+                onClick={() => {
+                  setMlTrainStage("loading");
+                  setMlTrainError("");
+                  const payload = {
+                    task_type: selectedTask,
+                    target: selectedTarget,
+                    features: selectedFeatures,
+                    test_size: testSize,
+                    cv_folds: cvFolds
+                  };
+                  api.trainMlModel(serverId, payload)
+                    .then(res => {
+                      if (res && res.success) {
+                        setMlTrainResult(res);
+                        setMlTrainStage("loaded");
+                      } else {
+                        throw new Error("Invalid model fit metrics from training engine.");
+                      }
+                    })
+                    .catch(err => {
+                      console.error("ML training failure:", err);
+                      setMlTrainError(err.message || "Failed to train machine learning pipelines.");
+                      setMlTrainStage("idle");
+                    });
+                }}
+                style={{
+                  background: (selectedTask !== "clustering" && !selectedTarget) ? "#E5E7EB" : "var(--accent-color)",
+                  color: (selectedTask !== "clustering" && !selectedTarget) ? "#9CA3AF" : "#fff",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 16px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: (selectedTask !== "clustering" && !selectedTarget) ? "not-allowed" : "pointer",
+                  alignSelf: "flex-end"
+                }}
+              >
+                🚀 Train Models Pipeline
+              </button>
+            </div>
+          )}
+
+          {/* Model Fitting loader */}
+          {mlTrainStage === "loading" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+              <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>Fitting {selectedTask} model algorithms...</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>Running ColumnTransformers scaling, OneHotEncoders, and executing {cvFolds}-fold cross validation</div>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 3 & 4: Model Comparison, Sizing, Feature Importance, Sandbox Predictor */}
+          {mlTrainStage === "loaded" && mlTrainResult && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Models Comparison Section */}
+              <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-primary)" }}>
+                      ★ Model Trained successfully (v{mlTrainResult.version || "1.0"})
+                    </div>
+                    <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{mlTrainResult.recommendation_reason}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMlTrainStage("idle");
+                      setMlTrainResult(null);
+                      setPredictionResult(null);
+                    }}
+                    style={{ background: "none", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer" }}
+                  >
+                    🔄 Train Another Configuration
+                  </button>
+                </div>
+
+                {selectedTask === "clustering" ? (
+                  /* K-Means clustering metrics */
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                    {/* Silhouette scores list */}
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📐 Tested Cluster Coefficients (Silhouette Scores)</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {Object.entries(mlTrainResult.silhouette_scores).map(([kVal, score]) => (
+                          <div key={kVal} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--text-secondary)" }}>
+                            <span style={{ width: 80, fontWeight: 600 }}>k = {kVal} clusters:</span>
+                            <div style={{ flex: 1, height: 8, background: "var(--bg-primary)", borderRadius: 4, overflow: "hidden" }}>
+                              <div style={{ width: `${Math.max(0, score) * 100}%`, height: "100%", background: parseInt(kVal) === mlTrainResult.best_k ? "#C98A3E" : "#94A3B8" }} />
+                            </div>
+                            <span style={{ width: 40, textAlign: "right" }}>{score}</span>
+                            {parseInt(kVal) === mlTrainResult.best_k && <span style={{ fontSize: 10, color: "#C98A3E", fontWeight: 700 }}>★ Best k</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Cluster Sizing segments */}
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📊 Cluster Sizes Distributions</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        {Object.entries(mlTrainResult.cluster_sizes).map(([cls, size]) => {
+                          const pct = Math.round((size / mlTrainResult.training_rows) * 100);
+                          return (
+                            <div key={cls} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--bg-primary)", borderRadius: 6, fontSize: 12.5, color: "var(--text-secondary)" }}>
+                              <span><strong>{cls}</strong> ({size} rows)</span>
+                              <span style={{ fontWeight: 600 }}>{pct}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Supervised models metrics comparisons table */
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📊 Algorithm Comparisons & Metrics</div>
+                    <div style={{ overflowX: "auto" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
+                        <thead>
+                          <tr style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border-color)" }}>
+                            <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Algorithm</th>
+                            {selectedTask === "classification" ? (
+                              <>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Accuracy</th>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Precision</th>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Recall</th>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>F1 Score</th>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>CV F1 Avg</th>
+                              </>
+                            ) : (
+                              <>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>R² score</th>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>MAE</th>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>RMSE</th>
+                                <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>CV R² Avg</th>
+                              </>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Object.entries(mlTrainResult.comparisons).map(([algo, metrics]) => {
+                            const isBest = algo === mlTrainResult.best_model;
+                            return (
+                              <tr key={algo} style={{ borderBottom: "1px solid var(--border-color)", background: isBest ? "rgba(62, 111, 142, 0.03)" : "none" }}>
+                                <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-primary)" }}>
+                                  {algo} {isBest && <span style={{ fontSize: 10, color: "var(--text-primary)", background: "rgba(62, 111, 142, 0.1)", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>★ Recommended Best</span>}
+                                </td>
+                                {selectedTask === "classification" ? (
+                                  <>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{(metrics.accuracy * 100).toFixed(1)}%</td>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{(metrics.precision * 100).toFixed(1)}%</td>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{(metrics.recall * 100).toFixed(1)}%</td>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: isBest ? 700 : 400 }}>{(metrics.f1 * 100).toFixed(1)}%</td>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{(metrics.cv_f1 * 100).toFixed(1)}%</td>
+                                  </>
+                                ) : (
+                                  <>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: isBest ? 700 : 400 }}>{metrics.r2.toFixed(3)}</td>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{metrics.mae.toLocaleString()}</td>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{metrics.rmse.toLocaleString()}</td>
+                                    <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{metrics.cv_r2.toFixed(3)}</td>
+                                  </>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Explainability & Simulator sections */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+                {/* Feature Importance bars */}
+                {selectedTask !== "clustering" && (
+                  <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>💡 Explainability: Feature Importances</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {mlTrainResult.feature_importances.map(item => (
+                        <div key={item.feature} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--text-secondary)" }}>
+                          <span style={{ width: 100, fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{item.feature}:</span>
+                          <div style={{ flex: 1, height: 8, background: "var(--bg-primary)", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ width: `${item.importance * 100}%`, height: "100%", background: "#3E6F8E" }} />
+                          </div>
+                          <span style={{ width: 40, textAlign: "right" }}>{Math.round(item.importance * 100)}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Predictions simulator sandbox */}
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>🔮 Real-Time Model Inference Sandbox</div>
+                  <p style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 12 }}>Input predictors values to simulate real-time pipeline inference:</p>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {selectedFeatures.slice(0, 6).map(feat => {
+                      const currVal = sandboxInputs[feat] || "";
+                      return (
+                        <div key={feat} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12.5 }}>
+                          <span style={{ fontWeight: 600, color: "var(--text-secondary)" }}>{feat}:</span>
+                          <input
+                            type="text"
+                            value={currVal}
+                            onChange={(e) => setSandboxInputs(prev => ({ ...prev, [feat]: e.target.value }))}
+                            placeholder="e.g. value"
+                            style={{ width: 120, padding: "4px 8px", borderRadius: 4, border: "1px solid var(--border-color)", fontSize: 12 }}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {predictionError && (
+                      <div style={{ color: "var(--danger)", fontSize: 11.5 }}>⚠ Predictions run failed: {predictionError}</div>
+                    )}
+
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, borderTop: "1px solid var(--border-color)", paddingTop: 10 }}>
+                      <button
+                        onClick={() => {
+                          setPredictionStage("predicting");
+                          setPredictionError("");
+                          // Cast inputs values safely
+                          const castRow = {};
+                          for (const [k, v] of Object.entries(sandboxInputs)) {
+                            castRow[k] = isNaN(Number(v)) ? v : parseFloat(v);
+                          }
+                          api.predictMlModel(serverId, mlTrainResult.model_id, [castRow])
+                            .then(res => {
+                              if (res && Array.isArray(res.predictions)) {
+                                setPredictionResult(res.predictions[0]);
+                                setPredictionStage("completed");
+                              } else {
+                                throw new Error("Invalid predicted output payload from server.");
+                              }
+                            })
+                            .catch(err => {
+                              console.error("Predict sandbox error:", err);
+                              setPredictionError(err.message || "Predictions failed.");
+                              setPredictionStage("error");
+                            });
+                        }}
+                        style={{ background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                      >
+                        {predictionStage === "predicting" ? "Predicting..." : "Run Predictor"}
+                      </button>
+
+                      {predictionStage === "completed" && predictionResult !== null && (
+                        <div style={{ fontSize: 13, color: "var(--text-primary)" }}>
+                          Predicted Output: <strong style={{ color: "#3E6F8E", fontSize: 14 }}>{predictionResult.toString()}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "forecast" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Progress Navigation Header */}
+          <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ display: "flex", gap: 24, fontSize: 13, fontWeight: 600 }}>
+              <span style={{ color: forecastStage === "detect" ? "var(--text-primary)" : "var(--text-muted)", cursor: "pointer" }} onClick={() => setForecastStage("detect")}>① Detect</span>
+              <span style={{ color: forecastStage === "configure" ? "var(--text-primary)" : "var(--text-muted)", cursor: forecastAnalysisData ? "pointer" : "not-allowed" }} onClick={() => forecastAnalysisData && setForecastStage("configure")}>② Configure</span>
+              <span style={{ color: forecastStage === "compare" ? "var(--text-primary)" : "var(--text-muted)", cursor: forecastTrainResult ? "pointer" : "not-allowed" }} onClick={() => forecastTrainResult && setForecastStage("compare")}>③ Compare</span>
+              <span style={{ color: forecastStage === "forecast" ? "var(--text-primary)" : "var(--text-muted)", cursor: forecastTrainResult ? "pointer" : "not-allowed" }} onClick={() => forecastTrainResult && setForecastStage("forecast")}>④ Forecast</span>
+              <span style={{ color: forecastStage === "insights" ? "var(--text-primary)" : "var(--text-muted)", cursor: forecastTrainResult ? "pointer" : "not-allowed" }} onClick={() => forecastTrainResult && setForecastStage("insights")}>⑤ Insights</span>
+            </div>
+            {forecastTrainResult && (
+              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Selected Model: <strong style={{ color: "var(--accent-color)" }}>{forecastTrainResult.algorithm} v{forecastTrainResult.version}</strong>
+              </span>
+            )}
+          </div>
+
+          {/* Loader and error states */}
+          {forecastAnalyzeStage === "loading" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Analyzing dataset for time-series forecasting...</div>
+            </div>
+          )}
+
+          {forecastAnalyzeStage === "error" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>⚠ Analysis Failed: {forecastAnalyzeError}</div>
+              <button onClick={() => setForecastAnalyzeStage("idle")} style={{ alignSelf: "flex-start", background: "var(--accent-color)", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>Retry</button>
+            </div>
+          )}
+
+          {/* Stage 1: Detect */}
+          {forecastAnalyzeStage === "loaded" && forecastAnalysisData && forecastStage === "detect" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📈 Time-Series Forecastability Analysis</div>
+                <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>We scanned your dataset to identify chronological rows suitable for automated modeling.</p>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Forecastability Score</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: forecastAnalysisData.forecastable ? "#6E8F63" : "#B85C5C", marginTop: 4 }}>
+                    {Math.round(forecastAnalysisData.confidence * 100)}%
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    {forecastAnalysisData.forecastable ? "✓ Time-series sequence detected" : "✗ Suitability constraints not met"}
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Frequency Interval</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", marginTop: 4, textTransform: "capitalize" }}>
+                    {forecastAnalysisData.frequency || "Irregular"}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    Confidence: {forecastAnalysisData.frequency_details ? `${Math.round(forecastAnalysisData.frequency_details.confidence * 100)}%` : "N/A"}
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Observations</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
+                    {forecastAnalysisData.observations ?? 0}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    Min observations: 5 rows
+                  </div>
+                </div>
+
+                <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, background: "var(--bg-primary)" }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Seasonality Analysis</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
+                    {forecastAnalysisData.seasonality_details?.seasonality_detected ? "Detected" : "None"}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    {forecastAnalysisData.seasonality_details?.seasonality_detected ? `Period: ${forecastAnalysisData.seasonality_details?.seasonal_period} cycles` : "No strong seasonal lags"}
+                  </div>
+                </div>
+              </div>
+
+              {forecastAnalysisData.frequency_details?.warning && (
+                <div style={{ color: "var(--warning)", background: "rgba(201, 138, 62, 0.05)", border: "1px solid rgba(201, 138, 62, 0.2)", borderRadius: 6, padding: "8px 12px", fontSize: 12 }}>
+                  ⚠ {forecastAnalysisData.frequency_details.warning}
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                {forecastAnalysisData.forecastable ? (
+                  <button onClick={() => setForecastStage("configure")} style={{ background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+                    Continue to Configuration →
+                  </button>
+                ) : (
+                  <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>
+                    ✗ Forecasting is unavailable: {forecastAnalysisData.reason}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Stage 2: Configure */}
+          {forecastStage === "configure" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>⚙ Configure Forecast Parameters</div>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>Date / Timestamp Column</label>
+                    <select value={selectedDateCol} onChange={(e) => setSelectedDateCol(e.target.value)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
+                      <option value="">-- Select date column --</option>
+                      {columns.map(col => <option key={col} value={col}>{col}</option>)}
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>Target Numeric Variable</label>
+                    <select value={selectedTargetCol} onChange={(e) => setSelectedTargetCol(e.target.value)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
+                      <option value="">-- Select numeric target --</option>
+                      {columns.map(col => <option key={col} value={col}>{col}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>Date Frequency Mode</label>
+                    <select value={selectedFreq} onChange={(e) => setSelectedFreq(e.target.value)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
+                      <option value="daily">Daily</option>
+                      <option value="weekly">Weekly</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="quarterly">Quarterly</option>
+                      <option value="yearly">Yearly</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>Forecast Horizon ({forecastHorizon} steps future)</label>
+                    <input type="range" min="1" max="24" step="1" value={forecastHorizon} onChange={(e) => setForecastHorizon(parseInt(e.target.value))} style={{ width: "100%", cursor: "pointer" }} />
+                  </div>
+                </div>
+              </div>
+
+              {forecastTrainError && (
+                <div style={{ color: "var(--danger)", background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 6, padding: "8px 12px", fontSize: 12.5 }}>
+                  ⚠ Fitting failed: {forecastTrainError}
+                </div>
+              )}
+
+              <button
+                disabled={!selectedDateCol || !selectedTargetCol || forecastTrainStage === "loading"}
+                onClick={() => {
+                  setForecastTrainStage("loading");
+                  setForecastTrainError("");
+                  const payload = {
+                    date_column: selectedDateCol,
+                    target_column: selectedTargetCol,
+                    frequency: selectedFreq,
+                    horizon: forecastHorizon
+                  };
+                  api.trainForecastModel(serverId, payload)
+                    .then(res => {
+                      if (res && res.success) {
+                        setForecastTrainResult(res);
+                        setForecastTrainStage("loaded");
+                        setForecastStage("compare");
+                      } else {
+                        throw new Error("Invalid response received from forecasting engine.");
+                      }
+                    })
+                    .catch(err => {
+                      console.error("Forecasting training error:", err);
+                      setForecastTrainError(err.message || "Failed to execute forecast training.");
+                      setForecastTrainStage("idle");
+                    });
+                }}
+                style={{
+                  background: (!selectedDateCol || !selectedTargetCol) ? "#E5E7EB" : "var(--accent-color)",
+                  color: (!selectedDateCol || !selectedTargetCol) ? "#9CA3AF" : "#fff",
+                  border: "none",
+                  borderRadius: "var(--radius-md)",
+                  padding: "10px 16px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: (!selectedDateCol || !selectedTargetCol) ? "not-allowed" : "pointer",
+                  alignSelf: "flex-end",
+                  marginTop: 10
+                }}
+              >
+                🚀 Run Forecast Models
+              </button>
+            </div>
+          )}
+
+          {forecastTrainStage === "loading" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+              <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>Fitting Time-Series Models...</div>
+                <div style={{ fontSize: 11.5, color: "var(--text-muted)" }}>Running Naive, Moving Average, Auto-ARIMA, and Seasonal SARIMA tests with cross validation</div>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 3: Compare */}
+          {forecastStage === "compare" && forecastTrainResult && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📊 Forecast Models Validation Comparisons</div>
+                <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>We calculated metrics over chronological validation splits to select the optimal model. ARIMA was matched against baseline estimators.</p>
+              </div>
+
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border-color)" }}>
+                      <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>Model Algorithm</th>
+                      <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>MAE (Holdout)</th>
+                      <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>RMSE (Holdout)</th>
+                      <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>sMAPE</th>
+                      <th style={{ padding: "8px 10px", color: "var(--text-secondary)", fontWeight: 600 }}>MAPE (Percentage)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(forecastTrainResult.comparisons).map(([algo, met]) => {
+                      const isBest = algo === forecastTrainResult.algorithm;
+                      return (
+                        <tr key={algo} style={{ borderBottom: "1px solid var(--border-color)", background: isBest ? "rgba(62, 111, 142, 0.03)" : "none" }}>
+                          <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-primary)" }}>
+                            {algo} {isBest && <span style={{ fontSize: 10, color: "var(--text-primary)", background: "rgba(62, 111, 142, 0.1)", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>★ Recommended Best</span>}
+                          </td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{met.mae.toLocaleString()}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{met.rmse.toLocaleString()}</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{met.smape.toFixed(2)}%</td>
+                          <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{met.mape !== null ? `${met.mape.toFixed(2)}%` : "N/A (Actual Zeros)"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {forecastTrainResult.preprocessing_metadata.warning && (
+                <div style={{ color: "var(--warning)", background: "rgba(201, 138, 62, 0.05)", border: "1px solid rgba(201, 138, 62, 0.2)", borderRadius: 6, padding: "8px 12px", fontSize: 12 }}>
+                  ⚠ Preprocessing Alert: {forecastTrainResult.preprocessing_metadata.warning}
+                </div>
+              )}
+
+              <button onClick={() => setForecastStage("forecast")} style={{ background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", alignSelf: "flex-end" }}>
+                View Forecast Projections →
+              </button>
+            </div>
+          )}
+
+          {/* Stage 4: Forecast Graph Chart */}
+          {forecastStage === "forecast" && forecastTrainResult && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📈 Future Forecast Projections Plot</div>
+                <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>Visualizing historical data points (solid blue line) mapped with {forecastHorizon}-step forecasts (dotted yellow line) and confidence bounds.</p>
+              </div>
+
+              <div style={{ width: "100%", height: 320 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={[
+                      ...forecastTrainResult.historical.map(h => ({ date: h.date, actual: h.actual, predicted: null, lower: null, upper: null })),
+                      ...forecastTrainResult.forecast.map(f => ({ date: f.date, actual: null, predicted: f.predicted, lower: f.lower, upper: f.upper }))
+                    ]}
+                    margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                    <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                    <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
+                    <Tooltip contentStyle={{ fontSize: 11.5, background: "#fff", border: "1px solid var(--border-color)", borderRadius: 4 }} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    
+                    {/* Historical actual data line */}
+                    <Line type="monotone" dataKey="actual" name="Historical Actual" stroke="#3E6F8E" strokeWidth={2} dot={{ r: 2 }} activeDot={{ r: 4 }} connectNulls />
+                    
+                    {/* Future predictions forecast line */}
+                    <Line type="monotone" dataKey="predicted" name="Forecast Prediction" stroke="#C98A3E" strokeWidth={2.5} strokeDasharray="3 3" dot={{ r: 3 }} connectNulls />
+                    
+                    {/* Confidence intervals lines */}
+                    <Line type="monotone" dataKey="lower" name="Lower Confidence Bound (95%)" stroke="#94A3B8" strokeWidth={1} strokeDasharray="5 5" dot={false} connectNulls />
+                    <Line type="monotone" dataKey="upper" name="Upper Confidence Bound (95%)" stroke="#94A3B8" strokeWidth={1} strokeDasharray="5 5" dot={false} connectNulls />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+                <button
+                  onClick={handleExportForecastCSV}
+                  disabled={!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0}
+                  style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 12.5, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
+                >
+                  ⬇ Export CSV Projections
+                </button>
+                <button onClick={() => setForecastStage("insights")} style={{ background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}>
+                  Read Model Insights Summary →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Stage 5: Insights */}
+          {forecastStage === "insights" && forecastTrainResult && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>💡 Automated Forecast Report Summary</div>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                {/* Insights metrics summary */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ background: "var(--bg-primary)", padding: 14, borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>Future Projections Trend</span>
+                    <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
+                      Expected Trend direction: <strong style={{ textTransform: "capitalize", color: "#3E6F8E" }}>{forecastTrainResult.insights.trend}</strong>
+                    </div>
+                    <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
+                      Forecast growth rate: <strong style={{ color: forecastTrainResult.insights.expected_growth >= 0 ? "#6E8F63" : "#B85C5C" }}>{forecastTrainResult.insights.expected_growth}%</strong>
+                    </div>
+                    <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
+                      Uncertainty rating: <strong style={{ textTransform: "uppercase", color: forecastTrainResult.insights.uncertainty === "low" ? "#6E8F63" : (forecastTrainResult.insights.uncertainty === "moderate" ? "#C98A3E" : "#B85C5C") }}>{forecastTrainResult.insights.uncertainty}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ border: "1px solid var(--border-color)", padding: 14, borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>Training Lineage Context</span>
+                    <div>• Fitted range: <strong>{forecastTrainResult.training_start} ➔ {forecastTrainResult.training_end}</strong></div>
+                    <div>• Total training observations: <strong>{forecastTrainResult.training_rows}</strong></div>
+                    <div>• Time-ordered validation steps: <strong>{forecastTrainResult.validation_rows}</strong></div>
+                    {forecastTrainResult.insights.seasonal_period && (
+                      <div>• Seasonal cycle period length: <strong>{forecastTrainResult.insights.seasonal_period} intervals</strong></div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Narrative Summary description */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ border: "1px solid var(--border-color)", padding: 14, borderRadius: "var(--radius-md)", background: "rgba(62, 111, 142, 0.02)", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", color: "#3E6F8E" }}>Executive Explanation</span>
+                    <p style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5, margin: 0 }}>
+                      Based on chronological evaluation metrics, the dataset was modeled using the **{forecastTrainResult.algorithm}** algorithm (selected with a holdout error RMSE of {forecastTrainResult.metrics.rmse.toLocaleString()}).
+                    </p>
+                    <p style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5, margin: 0 }}>
+                      The model projects a **{forecastTrainResult.insights.trend}** trend for target **{selectedTargetCol}** over the next **{forecastHorizon}** periods, with an estimated growth delta of **{forecastTrainResult.insights.expected_growth}%**. 
+                      Residual volatility indicates **{forecastTrainResult.insights.uncertainty}** prediction confidence intervals bounds.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", flexWrap: "wrap", gap: 10 }}>
+                    <button
+                      onClick={handleExportForecastCSV}
+                      disabled={!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0}
+                      style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
+                    >
+                      ⬇ Export CSV Projections
+                    </button>
+                    <button
+                      onClick={() => {
+                        setForecastTrainStage("idle");
+                        setForecastTrainResult(null);
+                        setForecastStage("detect");
+                      }}
+                      style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "var(--text-primary)", cursor: "pointer" }}
+                    >
+                      🔄 Run Another Timeline Forecast
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "insights_tab" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {insightsStage === "loading" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Running automated AI insights and recommendation engine...</div>
+            </div>
+          )}
+
+          {insightsStage === "error" && (
+            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>⚠ Analysis Failed: {insightsError}</div>
+              <button onClick={() => setInsightsStage("idle")} style={{ alignSelf: "flex-start", background: "var(--accent-color)", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>Retry</button>
+            </div>
+          )}
+
+          {insightsStage === "loaded" && insightsData && (
+            <>
+              {/* Header metrics card list */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Data Quality Score</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: insightsData.quality_score >= 85 ? "#6E8F63" : (insightsData.quality_score >= 60 ? "#C98A3E" : "#B85C5C"), marginTop: 4 }}>
+                    {insightsData.quality_score.toFixed(1)}%
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    Overall integrity rating
+                  </div>
+                </div>
+
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Dataset Rows</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
+                    {currentRows.length.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    Observations processed
+                  </div>
+                </div>
+
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Anomalies Flagged</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: insightsData.anomalies.length > 0 ? "#C98A3E" : "var(--text-primary)", marginTop: 4 }}>
+                    {insightsData.anomalies.length}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    Spikes and IQR outliers
+                  </div>
+                </div>
+
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Target Candidates</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
+                    {insightsData.target_recommendations.length}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
+                    Predictable variables
+                  </div>
+                </div>
+              </div>
+
+              {/* Business KPIs Summary */}
+              {insightsData.kpis && insightsData.kpis.length > 0 && (
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>💰 Business KPIs & Metric Aggregates</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                    {insightsData.kpis.map((kpi, idx) => (
+                      <div key={idx} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>{kpi.metric_label}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: "#3E6F8E", marginTop: 4 }}>{kpi.formatted_value}</div>
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Mapped from column: <em>{kpi.column}</em></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Data Quality Alerts warnings */}
+              {insightsData.anomalies && insightsData.anomalies.length > 0 && (
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>⚠️ Data Quality Alerts & Spikes Log</div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
+                      <thead>
+                        <tr style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border-color)" }}>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Anomaly Type</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Column</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Reference Step</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Change Value / %</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Detection Method</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Severity</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {insightsData.anomalies.map((anom, idx) => (
+                          <tr key={idx} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                            <td style={{ padding: "6px 8px", fontWeight: 700, color: anom.type === "outlier" ? "var(--text-primary)" : "var(--accent-color)" }}>
+                              {anom.type.toUpperCase()}
+                            </td>
+                            <td style={{ padding: "6px 8px", color: "var(--text-secondary)" }}>{anom.column}</td>
+                            <td style={{ padding: "6px 8px", color: "var(--text-muted)" }}>
+                              {anom.date ? `Date: ${anom.date}` : `Row Index: ${anom.row_index}`}
+                            </td>
+                            <td style={{ padding: "6px 8px", color: "var(--text-primary)" }}>
+                              {anom.change_percent ? `${anom.change_percent}% change` : anom.value.toLocaleString()}
+                            </td>
+                            <td style={{ padding: "6px 8px", color: "var(--text-muted)" }}>{anom.method}</td>
+                            <td style={{ padding: "6px 8px" }}>
+                              <span style={{
+                                background: anom.severity === "high" ? "rgba(239, 68, 68, 0.1)" : "rgba(201, 138, 62, 0.1)",
+                                color: anom.severity === "high" ? "var(--danger)" : "var(--warning)",
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                fontSize: 10,
+                                fontWeight: 700
+                              }}>
+                                {anom.severity}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Core Associations & Relationships */}
+              {insightsData.relationships && insightsData.relationships.length > 0 && (
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>🔗 Structural Relationships & Associations</div>
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
+                      <thead>
+                        <tr style={{ background: "var(--bg-primary)", borderBottom: "1px solid var(--border-color)" }}>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Variable A</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Variable B</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Coefficient (r)</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Strength</th>
+                          <th style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600 }}>Association Direction</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {insightsData.relationships.map((rel, idx) => (
+                          <tr key={idx} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                            <td style={{ padding: "6px 8px", color: "var(--text-primary)", fontWeight: 600 }}>{rel.column_a}</td>
+                            <td style={{ padding: "6px 8px", color: "var(--text-primary)", fontWeight: 600 }}>{rel.column_b}</td>
+                            <td style={{ padding: "6px 8px", color: "var(--text-secondary)" }}>{rel.correlation.toFixed(3)}</td>
+                            <td style={{ padding: "6px 8px" }}>
+                              <span style={{
+                                background: rel.strength === "Very Strong" || rel.strength === "Strong" ? "rgba(110, 143, 99, 0.1)" : "rgba(148, 163, 184, 0.1)",
+                                color: rel.strength === "Very Strong" || rel.strength === "Strong" ? "#6E8F63" : "var(--text-secondary)",
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                fontSize: 10,
+                                fontWeight: 700
+                              }}>
+                                {rel.strength}
+                              </span>
+                            </td>
+                            <td style={{ padding: "6px 8px", color: "var(--text-secondary)" }}>{rel.direction}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                    * Correlation values denote strength of association. Causation claim disclaimers are automatically integrated into summary reports.
+                  </div>
+                </div>
+              )}
+
+              {/* Recommended Next Actions Banners */}
+              {insightsData.recommendations && insightsData.recommendations.length > 0 && (
+                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>🚀 Recommended Workflows</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {insightsData.recommendations.map((rec, idx) => {
+                      const isHigh = rec.priority === "high";
+                      
+                      // Map recommendation types to navigation tab setters
+                      let tabKey = "dashboard";
+                      let btnLabel = "Explore";
+                      if (rec.recommendation === "DATA_CLEANING") {
+                        tabKey = "cleaning";
+                        btnLabel = "Clean Dataset";
+                      } else if (rec.recommendation.startsWith("AUTOML")) {
+                        tabKey = "ml";
+                        btnLabel = "Configure AutoML";
+                      } else if (rec.recommendation === "FORECASTING") {
+                        tabKey = "forecast";
+                        btnLabel = "Forecast Variable";
+                      } else if (rec.recommendation === "EDA") {
+                        tabKey = "eda";
+                        btnLabel = "Explore EDA Spec";
+                      }
+
+                      return (
+                        <div key={idx} style={{
+                          border: isHigh ? "1px solid rgba(239, 68, 68, 0.2)" : "1px solid var(--border-color)",
+                          background: isHigh ? "rgba(239, 68, 68, 0.02)" : "var(--bg-primary)",
+                          borderRadius: "var(--radius-md)",
+                          padding: 14,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center"
+                        }}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: "75%" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{
+                                background: isHigh ? "rgba(239, 68, 68, 0.1)" : "rgba(201, 138, 62, 0.1)",
+                                color: isHigh ? "var(--danger)" : "var(--warning)",
+                                padding: "2px 6px",
+                                borderRadius: 4,
+                                fontSize: 9.5,
+                                fontWeight: 700
+                              }}>
+                                {rec.priority.toUpperCase()} PRIORITY
+                              </span>
+                              <strong style={{ fontSize: 13, color: "var(--text-primary)" }}>{rec.recommendation.replace("_", " ")}</strong>
+                            </div>
+                            <div style={{ fontSize: 12.5, color: "var(--text-secondary)" }}>{rec.reason}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}><em>Action: {rec.action}</em></div>
+                            
+                            {/* "Why?" bullet checklist explanation */}
+                            {rec.why && rec.why.length > 0 && (
+                              <div style={{ marginTop: 6 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)" }}>Why?</div>
+                                <ul style={{ margin: 0, paddingLeft: 14, fontSize: 11.5, color: "var(--text-secondary)" }}>
+                                  {rec.why.map((w, wIdx) => <li key={wIdx}>{w}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setActiveTab(tabKey);
+                              if (tabKey === "data") setDataPage(0);
+                            }}
+                            style={{
+                              background: isHigh ? "var(--accent-color)" : "var(--bg-secondary)",
+                              color: isHigh ? "#fff" : "var(--text-primary)",
+                              border: isHigh ? "none" : "1px solid var(--border-color)",
+                              borderRadius: 4,
+                              padding: "8px 14px",
+                              fontSize: 12,
+                              fontWeight: 700,
+                              cursor: "pointer"
+                            }}
+                          >
+                            {btnLabel} →
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Executive Summary Markdown report */}
+              <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+                {(() => {
+                  const renderMarkdown = (text) => {
+                    if (!text) return null;
+                    return text.split("\n").map((line, idx) => {
+                      if (line.startsWith("## ")) {
+                        return <h2 key={idx} style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", borderBottom: "1px solid var(--border-color)", paddingBottom: 6, marginTop: 16, marginBottom: 8 }}>{line.replace("## ", "")}</h2>;
+                      }
+                      if (line.startsWith("### ")) {
+                        return <h3 key={idx} style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)", marginTop: 12, marginBottom: 6 }}>{line.replace("### ", "")}</h3>;
+                      }
+                      if (line.startsWith("* ")) {
+                        const cleanLine = line.replace("* ", "");
+                        const parts = cleanLine.split("**");
+                        return (
+                          <li key={idx} style={{ fontSize: 12.5, color: "var(--text-secondary)", marginLeft: 16, marginBottom: 4 }}>
+                            {parts.map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p)}
+                          </li>
+                        );
+                      }
+                      if (line.startsWith("> ")) {
+                        if (line.includes("[!NOTE]") || line.includes("Disclaimer")) {
+                          return (
+                            <div key={idx} style={{ background: "rgba(62, 111, 142, 0.05)", borderLeft: "4px solid #3E6F8E", borderRadius: 4, padding: "8px 12px", margin: "10px 0", fontSize: 12, color: "#3E6F8E" }}>
+                              {line.replace("> ", "").replace("[!NOTE]", "").replace("Disclaimer:", "").trim()}
+                            </div>
+                          );
+                        }
+                        return (
+                          <blockquote key={idx} style={{ borderLeft: "3px solid var(--border-color)", paddingLeft: 10, color: "var(--text-muted)", fontSize: 12.5, margin: "8px 0" }}>
+                            {line.replace("> ", "")}
+                          </blockquote>
+                        );
+                      }
+                      if (line.trim() === "") return <div key={idx} style={{ height: 6 }} />;
+                      
+                      const parts = line.split("**");
+                      return (
+                        <p key={idx} style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5, margin: "4px 0" }}>
+                          {parts.map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p)}
+                        </p>
+                      );
+                    });
+                  };
+                  return renderMarkdown(insightsData.summary);
+                })()}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {activeTab === "data" && (
         <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: "#2B2A27" }}>📋 Raw Dataset Viewer</div>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, background: "#fff", border: "1px solid #EAE7E0" }}>
-              <thead>
-                <tr style={{ background: "#F7F5F0" }}>
-                  {columns.map(c => <th key={c} style={{ padding: "8px 10px", border: "1px solid #EAE7E0", textAlign: "left" }}>{c}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {currentRows.slice(dataPage * 15, (dataPage + 1) * 15).map((r, rIdx) => (
-                  <tr key={rIdx} style={{ borderBottom: "1px solid #F7F5F0" }}>
-                    {columns.map(c => <td key={c} style={{ padding: "8px 10px", border: "1px solid #EAE7E0" }}>{String(r[c] ?? "")}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            headers={columns.map(c => ({ key: c, label: c, sortable: true }))}
+            data={sortedRows.slice(dataPage * 15, (dataPage + 1) * 15)}
+            density="compact"
+            sortKey={sortKey}
+            sortOrder={sortOrder}
+            onSort={handleSort}
+          />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
             <span style={{ fontSize: 12, color: "#8A8580" }}>Page {dataPage + 1} of {Math.ceil(currentRows.length / 15) || 1} ({currentRows.length} total rows)</span>
             <div style={{ display: "flex", gap: 6 }}>
@@ -1035,7 +2946,7 @@ const SAMPLE_DATASETS = [
 ];
 
 // ---------------- main component ----------------
-export default function DataAnalystDashboardBot() {
+export default function DataAnalystDashboardBot({ currentView }) {
   const user = JSON.parse(localStorage.getItem("aida_user") || "null");
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -1052,6 +2963,31 @@ export default function DataAnalystDashboardBot() {
   const [chartTypes, setChartTypes] = useState({});
 
   const active = threads.find(t => t.id === activeId);
+
+  const suggestedQuestions = useMemo(() => {
+    if (!active || !active.columns || !active.stats) return [];
+    const numCols = active.stats.filter(s => s.type === "numeric").map(s => s.name);
+    const catCols = active.stats.filter(s => s.type === "categorical" && s.unique <= 15).map(s => s.name);
+    const dateCols = active.stats.filter(s => s.type === "date").map(s => s.name);
+    
+    const suggestions = [];
+    if (numCols.length > 0) {
+      suggestions.push(`What is the average of ${numCols[0]}?`);
+    }
+    if (catCols.length > 0 && numCols.length > 0) {
+      suggestions.push(`average ${numCols[0]} by ${catCols[0]}`);
+    }
+    if (dateCols.length > 0 && numCols.length > 0) {
+      suggestions.push(`Forecast ${numCols[0]} next 3 months`);
+    }
+    suggestions.push("Are there unusual values?");
+    return suggestions.slice(0, 3);
+  }, [active]);
+
+  const handleDatasetCreated = (newThread) => {
+    setThreads(prev => [newThread, ...prev]);
+    setActiveId(newThread.id);
+  };
 
   useEffect(() => {
     setSlicerFilters({});
@@ -1134,11 +3070,19 @@ export default function DataAnalystDashboardBot() {
       .map(([colA, colB]) => ({ colA, colB, r: correlation(rows, colA, colB) }))
       .filter(c => c.r !== null && Math.abs(c.r) >= 0.5);
 
-    const narrateSystem = "You are a senior data analyst and management consultant producing a professional executive dashboard summary. Given verified computed aggregates (trust these exactly, never invent numbers), write 4-6 sentences in a highly professional, business-consulting tone. Focus on high-level corporate insights: highlight key KPI metrics, explain significant variances across categories, outline the general trend line, and call out any operational risks or data quality concerns that deserve executive attention. Plain conversational text, no markdown headers, no JSON.";
-    const narrateUser = JSON.stringify({ rowCount: rows.length, kpis, categoryCharts, trend, quality, outlierSummary: Object.entries(outliers).map(([k, o]) => ({ column: k, count: o.rows.length })), correlations });
-    const narrative = await callClaude(narrateSystem, narrateUser, { requestType: "dashboard_narrative", datasetId: serverId });
+    let narrative = "The dataset has been successfully loaded and profiled. Please find the interactive KPIs, breakdowns, and trend charts below.";
+    try {
+      const narrateSystem = "You are a senior data analyst and management consultant producing a professional executive dashboard summary. Given verified computed aggregates (trust these exactly, never invent numbers), write 4-6 sentences in a highly professional, business-consulting tone. Focus on high-level corporate insights: highlight key KPI metrics, explain significant variances across categories, outline the general trend line, and call out any operational risks or data quality concerns that deserve executive attention. Plain conversational text, no markdown headers, no JSON.";
+      const narrateUser = JSON.stringify({ rowCount: rows.length, kpis, categoryCharts, trend, quality, outlierSummary: Object.entries(outliers).map(([k, o]) => ({ column: k, count: o.rows.length })), correlations });
+      const apiNarrative = await callClaude(narrateSystem, narrateUser, { requestType: "dashboard_narrative", datasetId: serverId });
+      if (apiNarrative) {
+        narrative = apiNarrative;
+      }
+    } catch (err) {
+      console.warn("Failed to generate AI dashboard narrative, using local fallback:", err);
+    }
 
-    const dashboardObj = { kpis, categoryCharts, trend, distributions, quality, outliers, correlations, plan, rawRows: rows, narrative: narrative || "Here's an overview of your data." };
+    const dashboardObj = { kpis, categoryCharts, trend, distributions, quality, outliers, correlations, plan, rawRows: rows, narrative };
     setThreads(prev => {
       return prev.map(t => {
         if (t.id === id) {
@@ -1190,32 +3134,50 @@ export default function DataAnalystDashboardBot() {
     }
     const files = Array.from(fileList);
     for (const file of files) {
+      setLoading(true);
+      setLoadingLabel("Uploading and profiling dataset…");
       try {
-        const { rows, columns, isRawText, rawText } = await parseFile(file);
-        const cleanCols = columns.filter(c => c && c.trim() !== "");
-        const stats = cleanCols.map(c => computeColumnStats(rows, c));
-        const quality = calculateDataQuality(rows, cleanCols);
+        // 1. Upload to Node.js backend which proxies to Python FastAPI for profiling
+        const profile = await api.uploadDatasetFile(file);
+        if (!profile) {
+          setLoading(false);
+          continue;
+        }
+
+        const rows = profile.rows_data;
+        const cleanCols = profile.columns_list;
+        const stats = mapBackendStats(profile.columns_info);
+        const quality = {
+          score: profile.quality_score,
+          missingCells: profile.missing_cells,
+          missingRate: profile.missing_percentage,
+          duplicateRows: profile.duplicate_rows
+        };
+
         const id = Date.now() + "-" + file.name;
         const initialMessages = [{ role: "user", kind: "file", fileName: file.name, rowCount: rows.length, colCount: cleanCols.length }];
         const thread = {
           id, name: file.name, rows, columns: cleanCols, stats, quality, dashboard: null,
-          messages: initialMessages, loaded: true, serverId: null, isRawText, rawText
+          messages: initialMessages, loaded: true, serverId: null, isRawText: false, rawText: ""
         };
         setThreads(prev => [thread, ...prev]);
         setActiveId(id);
-        setLoading(true);
 
         let serverId = null;
         try {
-          const created = await api.createDataset({ name: file.name, rows, columns: cleanCols, stats, quality, messages: initialMessages, isRawText, rawText });
+          const created = await api.createDataset({ name: file.name, rows, columns: cleanCols, stats, quality, messages: initialMessages, isRawText: false, rawText: "" });
           serverId = created?.dataset?.id || null;
           if (serverId) updateThread(id, t => ({ ...t, serverId }));
         } catch (err) {
           console.error("Failed to save dataset — continuing without persistence:", err);
         }
 
-        generateOverview(id, stats, rows.length, rows, quality, serverId, isRawText, rawText);
-      } catch (err) { console.error(err); }
+        generateOverview(id, stats, rows.length, rows, quality, serverId, false, "");
+      } catch (err) { 
+        console.error("Profiling error:", err);
+        alert(err.message || "Failed to parse and profile the uploaded dataset.");
+        setLoading(false);
+      }
     }
   };
 
@@ -1263,9 +3225,11 @@ export default function DataAnalystDashboardBot() {
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     const id = active.id;
     const serverId = active.serverId;
+    
+    // Add user message to local state
     updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "user", kind: "text", content: question }] }));
     setLoading(true);
-    setLoadingLabel("Analyzing…");
+    setLoadingLabel("Analyzing query…");
 
     try {
       if (active.isRawText) {
@@ -1281,83 +3245,25 @@ export default function DataAnalystDashboardBot() {
         return;
       }
 
-      const recentHistory = active.messages.filter(m => m.kind === "text").slice(-6).map(m => `${m.role}: ${m.content}`).join("\n");
-      const planSystem = "You are a rigorous data analyst assistant. You are given a dataset's schema and statistics, plus recent conversation history. Respond with ONLY a single JSON object (no markdown, no quotes around JSON): {\"mode\":\"direct\"|\"aggregate\"|\"rows\",\"directAnswer\":string|null,\"groupBy\":string|null,\"metric\":string|null,\"agg\":\"sum\"|\"avg\"|\"count\"|\"min\"|\"max\"|null,\"chartType\":\"bar\"|\"line\"|\"pie\"|\"none\",\"sortBy\":string|null,\"sortOrder\":\"asc\"|\"desc\"|null,\"limit\":number|null,\"filterCol\":string|null,\"filterVal\":string|null}. Use 'rows' mode when the user asks to sort, list, order, show top/bottom rows, or search/filter rows. Set sortBy/sortOrder/limit/filterCol/filterVal to specify client-side sorting/filtering operations on the raw rows.";
-      const planUser = JSON.stringify({ question, conversationHistory: recentHistory, rowCount: active.rows.length, columns: active.stats, sampleRows: active.rows.slice(0, 5) });
-      const planText = await callClaude(planSystem, planUser, { requestType: "chat_plan", datasetId: serverId });
-      const plan = parseJSONSafe(planText);
-
-      let finalMessages = null;
-      if (!plan) {
-        updateThread(id, t => {
-          finalMessages = [...t.messages, { role: "assistant", kind: "text", content: "I couldn't quite work that out — could you rephrase?" }];
-          return { ...t, messages: finalMessages };
-        });
-        setLoading(false);
-        persistThread(serverId, { messages: finalMessages });
-        return;
+      if (!serverId) {
+        throw new Error("Dataset is not synced with backend. Cannot complete secure chat query.");
       }
-      if (plan.mode === "direct") {
-        updateThread(id, t => {
-          finalMessages = [...t.messages, { role: "assistant", kind: "text", content: plan.directAnswer || "I don't have enough in this data to answer that." }];
-          return { ...t, messages: finalMessages };
-        });
-      } else if (plan.mode === "rows") {
-        let computedRows = [...active.rows];
-        if (plan.filterCol && plan.filterVal !== undefined && plan.filterVal !== null) {
-          computedRows = computedRows.filter(r => {
-            const val = r[plan.filterCol];
-            return String(val ?? "").toLowerCase().includes(String(plan.filterVal).toLowerCase());
-          });
-        }
-        if (plan.sortBy) {
-          computedRows.sort((a, b) => {
-            const valA = a[plan.sortBy];
-            const valB = b[plan.sortBy];
-            const numA = Number(valA);
-            const numB = Number(valB);
-            if (!isNaN(numA) && !isNaN(numB)) {
-              return plan.sortOrder === "desc" ? numB - numA : numA - numB;
-            }
-            return plan.sortOrder === "desc"
-              ? String(valB || "").localeCompare(String(valA || ""))
-              : String(valA || "").localeCompare(String(valB || ""));
-          });
-        }
-        const rowLimit = plan.limit || 15;
-        computedRows = computedRows.slice(0, rowLimit);
 
-        const narrateSystem = "You are a senior data analyst. You are given a sorted/filtered list of raw rows computed client-side (trust this data exactly). Summarize the answer to the user's question, highlighting the top items, values, or trends. Maintain a highly professional executive tone. Plain conversational text, no markdown headers, no JSON.";
-        const narrateUser = JSON.stringify({ question, resultCount: computedRows.length, columns: active.columns, rows: computedRows });
-        const narrative = await callClaude(narrateSystem, narrateUser, { requestType: "chat_narrative", datasetId: serverId });
-
-        updateThread(id, t => {
-          finalMessages = [...t.messages, {
-            role: "assistant",
-            kind: "text+table",
-            content: narrative || "Here are the matching results:",
-            table: { columns: active.columns.slice(0, 7), rows: computedRows }
-          }];
-          return { ...t, messages: finalMessages };
-        });
+      // Query the secured Express Gateway endpoint
+      const response = await api.chatDataset(serverId, question);
+      
+      if (response && response.success) {
+        updateThread(id, t => ({ ...t, messages: response.messages }));
       } else {
-        const result = computeAggregate(active.rows, plan.groupBy, plan.metric, plan.agg || "sum");
-        const narrateSystem = "You are a senior corporate data analyst chatbot. Respond to the user's question with a highly professional, structured business analysis based on the computed aggregation results (trust these exactly). Provide clear corporate context, reference specific values and percentages, explain the business implications, and offer actionable insights or recommendations. Write in a polished business tone using a concise, professional structure or a short, bulleted highlights section. No JSON, no markdown headers.";
-        const narrateUser = JSON.stringify({ question, groupBy: plan.groupBy, metric: plan.metric, agg: plan.agg, result });
-        const narrative = await callClaude(narrateSystem, narrateUser, { requestType: "chat_narrative", datasetId: serverId });
-        updateThread(id, t => {
-          finalMessages = [...t.messages, { role: "assistant", kind: "text+chart", content: narrative || "Here's what the data shows:", chart: { type: plan.chartType === "none" ? "bar" : plan.chartType, data: result, metricLabel: plan.metric || "count" } }];
-          return { ...t, messages: finalMessages };
-        });
+        throw new Error("Failed to receive grounded response from AI Analyst.");
       }
-      persistThread(serverId, { messages: finalMessages });
     } catch (err) {
+      console.error("Secure chat endpoint error:", err);
       let finalMessages = null;
       updateThread(id, t => {
-        finalMessages = [...t.messages, { role: "assistant", kind: "text", content: "Something went wrong on my end — mind trying again?" }];
+        finalMessages = [...t.messages, { role: "assistant", kind: "text", content: `Error: ${err.message || "Failed to process chat query."}` }];
         return { ...t, messages: finalMessages };
       });
-      persistThread(serverId, { messages: finalMessages });
     }
     setLoading(false);
   };
@@ -1415,15 +3321,66 @@ export default function DataAnalystDashboardBot() {
     if (activeId === t.id) setActiveId(null);
   };
 
+  const handleExportForecastCSV = () => {
+    if (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) return;
+    
+    const headers = ["Date", "Predicted", "Lower_Bound", "Upper_Bound"];
+    const csvRows = [headers.join(",")];
+    
+    forecastTrainResult.forecast.forEach(f => {
+      const dateVal = f.date ?? "";
+      const predVal = f.predicted !== undefined && f.predicted !== null ? f.predicted : "";
+      const lowerVal = f.lower !== undefined && f.lower !== null ? f.lower : "";
+      const upperVal = f.upper !== undefined && f.upper !== null ? f.upper : "";
+      
+      const rowString = [
+        String(dateVal),
+        String(predVal),
+        String(lowerVal),
+        String(upperVal)
+      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
+      
+      csvRows.push(rowString);
+    });
+    
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    
+    const sanitizeFileName = (name) => {
+      if (!name) return "dataset";
+      return name
+        .replace(/\.[^.]+$/, "")
+        .replace(/[\r\n]+/g, " ")
+        .replace(/[\\/:*?"<>|,]/g, "_")
+        .trim();
+    };
+    
+    const safeName = sanitizeFileName(active?.name || "dataset");
+    const fileName = `${safeName}-forecast-projections.csv`;
+    
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleDownloadExcel = (thread) => {
     if (!thread || !thread.dashboard) return;
     const workbook = XLSX.utils.book_new();
 
+    const safeName = thread.name || "dataset";
+    const safeRows = thread.rows || [];
+    const safeCols = thread.columns || [];
+    const safeStats = thread.stats || [];
+
     const summary = [
       ["AI DATA ANALYSIS REPORT"],
-      ["Dataset", thread.name],
-      ["Rows", thread.rows.length],
-      ["Columns", thread.columns.length],
+      ["Dataset", safeName],
+      ["Rows", safeRows.length],
+      ["Columns", safeCols.length],
       ["Data Quality Score", thread.quality ? `${thread.quality.score}%` : ""],
       [],
       ["KEY INSIGHTS"],
@@ -1431,14 +3388,14 @@ export default function DataAnalystDashboardBot() {
     ];
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summary), "Executive Summary");
 
-    const statsRows = thread.stats.map(s => ({
+    const statsRows = safeStats.map(s => ({
       column: s.name, type: s.type, missing: s.missing, unique: s.unique,
       mean: s.mean ?? "", median: s.median ?? "", min: s.min ?? "", max: s.max ?? ""
     }));
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(statsRows), "Statistics");
 
     // DATA CLEANING SHEET
-    const cleaning = performDataCleaning(thread.rows, thread.columns, thread.stats);
+    const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
     const cleaningSummary = [
       ["DATA CLEANING PROCESS LOG"],
       [`Total Cleaned Rows: ${cleaning.cleanedRows.length}`],
@@ -1451,7 +3408,7 @@ export default function DataAnalystDashboardBot() {
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(cleaning.cleanedRows), "Cleaned Data");
 
     // MACHINE LEARNING SHEET
-    const ml = trainTestSplitAndFit(thread.rows, thread.columns, thread.stats);
+    const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
     if (ml) {
       const mlRows = [
         ["MACHINE LEARNING TRAINING RESULTS"],
@@ -1465,13 +3422,58 @@ export default function DataAnalystDashboardBot() {
         [],
         ["SAMPLE TEST SET PREDICTIONS (ACTUAL VS PREDICTED)"],
         ["Predictor Value", "Actual Target Value", "Predicted Target Value", "Prediction Error"]
-      ].concat(ml.testPredictions.map(p => [p.input ?? "", p.actual, p.predicted, +(p.actual - p.predicted).toFixed(2)]));
+      ].concat((ml.testPredictions || []).map(p => [p.input ?? "", p.actual, p.predicted, +(p.actual - p.predicted).toFixed(2)]));
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(mlRows), "ML Modeling Info");
+    }
+
+    // TIME-SERIES FORECAST SHEET
+    if (forecastTrainResult) {
+      const forecastHeader = [
+        ["TIME-SERIES FORECAST REPORT"],
+        ["Target Variable", selectedTargetCol || ""],
+        ["Chronological Date Column", selectedDateCol || ""],
+        ["Optimal Selected Model", forecastTrainResult.algorithm || ""],
+        ["Fitted Data Range", `${forecastTrainResult.training_start} to ${forecastTrainResult.training_end}`],
+        ["Historical Training Size", forecastTrainResult.training_rows || ""],
+        ["Validation Steps", forecastTrainResult.validation_rows || ""],
+        ["Seasonal Period Length", forecastTrainResult.insights?.seasonal_period ? `${forecastTrainResult.insights.seasonal_period} intervals` : "None"],
+        [],
+        ["MODEL PERFORMANCE METRICS (HOLDOUT EVALUATION)"],
+        ["Algorithm", "RMSE Error", "MAE Error", "MAPE (%)", "sMAPE (%)"]
+      ];
+      
+      const metRows = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => [
+        algo,
+        metrics.rmse ?? "",
+        metrics.mae ?? "",
+        metrics.mape ?? "",
+        metrics.smape ?? ""
+      ]);
+
+      const forecastSummary = forecastHeader.concat(metRows).concat([
+        [],
+        ["AUTOMATED AI TREND INSIGHTS"],
+        ["Trend Direction", forecastTrainResult.insights?.trend ?? ""],
+        ["Expected Growth Rate", `${forecastTrainResult.insights?.expected_growth ?? 0}%`],
+        ["Uncertainty Level", forecastTrainResult.insights?.uncertainty ?? ""],
+        [],
+        ["FORECASTED PROJECTIONS (FUTURE TIME STEPS)"],
+        ["Date", "Forecasted Value (Predicted)", "Lower Bound (Confidence)", "Upper Bound (Confidence)"]
+      ]).concat((forecastTrainResult.forecast || []).map(f => [
+        f.date ?? "",
+        f.predicted !== undefined && f.predicted !== null ? f.predicted : "",
+        f.lower !== undefined && f.lower !== null ? f.lower : "",
+        f.upper !== undefined && f.upper !== null ? f.upper : ""
+      ]));
+
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(forecastSummary), "Time-Series Forecast");
     }
 
     const outlierRows = [];
     Object.entries(thread.dashboard.outliers || {}).forEach(([col, o]) => {
-      o.rows.forEach(r => outlierRows.push({ column: col, ...r }));
+      if (o && Array.isArray(o.rows)) {
+        o.rows.forEach(r => outlierRows.push({ column: col, ...r }));
+      }
     });
     if (outlierRows.length) XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(outlierRows), "Outliers");
 
@@ -1480,23 +3482,28 @@ export default function DataAnalystDashboardBot() {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(corrRows), "Correlations");
     }
 
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(thread.rows), "Raw Data");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(safeRows), "Raw Data");
 
-    XLSX.writeFile(workbook, thread.name.replace(/\.[^.]+$/, "") + "-analysis-report.xlsx");
+    XLSX.writeFile(workbook, safeName.replace(/\.[^.]+$/, "") + "-analysis-report.xlsx");
   };
 
   const handleDownloadReport = (thread) => {
     if (!thread || !thread.dashboard) return;
     const node = dashboardRefs.current[thread.id];
     const chartsHTML = node ? node.innerHTML : "<p>No charts available.</p>";
-    const sampleRows = thread.rows.slice(0, 10);
-    const tableHead = thread.columns.map(c => `<th>${c}</th>`).join("");
-    const tableBody = sampleRows.map(r => `<tr>${thread.columns.map(c => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
+    
+    const safeRows = thread.rows || [];
+    const safeCols = thread.columns || [];
+    const safeStats = thread.stats || [];
+
+    const sampleRows = safeRows.slice(0, 10);
+    const tableHead = safeCols.map(c => `<th>${c}</th>`).join("");
+    const tableBody = sampleRows.map(r => `<tr>${safeCols.map(c => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
     const generatedDate = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
     // Perform Cleaning & ML fits for report
-    const cleaning = performDataCleaning(thread.rows, thread.columns, thread.stats);
-    const ml = trainTestSplitAndFit(thread.rows, thread.columns, thread.stats);
+    const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
+    const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
 
     const cleaningHTML = `
       <h2>🧹 Data Cleaning Log</h2>
@@ -1520,6 +3527,66 @@ export default function DataAnalystDashboardBot() {
       `;
     }
 
+    let forecastHTML = "";
+    if (forecastTrainResult) {
+      const forecastRowsHTML = forecastTrainResult.forecast.map(f => `
+        <tr>
+          <td>${f.date ?? ""}</td>
+          <td>${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
+          <td>${f.lower !== undefined && f.lower !== null ? f.lower.toFixed(2) : ""}</td>
+          <td>${f.upper !== undefined && f.upper !== null ? f.upper.toFixed(2) : ""}</td>
+        </tr>
+      `).join("");
+
+      const comparisonsHTML = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => `
+        <tr>
+          <td><strong>${algo}</strong></td>
+          <td>${metrics.rmse !== undefined && metrics.rmse !== null ? metrics.rmse.toFixed(3) : "-"}</td>
+          <td>${metrics.mae !== undefined && metrics.mae !== null ? metrics.mae.toFixed(3) : "-"}</td>
+          <td>${metrics.mape !== undefined && metrics.mape !== null ? metrics.mape.toFixed(2) + "%" : "-"}</td>
+          <td>${metrics.smape !== undefined && metrics.smape !== null ? metrics.smape.toFixed(2) + "%" : "-"}</td>
+        </tr>
+      `).join("");
+
+      forecastHTML = `
+        <h2>📈 Time-Series Forecasting Model Summary</h2>
+        <p><strong>Selected Model:</strong> ${forecastTrainResult.algorithm} (trained on ${forecastTrainResult.training_rows} observations, frequency: ${forecastTrainResult.frequency})</p>
+        <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
+        <p><strong>AI Trend Direction:</strong> ${forecastTrainResult.insights?.trend ?? ""} (${forecastTrainResult.insights?.expected_growth ?? 0}% growth rate, uncertainty: ${forecastTrainResult.insights?.uncertainty ?? ""})</p>
+        
+        <h3>Validation Metrics (Holdout Evaluation)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>RMSE</th>
+              <th>MAE</th>
+              <th>MAPE</th>
+              <th>sMAPE</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${comparisonsHTML}
+          </tbody>
+        </table>
+
+        <h3>Forecast Projections (Future Intervals)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Predicted Forecast</th>
+              <th>Lower Confidence Limit (95%)</th>
+              <th>Upper Confidence Limit (95%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${forecastRowsHTML}
+          </tbody>
+        </table>
+      `;
+    }
+
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${thread.name} — Data Analysis Report</title>
 <style>
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2B2A27;max-width:820px;margin:40px auto;padding:0 24px;line-height:1.6;}
@@ -1536,6 +3603,7 @@ th{background:#F7F5F0;} p{font-size:13.5px;}
 <p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
 ${cleaningHTML}
 ${mlHTML}
+${forecastHTML}
 <h2>Dashboard</h2>
 ${chartsHTML}
 <h2>Data Sample (first 10 rows)</h2>
@@ -1556,13 +3624,17 @@ ${chartsHTML}
 
   const handleDownloadWord = (thread) => {
     if (!thread || !thread.dashboard) return;
-    const sampleRows = thread.rows.slice(0, 50);
-    const tableHead = thread.columns.map(c => `<th style="background:#F7F5F0;border:1px solid #EAE7E0;padding:6px;">${c}</th>`).join("");
-    const tableBody = sampleRows.map(r => `<tr>${thread.columns.map(c => `<td style="border:1px solid #EAE7E0;padding:6px;">${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
+    const safeRows = thread.rows || [];
+    const safeCols = thread.columns || [];
+    const safeStats = thread.stats || [];
+
+    const sampleRows = safeRows.slice(0, 50);
+    const tableHead = safeCols.map(c => `<th style="background:#F7F5F0;border:1px solid #EAE7E0;padding:6px;">${c}</th>`).join("");
+    const tableBody = sampleRows.map(r => `<tr>${safeCols.map(c => `<td style="border:1px solid #EAE7E0;padding:6px;">${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
     const generatedDate = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
-    const cleaning = performDataCleaning(thread.rows, thread.columns, thread.stats);
-    const ml = trainTestSplitAndFit(thread.rows, thread.columns, thread.stats);
+    const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
+    const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
 
     const docContent = `
       <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -1596,7 +3668,39 @@ ${chartsHTML}
           <p><strong>Equation:</strong> ${ml.targetCol} = (${ml.slope} * ${ml.predictorCol}) + ${ml.intercept}</p>
         ` : "<p>No numeric columns available for regression modeling.</p>"}
 
-        <h2>4. Data Preview (First 50 Rows)</h2>
+        ${forecastTrainResult ? `
+          <h2>4. Time-Series Forecasting Model Report</h2>
+          <p><strong>Selected Model Algorithm:</strong> ${forecastTrainResult.algorithm}</p>
+          <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
+          <p><strong>Validation Score (RMSE):</strong> ${forecastTrainResult.metrics?.rmse !== undefined ? forecastTrainResult.metrics.rmse.toLocaleString() : "N/A"}</p>
+          <p><strong>Model Validation Mean Absolute Error (MAE):</strong> ${forecastTrainResult.metrics?.mae !== undefined ? forecastTrainResult.metrics.mae.toLocaleString() : "N/A"}</p>
+          <p><strong>Model Validation MAPE (%):</strong> ${forecastTrainResult.metrics?.mape !== undefined ? forecastTrainResult.metrics.mape.toFixed(2) + "%" : "N/A"}</p>
+          <p><strong>AI Growth Insight Trend:</strong> Expected ${forecastTrainResult.insights?.expected_growth ?? 0}% growth over future interval (${forecastTrainResult.insights?.trend ?? ""} trend with ${forecastTrainResult.insights?.uncertainty ?? ""} uncertainty)</p>
+          
+          <h3>Future Forecast Predictions Table</h3>
+          <table>
+            <thead>
+              <tr style="background:#F7F5F0;">
+                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Date</th>
+                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Forecast Prediction</th>
+                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Lower Bound (95%)</th>
+                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Upper Bound (95%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${forecastTrainResult.forecast.map(f => `
+                <tr>
+                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.date ?? ""}</td>
+                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
+                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.lower !== undefined && f.lower !== null ? f.lower.toFixed(2) : ""}</td>
+                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.upper !== undefined && f.upper !== null ? f.upper.toFixed(2) : ""}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        ` : ""}
+
+        <h2>5. Data Preview (First 50 Rows)</h2>
         <table>
           <thead><tr>${tableHead}</tr></thead>
           <tbody>${tableBody}</tbody>
@@ -1622,12 +3726,12 @@ ${chartsHTML}
   };
 
   return (
-    <div style={{ display: "flex", height: 700, borderRadius: 16, overflow: "hidden", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", border: "1px solid #E6E2D8", background: "#FFFFFF", boxShadow: "0 12px 40px rgba(43, 42, 39, 0.08)" }}
+    <div className="aida-dashboard-container"
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
     >
-      <div style={{ width: 220, background: "linear-gradient(180deg, #F8F6F1 0%, #EDEAE3 100%)", borderRight: "1px solid #E4E0D8", display: "flex", flexDirection: "column", padding: 12, gap: 10 }}>
+      <div className="aida-dashboard-sidebar">
         <button onClick={() => {
           if (user && user.tier === "free" && threads.length >= 3) {
             setShowUpgradeModal(true);
@@ -1638,7 +3742,7 @@ ${chartsHTML}
           style={{ display: "flex", alignItems: "center", gap: 8, background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(62, 111, 142, 0.25)" }}>
           <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
         </button>
-        <input ref={fileInputRef} type="file" accept=".csv,.tsv,.xlsx,.xls,.txt,.json,.xml,.md,.log,.html,.pdf,.doc,.docx" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
+        <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
         <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "#A6A196", marginTop: 6, padding: "0 4px" }}>Recent</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: 1 }}>
           {threads.length === 0 && <div style={{ fontSize: 11.5, color: "#A6A196", padding: "6px 4px" }}>No recent files</div>}
@@ -1688,7 +3792,7 @@ ${chartsHTML}
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", background: dragOver ? "#F7F5F0" : "#fff" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", background: dragOver ? "#F7F5F0" : "#fff", height: "100%", overflow: "hidden" }}>
         {dragOver && (
           <div style={{ position: "absolute", inset: 8, border: "2px dashed #3E6F8E", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#3E6F8E", background: "rgba(255,255,255,0.85)", zIndex: 5, fontWeight: 600 }}>
             Drop file to analyze
@@ -1713,11 +3817,11 @@ ${chartsHTML}
         )}
 
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 0 24px" }}>
-          <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ maxWidth: "100%", width: "100%", margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 18 }}>
             {!active && (
               <div style={{ textAlign: "center", color: "#A6A196", fontSize: 13.5, marginTop: 100, lineHeight: 1.7 }}>
                 <div style={{ fontSize: 17, color: "#2B2A27", fontWeight: 600, marginBottom: 6 }}>Data Analyst</div>
-                Upload your file (csv or excel or pdf or word) - I'll build a dashboard and you can ask follow-up questions.
+                Upload your file (csv or excel) - I'll build a dashboard and you can ask follow-up questions.
               </div>
             )}
             {active && active.messages.map((m, i) => {
@@ -1734,12 +3838,93 @@ ${chartsHTML}
                     chartTypes={chartTypes}
                     setChartTypes={setChartTypes}
                     innerRef={el => { if (el) dashboardRefs.current[active.id] = el; }} 
+                    currentView={currentView}
+                    serverId={active.serverId}
+                    onDatasetCreated={handleDatasetCreated}
                   />
                 </div>
               );
               if (m.role === "user") return (
                 <div key={i} style={{ alignSelf: "flex-end", maxWidth: "80%", background: "#F0EEE9", color: "#2B2A27", borderRadius: "14px 14px 3px 14px", padding: "10px 15px", fontSize: 14, lineHeight: 1.55 }}>{m.content}</div>
               );
+              if (m.kind === "grounded_chat") {
+                return (
+                  <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)", display: "flex", flexDirection: "column", gap: 10, background: "#FDFCFA", border: "1px solid #EAE7E0", borderRadius: "14px 14px 14px 3px", padding: 14 }}>
+                    {/* Grounding dataset context indicator badge */}
+                    {m.dataset_context && (
+                      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <span style={{ background: "rgba(110, 143, 99, 0.1)", color: "#6E8F63", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 12, textTransform: "uppercase" }}>
+                          ✓ Grounded on {m.dataset_context.rows_evaluated.toLocaleString()} rows
+                        </span>
+                        {m.confidence_score !== undefined && (
+                          <span style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600 }}>
+                            Confidence: {(m.confidence_score * 100).toFixed(0)}%
+                          </span>
+                        )}
+                        {m.intent && (
+                          <span style={{ background: "rgba(62, 111, 142, 0.1)", color: "#3E6F8E", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 12 }}>
+                            {m.intent}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Answer text content */}
+                    <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+
+                    {/* Relevant columns information badge list */}
+                    {m.relevant_columns && m.relevant_columns.length > 0 && (
+                      <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-muted)" }}>Inspected Columns:</span>
+                        {m.relevant_columns.map(col => (
+                          <span key={col} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 4, padding: "1px 6px", fontSize: 10, fontFamily: "monospace" }}>
+                            {col}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Grounded supporting values rendering */}
+                    {m.supporting_values && m.supporting_values.length > 0 && (
+                      <div style={{ marginTop: 8, background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, overflowX: "auto", width: "100%" }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#3E6F8E", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Verified Supporting Facts:</span>
+                        
+                        {(() => {
+                          const keys = Object.keys(m.supporting_values[0]);
+                          return (
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, background: "#fff", border: "1px solid var(--border-color)" }}>
+                              <thead>
+                                <tr style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
+                                  {keys.map(k => <th key={k} style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600, border: "1px solid var(--border-color)", textAlign: "left" }}>{k.replace("_", " ").toUpperCase()}</th>)}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {m.supporting_values.map((row, rowIdx) => (
+                                  <tr key={rowIdx} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                                    {keys.map(k => (
+                                      <td key={k} style={{ padding: "6px 8px", color: "var(--text-primary)", border: "1px solid var(--border-color)" }}>
+                                        {typeof row[k] === "object" ? JSON.stringify(row[k]) : String(row[k] ?? "")}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Causation disclaimer warning note */}
+                    {m.association_disclaimer && (
+                      <div style={{ marginTop: 4, background: "rgba(201, 138, 62, 0.04)", borderLeft: "3px solid #C98A3E", padding: "6px 10px", fontSize: 11, color: "var(--text-muted)" }}>
+                        {m.association_disclaimer}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", fontSize: 14, lineHeight: 1.65, color: "#2B2A27" }}>
                   <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
@@ -1775,6 +3960,22 @@ ${chartsHTML}
 
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
+            {active && suggestedQuestions.length > 0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, justifyContent: "center" }}>
+                {suggestedQuestions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setInput(q);
+                      textareaRef.current?.focus();
+                    }}
+                    style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: 16, padding: "5px 12px", fontSize: 11.5, color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s ease" }}
+                  >
+                    💡 {q}
+                  </button>
+                ))}
+              </div>
+            )}
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, background: "#FFFFFF", border: "1px solid #DDD8CE", borderRadius: 24, padding: "8px 10px 8px 16px", boxShadow: "0 3px 16px rgba(43, 42, 39, 0.04)" }}>
               <button onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Attach a file"
                 style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #DDD8CE", background: "#fff", color: "#8A8580", fontSize: 16, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 1, transition: "all 0.2s ease" }}>+</button>

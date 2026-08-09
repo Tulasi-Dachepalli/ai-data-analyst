@@ -111,9 +111,7 @@ export async function initDb() {
 
   // Simple self-migration: a fresh boolean column with a DEFAULT and no
   // collision risk, unlike name_normalized — safe to just always run.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT true;`);
-  // Backfill existing users to be verified automatically
-  await pool.query(`UPDATE users SET email_verified = true WHERE email_verified = false;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;`);
 
   // Add subscription tier to companies table
   await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'free';`);
@@ -125,8 +123,158 @@ export async function initDb() {
       FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE;
   `);
 
+  // Create audit_logs table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER NOT NULL REFERENCES companies(id),
+      user_id INTEGER,
+      user_email TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target TEXT NOT NULL,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_company ON audit_logs(company_id, created_at DESC);
+  `);
+
+  // Migration: Add foreign key constraint to audit_logs if it does not exist
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_audit_logs_company') THEN
+        ALTER TABLE audit_logs ADD CONSTRAINT fk_audit_logs_company FOREIGN KEY (company_id) REFERENCES companies(id);
+      END IF;
+    END;
+    $$;
+  `);
+
+  // Revoke write privileges for standard app database roles (defense in depth)
+  await pool.query(`
+    REVOKE UPDATE, DELETE, TRUNCATE ON audit_logs FROM PUBLIC;
+  `);
+
+  // Drop legacy rules if they exist
+  await pool.query(`
+    DROP RULE IF EXISTS audit_logs_no_update ON audit_logs;
+    DROP RULE IF EXISTS audit_logs_no_delete ON audit_logs;
+  `);
+
+  // Implement write-blocking triggers on audit_logs table
+  await pool.query(`
+    CREATE OR REPLACE FUNCTION audit_logs_block_write() RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION 'audit_logs table is append-only: % operation is prohibited.', TG_OP;
+    END;
+    $$ LANGUAGE plpgsql;
+  `);
+
+  await pool.query(`
+    DROP TRIGGER IF EXISTS audit_logs_no_update ON audit_logs;
+    CREATE TRIGGER audit_logs_no_update BEFORE UPDATE ON audit_logs
+    FOR EACH ROW EXECUTE FUNCTION audit_logs_block_write();
+  `);
+
+  await pool.query(`
+    DROP TRIGGER IF EXISTS audit_logs_no_delete ON audit_logs;
+    CREATE TRIGGER audit_logs_no_delete BEFORE DELETE ON audit_logs
+    FOR EACH ROW EXECUTE FUNCTION audit_logs_block_write();
+  `);
+
+  await pool.query(`
+    DROP TRIGGER IF EXISTS audit_logs_no_truncate ON audit_logs;
+    CREATE TRIGGER audit_logs_no_truncate BEFORE TRUNCATE ON audit_logs
+    FOR EACH STATEMENT EXECUTE FUNCTION audit_logs_block_write();
+  `);
+
+  // Create invites table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS invites (
+      id SERIAL PRIMARY KEY,
+      company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      token TEXT NOT NULL UNIQUE,
+      email TEXT,
+      role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      max_uses INTEGER NOT NULL DEFAULT 1,
+      use_count INTEGER NOT NULL DEFAULT 0,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_invites_token ON invites(token);
+    CREATE INDEX IF NOT EXISTS idx_invites_company ON invites(company_id);
+    CREATE INDEX IF NOT EXISTS idx_datasets_company_updated ON datasets(company_id, updated_at DESC);
+
+    CREATE TABLE IF NOT EXISTS ml_models (
+      id SERIAL PRIMARY KEY,
+      dataset_id INTEGER NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+      company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      task_type TEXT NOT NULL,
+      target_column TEXT,
+      algorithm TEXT NOT NULL,
+      metrics JSONB NOT NULL,
+      feature_columns JSONB NOT NULL,
+      training_rows INTEGER NOT NULL,
+      model_path TEXT NOT NULL,
+      model_version INTEGER NOT NULL DEFAULT 1,
+      framework_version TEXT NOT NULL,
+      random_state INTEGER NOT NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_ml_models_company ON ml_models(company_id);
+    CREATE INDEX IF NOT EXISTS idx_ml_models_dataset ON ml_models(dataset_id);
+
+    CREATE TABLE IF NOT EXISTS forecast_models (
+      id SERIAL PRIMARY KEY,
+      dataset_id INTEGER NOT NULL REFERENCES datasets(id) ON DELETE CASCADE,
+      company_id INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+      date_column TEXT NOT NULL,
+      target_column TEXT NOT NULL,
+      frequency TEXT NOT NULL,
+      algorithm TEXT NOT NULL,
+      parameters JSONB NOT NULL,
+      metrics JSONB NOT NULL,
+      forecast_horizon INTEGER NOT NULL,
+      training_rows INTEGER NOT NULL,
+      validation_rows INTEGER NOT NULL,
+      seasonal_period INTEGER,
+      training_start TIMESTAMPTZ,
+      training_end TIMESTAMPTZ,
+      model_path TEXT NOT NULL,
+      model_version INTEGER NOT NULL DEFAULT 1,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS idx_forecast_models_company ON forecast_models(company_id);
+    CREATE INDEX IF NOT EXISTS idx_forecast_models_dataset ON forecast_models(dataset_id);
+  `);
+
+  // Add soft-delete flag columns to companies
+  await pool.query(`
+    ALTER TABLE companies ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+    ALTER TABLE companies ADD COLUMN IF NOT EXISTS deletion_requested_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+  `);
+
   await migratePasswordChangedAt();
   await migrateCompanyNameNormalized();
+}
+
+export async function logAction(companyId, userId, email, action, target, req) {
+  try {
+    const rawIp = req ? (req.headers["x-forwarded-for"] || req.socket.remoteAddress) : null;
+    // Format IP address for logs
+    const ip = typeof rawIp === "string" ? rawIp.split(",")[0].trim() : rawIp;
+    const ua = req ? req.headers["user-agent"] : null;
+    await pool.query(
+      `INSERT INTO audit_logs (company_id, user_id, user_email, action, target, ip_address, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [companyId, userId, email, action, target, ip, ua]
+    );
+  } catch (err) {
+    console.error("Failed to write audit log:", err);
+  }
 }
 
 // Backs the session-invalidation check in requireAuth: a JWT issued before

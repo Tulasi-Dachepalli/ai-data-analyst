@@ -51,10 +51,21 @@ router.post("/", async (req, res) => {
     return res.status(500).json({ error: "Server is not configured with an AI API key." });
   }
 
-  // datasetId is client-supplied and only used for a nullable, informational
-  // label on the usage row — never used in a WHERE clause or to gate access
-  // to anything, so there's no need to verify it belongs to this company.
-  const safeDatasetId = Number.isInteger(datasetId) ? datasetId : null;
+  let safeDatasetId = null;
+  if (datasetId !== undefined && datasetId !== null) {
+    const dId = Number(datasetId);
+    if (!Number.isInteger(dId)) {
+      return res.status(400).json({ error: "Invalid datasetId." });
+    }
+    const dsCheck = await pool.query(
+      "SELECT id FROM datasets WHERE id = $1 AND company_id = $2",
+      [dId, req.user.companyId]
+    );
+    if (dsCheck.rows.length === 0) {
+      return res.status(404).json({ error: "Dataset not found or access denied." });
+    }
+    safeDatasetId = dId;
+  }
   const safeRequestType = typeof requestType === "string" && requestType.trim() ? requestType.trim().slice(0, 60) : "unknown";
 
   try {
