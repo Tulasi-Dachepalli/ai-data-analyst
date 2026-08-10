@@ -6,7 +6,7 @@ import analyzeRouter from "./routes/analyze.js";
 import authRouter from "./routes/auth.js";
 import datasetsRouter from "./routes/datasets.js";
 import adminRouter from "./routes/admin.js";
-import { requireAuth, requireAdmin } from "./middleware/auth.js";
+import { requireAuth, requireAdmin, requireTokenQuota } from "./middleware/auth.js";
 import pool, { initDb } from "./db.js";
 
 const app = express();
@@ -54,7 +54,7 @@ const analyzeLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => String(req.user.userId)
 });
-app.use("/api/analyze", requireAuth, analyzeLimiter, analyzeRouter);
+app.use("/api/analyze", requireAuth, requireTokenQuota, analyzeLimiter, analyzeRouter);
 
 // Dataset storage: also authenticated and rate-limited per user, but more
 // generous since these are plain reads/writes rather than AI calls.

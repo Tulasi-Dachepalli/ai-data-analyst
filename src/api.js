@@ -18,9 +18,16 @@ async function request(path, options = {}) {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
+    if (res.status === 402 || body.error === "TOKEN_QUOTA_EXCEEDED") {
+      window.dispatchEvent(new CustomEvent("aida_quota_exceeded", { detail: body }));
+    }
     throw new Error(body.error || `Request failed (${res.status})`);
   }
   return res.json();
+}
+
+export function getUsageStats() {
+  return request("/api/auth/usage");
 }
 
 export function listDatasets() {
@@ -58,6 +65,9 @@ export function uploadDatasetFile(file) {
     }
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
+      if (res.status === 402 || body.error === "TOKEN_QUOTA_EXCEEDED") {
+        window.dispatchEvent(new CustomEvent("aida_quota_exceeded", { detail: body }));
+      }
       throw new Error(body.error || `Upload failed (${res.status})`);
     }
     return res.json();

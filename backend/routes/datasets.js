@@ -1,6 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import pool, { logAction } from "../db.js";
+import { requireTokenQuota } from "../middleware/auth.js";
+import { recordUsage } from "../lib/quota.js";
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -128,7 +130,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 });
 
 // POST /api/datasets/:id/clean — cleans dataset via Python and saves a new record
-router.post("/:id/clean", async (req, res) => {
+router.post("/:id/clean", requireTokenQuota, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid dataset id." });
 
@@ -166,6 +168,15 @@ router.post("/:id/clean", async (req, res) => {
     }
 
     const cleanResult = await pythonCleanRes.json();
+
+    // Record token usage immediately after successful AI/analytical call returns
+    await recordUsage({
+      companyId: req.user.companyId,
+      userId: req.user.userId,
+      datasetId: id,
+      requestType: "clean",
+      totalTokens: 1000
+    });
 
     const profilePayload = {
       rows: cleanResult.cleaned_data,
@@ -494,7 +505,7 @@ router.post("/:id/insights", async (req, res) => {
 });
 
 // POST /api/datasets/:id/chat — handles NLQ chat queries grounded strictly on verified metrics
-router.post("/:id/chat", async (req, res) => {
+router.post("/:id/chat", requireTokenQuota, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid dataset id." });
 
@@ -588,6 +599,15 @@ router.post("/:id/chat", async (req, res) => {
 
     const chatResult = await pythonChatRes.json();
 
+    // Record token usage immediately after successful AI/analytical call returns
+    await recordUsage({
+      companyId: req.user.companyId,
+      userId: req.user.userId,
+      datasetId: id,
+      requestType: "chat",
+      totalTokens: 1000
+    });
+
     // 6. Persist conversation: append the new user and assistant message records
     const updatedMessages = [
       ...rawHistory,
@@ -641,7 +661,7 @@ router.post("/:id/chat", async (req, res) => {
 });
 
 // POST /api/datasets/:id/ml/analyze — identifies candidates and clustering availability
-router.post("/:id/ml/analyze", async (req, res) => {
+router.post("/:id/ml/analyze", requireTokenQuota, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid dataset id." });
 
@@ -673,6 +693,15 @@ router.post("/:id/ml/analyze", async (req, res) => {
     }
 
     const result = await pythonRes.json();
+
+    // Record token usage immediately after successful AI/analytical call returns
+    await recordUsage({
+      companyId: req.user.companyId,
+      userId: req.user.userId,
+      datasetId: id,
+      requestType: "ml_analyze",
+      totalTokens: 500
+    });
     res.json(result);
   } catch (err) {
     console.error("ML analyze endpoint error:", err);
@@ -684,7 +713,7 @@ router.post("/:id/ml/analyze", async (req, res) => {
 });
 
 // POST /api/datasets/:id/ml/train — trains classification, regression, or clustering models
-router.post("/:id/ml/train", async (req, res) => {
+router.post("/:id/ml/train", requireTokenQuota, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid dataset id." });
 
@@ -737,6 +766,15 @@ router.post("/:id/ml/train", async (req, res) => {
     }
 
     const trainResult = await pythonRes.json();
+
+    // Record token usage immediately after successful AI/analytical call returns
+    await recordUsage({
+      companyId: req.user.companyId,
+      userId: req.user.userId,
+      datasetId: id,
+      requestType: "ml_train",
+      totalTokens: 10000
+    });
 
     const { rows: versionRows } = await pool.query(
       `SELECT COALESCE(MAX(model_version), 0) + 1 AS next_version 
@@ -798,7 +836,7 @@ router.post("/:id/ml/train", async (req, res) => {
 });
 
 // POST /api/datasets/:id/ml/predict — executes model inference predictions
-router.post("/:id/ml/predict", async (req, res) => {
+router.post("/:id/ml/predict", requireTokenQuota, async (req, res) => {
   const id = Number(req.params.id);
   const { model_id, rows: inputRows } = req.body || {};
   
@@ -834,6 +872,15 @@ router.post("/:id/ml/predict", async (req, res) => {
     }
 
     const result = await pythonRes.json();
+
+    // Record token usage immediately after successful AI/analytical call returns
+    await recordUsage({
+      companyId: req.user.companyId,
+      userId: req.user.userId,
+      datasetId: id,
+      requestType: "ml_predict",
+      totalTokens: 100
+    });
     res.json(result);
   } catch (err) {
     console.error("ML predict endpoint error:", err);
@@ -845,7 +892,7 @@ router.post("/:id/ml/predict", async (req, res) => {
 });
 
 // POST /api/datasets/:id/forecast/analyze — evaluates time-series forecasting suitability
-router.post("/:id/forecast/analyze", async (req, res) => {
+router.post("/:id/forecast/analyze", requireTokenQuota, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid dataset id." });
 
@@ -878,6 +925,15 @@ router.post("/:id/forecast/analyze", async (req, res) => {
 
     const result = await pythonRes.json();
 
+    // Record token usage immediately after successful AI/analytical call returns
+    await recordUsage({
+      companyId: req.user.companyId,
+      userId: req.user.userId,
+      datasetId: id,
+      requestType: "forecast_analyze",
+      totalTokens: 500
+    });
+
     await logAction(
       req.user.companyId,
       req.user.userId,
@@ -898,7 +954,7 @@ router.post("/:id/forecast/analyze", async (req, res) => {
 });
 
 // POST /api/datasets/:id/forecast/train — trains forecast models and returns forecast values
-router.post("/:id/forecast/train", async (req, res) => {
+router.post("/:id/forecast/train", requireTokenQuota, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid dataset id." });
 
@@ -948,6 +1004,15 @@ router.post("/:id/forecast/train", async (req, res) => {
     }
 
     const trainResult = await pythonRes.json();
+
+    // Record token usage immediately after successful AI/analytical call returns
+    await recordUsage({
+      companyId: req.user.companyId,
+      userId: req.user.userId,
+      datasetId: id,
+      requestType: "forecast_train",
+      totalTokens: 5000
+    });
 
     const { rows: versionRows } = await pool.query(
       `SELECT COALESCE(MAX(model_version), 0) + 1 AS next_version 

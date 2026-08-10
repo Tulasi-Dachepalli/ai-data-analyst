@@ -1,41 +1,13 @@
 import { Router } from "express";
 import pool from "../db.js";
+import { recordUsage } from "../lib/quota.js";
 
 const router = Router();
 
 const MAX_TEXT_LENGTH = 20000; // guard against oversized payloads
 const MODEL = "claude-sonnet-4-6";
 
-// Pricing is intentionally NOT hardcoded here — model pricing changes over
-// time and this codebase has no way to verify current rates against
-// Anthropic's live pricing page. Set these from backend/.env (see
-// .env.example) after checking https://www.anthropic.com/pricing yourself.
-// Left unset, estimated_cost is simply stored as 0 — token counts (the
-// part we're actually certain about) are still tracked accurately either way.
-function estimateCost(inputTokens, outputTokens) {
-  const inputRate = Number(process.env.CLAUDE_INPUT_COST_PER_MTOK);
-  const outputRate = Number(process.env.CLAUDE_OUTPUT_COST_PER_MTOK);
-  if (!Number.isFinite(inputRate) || !Number.isFinite(outputRate)) return 0;
-  return (inputTokens / 1_000_000) * inputRate + (outputTokens / 1_000_000) * outputRate;
-}
 
-async function recordUsage({ companyId, userId, datasetId, requestType, inputTokens, outputTokens }) {
-  const totalTokens = inputTokens + outputTokens;
-  const estimatedCost = estimateCost(inputTokens, outputTokens);
-  try {
-    await pool.query(
-      `INSERT INTO ai_usage
-         (company_id, user_id, dataset_id, request_type, input_tokens, output_tokens, total_tokens, estimated_cost)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [companyId, userId, datasetId, requestType, inputTokens, outputTokens, totalTokens, estimatedCost]
-    );
-  } catch (err) {
-    // Usage tracking is observability, not core functionality — a failed
-    // insert here should never be the reason a user doesn't get their
-    // analysis. Log it and move on.
-    console.error("Failed to record AI usage:", err);
-  }
-}
 
 router.post("/", async (req, res) => {
   const { system, userText, requestType, datasetId } = req.body || {};

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import pool, { logAction } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
+import { TOKEN_QUOTA_LIMIT, TOKEN_QUOTA_WINDOW_HOURS, computeResetTime } from "../lib/quota.js";
 import { generateToken, hashToken } from "../lib/tokens.js";
 import { sendEmail, verificationEmailHtml, passwordResetEmailHtml } from "../lib/email.js";
 
@@ -384,6 +385,36 @@ router.post("/reset-password", async (req, res) => {
     res.status(500).json({ error: "Could not reset password." });
   } finally {
     client.release();
+  }
+// GET /api/auth/usage — returns current rolling window token usage metrics for the logged-in user's company
+router.get("/usage", requireAuth, async (req, res) => {
+  try {
+    // Query: Fetch all usage records in the last X hours
+    const { rows } = await pool.query(
+      `SELECT total_tokens, created_at 
+       FROM ai_usage 
+       WHERE company_id = $1 AND created_at >= now() - make_interval(hours => $2)
+       ORDER BY created_at ASC`,
+      [req.user.companyId, TOKEN_QUOTA_WINDOW_HOURS]
+    );
+
+    let usedTokens = 0;
+    for (const row of rows) {
+      usedTokens += Number(row.total_tokens || 0);
+    }
+
+    const nextResetTime = computeResetTime(rows, usedTokens, TOKEN_QUOTA_LIMIT, TOKEN_QUOTA_WINDOW_HOURS);
+
+    res.json({
+      usedTokens,
+      limit: req.user.tier === "free" ? TOKEN_QUOTA_LIMIT : null,
+      tier: req.user.tier,
+      cooldownWindowHours: TOKEN_QUOTA_WINDOW_HOURS,
+      nextResetTime: nextResetTime ? nextResetTime.toISOString() : null
+    });
+  } catch (err) {
+    console.error("GET /usage query failed:", err);
+    res.status(500).json({ error: "Could not load usage statistics." });
   }
 });
 

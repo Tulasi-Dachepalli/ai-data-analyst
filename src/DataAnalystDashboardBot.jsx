@@ -2951,6 +2951,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [usageStats, setUsageStats] = useState({ usedTokens: 0, limit: 50000, tier: "free", nextResetTime: null });
+
+  const fetchUsage = () => {
+    api.getUsageStats()
+      .then(res => {
+        if (res) setUsageStats(res);
+      })
+      .catch(err => console.error("Failed to load token usage stats:", err));
+  };
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingLabel, setLoadingLabel] = useState("Analyzing…");
@@ -3005,9 +3014,23 @@ export default function DataAnalystDashboardBot({ currentView }) {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [active && active.messages.length, loading]);
 
-  // Load this company's previously saved datasets (metadata only — full rows
-  // load lazily when the user opens one) so people can pick up where they left off.
+  // Load this company's previously saved datasets and token usage stats on mount.
+  // Set up listener for quota limit exceeded notifications.
   useEffect(() => {
+    fetchUsage();
+
+    const handleQuotaExceeded = (e) => {
+      const detail = e.detail || {};
+      setUsageStats(prev => ({
+        ...prev,
+        usedTokens: detail.usedTokens || prev.usedTokens,
+        nextResetTime: detail.nextResetTime || prev.nextResetTime
+      }));
+      setShowUpgradeModal(true);
+    };
+
+    window.addEventListener("aida_quota_exceeded", handleQuotaExceeded);
+
     api.listDatasets()
       .then((res) => {
         if (!res || !res.datasets) return;
@@ -3031,6 +3054,10 @@ export default function DataAnalystDashboardBot({ currentView }) {
         });
       })
       .catch(err => console.error("Failed to load saved datasets:", err));
+
+    return () => {
+      window.removeEventListener("aida_quota_exceeded", handleQuotaExceeded);
+    };
   }, []);
 
   const updateThread = (id, updater) => setThreads(prev => prev.map(t => t.id === id ? updater(t) : t));
@@ -3094,6 +3121,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       });
     });
     setLoading(false);
+    fetchUsage();
   };
 
   const generateOverview = async (id, stats, rowCount, rows, quality, serverId, isRawText, rawText) => {
@@ -3115,6 +3143,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
         });
       });
       setLoading(false);
+      fetchUsage();
       return;
     }
 
@@ -3128,7 +3157,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
   };
 
   const handleFiles = async (fileList) => {
-    if (user && user.tier === "free" && threads.length >= 3) {
+    if (usageStats && usageStats.tier === "free" && usageStats.usedTokens >= usageStats.limit) {
       setShowUpgradeModal(true);
       return;
     }
@@ -3182,7 +3211,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
   };
 
   const handleLoadSample = async (sample) => {
-    if (user && user.tier === "free" && threads.length >= 3) {
+    if (usageStats && usageStats.tier === "free" && usageStats.usedTokens >= usageStats.limit) {
       setShowUpgradeModal(true);
       return;
     }
@@ -3241,6 +3270,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
           return { ...t, messages: finalMessages };
         });
         setLoading(false);
+        fetchUsage();
         persistThread(serverId, { messages: finalMessages });
         return;
       }
@@ -3266,6 +3296,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       });
     }
     setLoading(false);
+    fetchUsage();
   };
 
   // Clicking a saved-but-not-yet-loaded dataset fetches its full rows/dashboard/
@@ -3733,7 +3764,7 @@ ${chartsHTML}
     >
       <div className="aida-dashboard-sidebar">
         <button onClick={() => {
-          if (user && user.tier === "free" && threads.length >= 3) {
+          if (usageStats && usageStats.tier === "free" && usageStats.usedTokens >= usageStats.limit) {
             setShowUpgradeModal(true);
           } else if (fileInputRef.current) {
             fileInputRef.current.click();
@@ -3757,22 +3788,40 @@ ${chartsHTML}
             </div>
           ))}
         </div>
-        {user && user.tier === "free" && (
+        {usageStats && usageStats.tier === "free" && (
           <div style={{ background: "linear-gradient(135deg, #FFFDF9 0%, #F6F0EC 100%)", border: "1px solid #E9D9AE", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#8A7038", textTransform: "uppercase" }}>Free Version</span>
-              <span style={{ fontSize: 11, color: "#8A8580" }}>{threads.length}/3 Uploads</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#8A7038", textTransform: "uppercase" }}>AI Credits</span>
+              <span style={{ fontSize: 11, color: "#8A8580" }}>{usageStats.usedTokens.toLocaleString()}/{usageStats.limit.toLocaleString()}</span>
             </div>
+            
+            {/* Progress Bar */}
+            <div style={{ width: "100%", background: "#EFEAE0", borderRadius: 4, height: 6, overflow: "hidden" }}>
+              <div style={{ 
+                width: `${Math.min(100, (usageStats.usedTokens / usageStats.limit) * 100)}%`, 
+                background: usageStats.usedTokens >= usageStats.limit ? "#DF4B3B" : "#C98A3E", 
+                height: "100%", 
+                borderRadius: 4,
+                transition: "width 0.3s ease"
+              }} />
+            </div>
+
+            {usageStats.nextResetTime && (
+              <div style={{ fontSize: 9.5, color: "#A6A196", marginTop: 2, textAlign: "center" }}>
+                Locked. Refreshes: {new Date(usageStats.nextResetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
+
             <button onClick={() => setShowUpgradeModal(true)}
               style={{ width: "100%", background: "#C98A3E", color: "#fff", border: "none", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}>
               Upgrade to Pro ➔
             </button>
           </div>
         )}
-        {user && user.tier === "pro" && (
+        {usageStats && usageStats.tier !== "free" && (
           <div style={{ background: "linear-gradient(135deg, #F0F6F9 0%, #E6EDF2 100%)", border: "1px solid #B9CDE3", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 4, margin: "6px 0", textAlign: "center" }}>
             <span style={{ fontSize: 11, fontWeight: 700, color: "#3E6F8E", textTransform: "uppercase" }}>Pro Version Active</span>
-            <span style={{ fontSize: 11, color: "#5C7F99" }}>Unlimited uploads unlocked</span>
+            <span style={{ fontSize: 11, color: "#5C7F99" }}>Unlimited tokens unlocked</span>
           </div>
         )}
         <div style={{ borderTop: "1px solid #E4E0D8", paddingTop: 10, marginTop: "auto" }}>
@@ -3998,7 +4047,7 @@ ${chartsHTML}
             <div style={{ textAlign: "center", marginBottom: 24 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: "#C98A3E", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Premium SaaS Upgrade</div>
               <div style={{ fontSize: 20, fontWeight: 700, color: "#2B2A27" }}>Unlock Unlimited AI Data Insights</div>
-              <p style={{ fontSize: 13.5, color: "#8A8580", marginTop: 6 }}>You have used all 3 free trial file uploads. Upgrade your plan to continue.</p>
+              <p style={{ fontSize: 13.5, color: "#8A8580", marginTop: 6 }}>You have consumed your rolling AI Token Credits quota. Upgrade your plan to continue.</p>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -4007,7 +4056,7 @@ ${chartsHTML}
                 <div style={{ fontSize: 14, fontWeight: 700, color: "#5C584F" }}>Free Trial</div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: "#2B2A27", margin: "10px 0" }}>$0 <span style={{ fontSize: 12, fontWeight: 400, color: "#8A8580" }}>/ month</span></div>
                 <ul style={{ fontSize: 12, color: "#8A8580", paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <li>Max 3 file uploads</li>
+                  <li>50,000 rolling token credits</li>
                   <li>Basic summary reports</li>
                   <li>Standard bar & pie charts</li>
                 </ul>
