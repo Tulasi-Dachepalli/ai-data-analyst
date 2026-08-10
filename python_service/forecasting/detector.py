@@ -252,7 +252,7 @@ def analyze_forecasting_suitability(df: pd.DataFrame) -> Dict[str, Any]:
     freq_data = detect_frequency(df[best_date_col])
     
     # Run seasonality checks (if frequency detected)
-    season_data = {"seasonality_detected": False, "seasonal_period": None, "strength": 0.0}
+    season_data = {"seasonality_detected": False, "seasonal_period": None, "strength": 0.0, "reason": "Seasonality analysis bypassed."}
     if freq_data["frequency"] != "irregular":
         try:
             # Temporarily aggregate/sort to run check

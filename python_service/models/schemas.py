@@ -172,7 +172,7 @@ class SeasonalityDetails(BaseModel):
     seasonality_detected: bool
     seasonal_period: Optional[int] = None
     strength: float
-    reason: str
+    reason: Optional[str] = None
 
 class ForecastAnalyzeResponse(BaseModel):
     forecastable: bool
