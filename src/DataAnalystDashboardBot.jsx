@@ -3044,7 +3044,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
   const buildDashboard = async (id, stats, rows, quality, serverId) => {
     const plan = pickDashboardPlan(stats);
-    const kpis = plan.kpiCols.map(c => ({ label: `Avg ${c.name}`, value: c.mean.toLocaleString() }));
+    const kpis = plan.kpiCols.map(c => ({ label: `Avg ${c.name}`, value: (c.mean != null) ? c.mean.toLocaleString() : "0" }));
     const categoryCharts = plan.categoryCols.map(c => ({
       title: `Count by ${c.name}`,
       metricLabel: "count",
