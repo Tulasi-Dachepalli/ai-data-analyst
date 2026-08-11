@@ -684,6 +684,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
   const [forecastTrainStage, setForecastTrainStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
   const [forecastTrainResult, setForecastTrainResult] = useState(null);
+  const [forecastServerId, setForecastServerId] = useState(null); // which dataset this forecast belongs to
   const [forecastTrainError, setForecastTrainError] = useState("");
 
   // AI Insights state hooks
@@ -716,6 +717,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setForecastStage("detect");
     setForecastTrainStage("idle");
     setForecastTrainResult(null);
+    setForecastServerId(null);
     setForecastTrainError("");
 
     setInsightsStage("idle");
@@ -2356,6 +2358,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     .then(res => {
                       if (res && res.success) {
                         setForecastTrainResult(res);
+                        setForecastServerId(serverId);
                         setForecastTrainStage("loaded");
                         setForecastStage("compare");
                       } else {
@@ -3472,8 +3475,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
         XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(mlRows), "ML Modeling Info");
       }
 
-      // TIME-SERIES FORECAST SHEET
-      if (forecastTrainResult) {
+      // TIME-SERIES FORECAST SHEET (only if this thread ran forecasting)
+      if (forecastTrainResult && forecastServerId === thread.serverId) {
         const forecastHeader = [
           ["TIME-SERIES FORECAST REPORT"],
           ["Target Variable", selectedTargetCol || ""],
@@ -3588,7 +3591,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
 
       let forecastHTML = "";
-      if (forecastTrainResult) {
+      if (forecastTrainResult && forecastServerId === thread.serverId) {
         const forecastRowsHTML = (forecastTrainResult.forecast || []).map(f => `
           <tr>
             <td>${f.date ?? ""}</td>
@@ -3733,7 +3736,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
             <p><strong>Equation:</strong> ${ml.targetCol} = (${ml.slope} * ${ml.predictorCol}) + ${ml.intercept}</p>
           ` : "<p>No numeric columns available for regression modeling.</p>"}
 
-          ${forecastTrainResult ? `
+          ${forecastTrainResult && forecastServerId === thread.serverId ? `
             <h2>4. Time-Series Forecasting Model Report</h2>
             <p><strong>Selected Model Algorithm:</strong> ${forecastTrainResult.algorithm}</p>
             <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
