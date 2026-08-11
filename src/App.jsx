@@ -4,6 +4,10 @@ import AuthPage from "./AuthPage";
 import AdminPage from "./AdminPage";
 import TrustPage from "./TrustPage";
 import AppShell from "./components/layout/AppShell";
+import DatasetsPage from "./DatasetsPage";
+import DashboardsPage from "./DashboardsPage";
+import InsightsPage from "./InsightsPage";
+import ReportsPage from "./ReportsPage";
 import * as api from "./api";
 
 export default function App() {
@@ -67,7 +71,26 @@ export default function App() {
       return <TrustPage onBack={() => setView("dashboard")} />;
     }
 
-    // Default view targets the AI analyst dashboard workspace
+    if (view === "datasets") {
+      return <DatasetsPage onOpen={() => setView("dashboard")} />;
+    }
+    if (view === "ai-analyst") {
+      return <DataAnalystDashboardBot currentView={view} setView={setView} />;
+    }
+    if (view === "dashboards") {
+      return <DashboardsPage onOpen={() => setView("dashboard")} />;
+    }
+    if (view === "insights") {
+      return <InsightsPage onOpen={() => setView("dashboard")} />;
+    }
+    if (view === "reports") {
+      return <ReportsPage onOpen={() => setView("dashboard")} />;
+    }
+    if (view === "team") {
+      return <TrustPage onBack={() => setView("dashboard")} />;
+    }
+
+    // Default view (overview / dashboard) = AI analyst workspace
     return <DataAnalystDashboardBot currentView={view} setView={setView} />;
   };
 
