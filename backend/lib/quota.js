@@ -2,6 +2,7 @@ import pool from "../db.js";
 
 export const TOKEN_QUOTA_LIMIT = Number(process.env.TOKEN_QUOTA_LIMIT) || 50000;
 export const TOKEN_QUOTA_WINDOW_HOURS = Number(process.env.TOKEN_QUOTA_WINDOW_HOURS) || 3;
+export const PRO_QUOTA_WINDOW_HOURS = Number(process.env.PRO_QUOTA_WINDOW_HOURS) || 1;
 
 /**
  * Computes the next reset time in UTC when usage falls back below the limit.

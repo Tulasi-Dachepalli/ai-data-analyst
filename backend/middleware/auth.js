@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import pool from "../db.js";
-import { TOKEN_QUOTA_LIMIT, TOKEN_QUOTA_WINDOW_HOURS, computeResetTime } from "../lib/quota.js";
+import { TOKEN_QUOTA_LIMIT, TOKEN_QUOTA_WINDOW_HOURS, PRO_QUOTA_WINDOW_HOURS, computeResetTime } from "../lib/quota.js";
 
 // Every authenticated request now costs one extra DB lookup — that's the
 // direct tradeoff for making session invalidation real. Before this, a
@@ -82,27 +82,33 @@ export function requireAdmin(req, res, next) {
 }
 
 /**
- * Middleware to enforce the rolling token quota limit for Free tier companies.
- * Bypasses checks immediately for paid accounts.
+ * Middleware to enforce the rolling token quota limit.
+ * - enterprise: fully unlimited (bypass)
+ * - pro: 50,000 tokens per 1-hour rolling window
+ * - free: 50,000 tokens per 3-hour rolling window
  */
 export async function requireTokenQuota(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ error: "Missing session context." });
   }
 
-  // First Line: Bypasses check entirely for non-free tiers
-  if (req.user.tier !== "free") {
+  // Enterprise accounts are completely unlimited
+  if (req.user.tier === "enterprise") {
     return next();
   }
 
+  // Choose window length based on tier
+  const windowHours = req.user.tier === "pro" ? PRO_QUOTA_WINDOW_HOURS : TOKEN_QUOTA_WINDOW_HOURS;
+  const tierLabel = req.user.tier === "pro" ? "Pro (1-hour window)" : "Free (3-hour window)";
+
   try {
-    // Single Query: Fetch all usage records in the last X hours
+    // Single Query: Fetch all usage records in the rolling window
     const { rows } = await pool.query(
       `SELECT total_tokens, created_at 
        FROM ai_usage 
        WHERE company_id = $1 AND created_at >= now() - make_interval(hours => $2)
        ORDER BY created_at ASC`,
-      [req.user.companyId, TOKEN_QUOTA_WINDOW_HOURS]
+      [req.user.companyId, windowHours]
     );
 
     let usedTokens = 0;
@@ -112,7 +118,7 @@ export async function requireTokenQuota(req, res, next) {
 
     // Inclusive boundary check: >= limit blocks access
     if (usedTokens >= TOKEN_QUOTA_LIMIT) {
-      const nextResetTime = computeResetTime(rows, usedTokens, TOKEN_QUOTA_LIMIT, TOKEN_QUOTA_WINDOW_HOURS);
+      const nextResetTime = computeResetTime(rows, usedTokens, TOKEN_QUOTA_LIMIT, windowHours);
       const remainingSeconds = nextResetTime 
         ? Math.max(0, Math.ceil((nextResetTime.getTime() - Date.now()) / 1000))
         : 0;
@@ -120,7 +126,7 @@ export async function requireTokenQuota(req, res, next) {
       res.setHeader("Retry-After", String(remainingSeconds));
       return res.status(402).json({
         error: "TOKEN_QUOTA_EXCEEDED",
-        message: `Your company has used ${usedTokens.toLocaleString()} / ${TOKEN_QUOTA_LIMIT.toLocaleString()} free tokens in the last ${TOKEN_QUOTA_WINDOW_HOURS} hours. Please wait or upgrade to Pro to continue.`,
+        message: `Your account has used ${usedTokens.toLocaleString()} / ${TOKEN_QUOTA_LIMIT.toLocaleString()} tokens in the last ${windowHours} hour${windowHours === 1 ? "" : "s"} (${tierLabel}). Please wait or upgrade to continue.`,
         nextResetTime: nextResetTime ? nextResetTime.toISOString() : null
       });
     }

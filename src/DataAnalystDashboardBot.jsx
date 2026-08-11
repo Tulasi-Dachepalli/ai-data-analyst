@@ -2974,6 +2974,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const dashboardRefs = useRef({});
   const [slicerFilters, setSlicerFilters] = useState({});
   const [chartTypes, setChartTypes] = useState({});
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   const active = threads.find(t => t.id === activeId);
 
@@ -3887,19 +3888,58 @@ export default function DataAnalystDashboardBot({ currentView }) {
         )}
 
         {active && (
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 20px 0" }}>
-            <button onClick={() => handleDownloadExcel(active)} disabled={!active.dashboard || !active.rows}
-              style={{ fontSize: 12, fontWeight: 600, color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: (active.dashboard && active.rows) ? "pointer" : "default", opacity: (active.dashboard && active.rows) ? 1 : 0.5 }}>
-              ⬇ Excel Report
-            </button>
-            <button onClick={() => handleDownloadReport(active)} disabled={!active.dashboard || !active.rows}
-              style={{ fontSize: 12, fontWeight: 600, color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: (active.dashboard && active.rows) ? "pointer" : "default", opacity: (active.dashboard && active.rows) ? 1 : 0.5 }}>
-              ⬇ HTML Report
-            </button>
-            <button onClick={() => handleDownloadWord(active)} disabled={!active.dashboard || !active.rows}
-              style={{ fontSize: 12, fontWeight: 600, color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: (active.dashboard && active.rows) ? "pointer" : "default", opacity: (active.dashboard && active.rows) ? 1 : 0.5 }}>
-              ⬇ Word Report
-            </button>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 20px 0", position: "relative" }}>
+            <div style={{ position: "relative" }}>
+              <button
+                onClick={() => setShowDownloadMenu(m => !m)}
+                disabled={!active.dashboard || !active.rows}
+                style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)",
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-color)",
+                  borderRadius: 7, padding: "7px 14px",
+                  cursor: (active.dashboard && active.rows) ? "pointer" : "default",
+                  opacity: (active.dashboard && active.rows) ? 1 : 0.5,
+                  display: "flex", alignItems: "center", gap: 6
+                }}
+              >
+                ⬇ Download Report <span style={{ fontSize: 10 }}>▾</span>
+              </button>
+              {showDownloadMenu && active.dashboard && active.rows && (
+                <div
+                  style={{
+                    position: "absolute", right: 0, top: "calc(100% + 4px)",
+                    background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
+                    borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                    zIndex: 50, minWidth: 180, overflow: "hidden"
+                  }}
+                  onMouseLeave={() => setShowDownloadMenu(false)}
+                >
+                  {[
+                    { label: "📊 Excel (.xlsx)", action: () => { handleDownloadExcel(active); setShowDownloadMenu(false); } },
+                    { label: "🌐 HTML Report", action: () => { handleDownloadReport(active); setShowDownloadMenu(false); } },
+                    { label: "📄 Word (.doc)", action: () => { handleDownloadWord(active); setShowDownloadMenu(false); } }
+                  ].map(item => (
+                    <button
+                      key={item.label}
+                      onClick={item.action}
+                      style={{
+                        display: "block", width: "100%", textAlign: "left",
+                        padding: "10px 14px", fontSize: 13, fontWeight: 500,
+                        color: "var(--text-primary)", background: "none",
+                        border: "none", borderBottom: "1px solid var(--border-color)",
+                        cursor: "pointer"
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--bg-hover)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "none"}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
