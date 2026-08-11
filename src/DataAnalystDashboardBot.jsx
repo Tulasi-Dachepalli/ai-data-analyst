@@ -3529,7 +3529,16 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(safeRows), "Raw Data");
 
-      XLSX.writeFile(workbook, safeName.replace(/\.[^.]+$/, "") + "-analysis-report.xlsx");
+      const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = safeName.replace(/\.[^.]+$/, "") + "-analysis-report.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err) {
       alert("Failed to export Excel report: " + err.message);
       console.error(err);
@@ -3648,7 +3657,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
   @media print{body{margin:0;padding:16px;}}
   </style></head><body>
   <h1>Data Analysis Report</h1>
-  <div class="meta">Dataset: ${thread.name} · ${thread.rows.length.toLocaleString()} rows · ${thread.columns.length} columns · Generated ${generatedDate}</div>
+  <div class="meta">Dataset: ${thread.name} · ${safeRows.length.toLocaleString()} rows · ${safeCols.length} columns · Generated ${generatedDate}</div>
   <h2>Summary</h2>
   <p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
   ${cleaningHTML}
@@ -3704,7 +3713,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
         </head>
         <body>
           <h1>EXECUTIVE DATA ANALYSIS REPORT</h1>
-          <p style="color:#8A8580;font-size:10pt;">Dataset: ${thread.name} &middot; Rows: ${thread.rows.length} &middot; Columns: ${thread.columns.length} &middot; Generated: ${generatedDate}</p>
+          <p style="color:#8A8580;font-size:10pt;">Dataset: ${thread.name} &middot; Rows: ${safeRows.length} &middot; Columns: ${safeCols.length} &middot; Generated: ${generatedDate}</p>
           
           <h2>1. Executive Summary</h2>
           <p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
@@ -3879,16 +3888,16 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         {active && (
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 20px 0" }}>
-            <button onClick={() => handleDownloadExcel(active)} disabled={!active.dashboard}
-              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
+            <button onClick={() => handleDownloadExcel(active)} disabled={!active.dashboard || !active.rows}
+              style={{ fontSize: 12, fontWeight: 600, color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: (active.dashboard && active.rows) ? "pointer" : "default", opacity: (active.dashboard && active.rows) ? 1 : 0.5 }}>
               ⬇ Excel Report
             </button>
-            <button onClick={() => handleDownloadReport(active)} disabled={!active.dashboard}
-              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
+            <button onClick={() => handleDownloadReport(active)} disabled={!active.dashboard || !active.rows}
+              style={{ fontSize: 12, fontWeight: 600, color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: (active.dashboard && active.rows) ? "pointer" : "default", opacity: (active.dashboard && active.rows) ? 1 : 0.5 }}>
               ⬇ HTML Report
             </button>
-            <button onClick={() => handleDownloadWord(active)} disabled={!active.dashboard}
-              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
+            <button onClick={() => handleDownloadWord(active)} disabled={!active.dashboard || !active.rows}
+              style={{ fontSize: 12, fontWeight: 600, color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: (active.dashboard && active.rows) ? "pointer" : "default", opacity: (active.dashboard && active.rows) ? 1 : 0.5 }}>
               ⬇ Word Report
             </button>
           </div>
