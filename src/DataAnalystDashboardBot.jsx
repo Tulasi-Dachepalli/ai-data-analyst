@@ -318,35 +318,35 @@ function RegionMap({ data }) {
 
   const getFill = (regionName) => {
     const val = mapData[regionName];
-    if (val === undefined) return "#EDEAE3"; // blank color
+    if (val === undefined) return "var(--bg-hover)"; // blank color
     const opacity = 0.2 + (val / maxVal) * 0.8;
     return `rgba(62, 111, 142, ${opacity})`;
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "10px 0" }}>
-      <svg width="240" height="180" viewBox="0 0 240 180" style={{ border: "1px solid #EAE7E0", borderRadius: 6, background: "#FBFAF7" }}>
+      <svg width="240" height="180" viewBox="0 0 240 180" style={{ border: "1px solid var(--border-color)", borderRadius: 6, background: "var(--bg-primary)" }}>
         {/* North */}
         <rect x="20" y="10" width="200" height="30" rx="4" fill={getFill("north")} stroke="#fff" strokeWidth="2" />
-        <text x="120" y="28" textAnchor="middle" fill="#2B2A27" fontSize="10" fontWeight="600">NORTH ({mapData["north"] || 0})</text>
+        <text x="120" y="28" textAnchor="middle" fill="var(--text-primary)" fontSize="10" fontWeight="600">NORTH ({mapData["north"] || 0})</text>
 
         {/* West */}
         <rect x="20" y="50" width="60" height="60" rx="4" fill={getFill("west")} stroke="#fff" strokeWidth="2" />
-        <text x="50" y="84" textAnchor="middle" fill="#2B2A27" fontSize="10" fontWeight="600">WEST ({mapData["west"] || 0})</text>
+        <text x="50" y="84" textAnchor="middle" fill="var(--text-primary)" fontSize="10" fontWeight="600">WEST ({mapData["west"] || 0})</text>
 
         {/* Central */}
         <rect x="90" y="50" width="60" height="60" rx="4" fill={getFill("central")} stroke="#fff" strokeWidth="2" />
-        <text x="120" y="84" textAnchor="middle" fill="#2B2A27" fontSize="10" fontWeight="600">CENTRAL ({mapData["central"] || 0})</text>
+        <text x="120" y="84" textAnchor="middle" fill="var(--text-primary)" fontSize="10" fontWeight="600">CENTRAL ({mapData["central"] || 0})</text>
 
         {/* East */}
         <rect x="160" y="50" width="60" height="60" rx="4" fill={getFill("east")} stroke="#fff" strokeWidth="2" />
-        <text x="190" y="84" textAnchor="middle" fill="#2B2A27" fontSize="10" fontWeight="600">EAST ({mapData["east"] || 0})</text>
+        <text x="190" y="84" textAnchor="middle" fill="var(--text-primary)" fontSize="10" fontWeight="600">EAST ({mapData["east"] || 0})</text>
 
         {/* South */}
         <rect x="20" y="120" width="200" height="30" rx="4" fill={getFill("south")} stroke="#fff" strokeWidth="2" />
-        <text x="120" y="138" textAnchor="middle" fill="#2B2A27" fontSize="10" fontWeight="600">SOUTH ({mapData["south"] || 0})</text>
+        <text x="120" y="138" textAnchor="middle" fill="var(--text-primary)" fontSize="10" fontWeight="600">SOUTH ({mapData["south"] || 0})</text>
       </svg>
-      <div style={{ fontSize: 10.5, color: "#8A8580" }}>Geographic Audit Distribution Map</div>
+      <div style={{ fontSize: 10.5, color: "var(--text-muted)" }}>Geographic Audit Distribution Map</div>
     </div>
   );
 }
@@ -389,9 +389,9 @@ function ChartBlock({ chartType, data, metricLabel, height }) {
     return (
       <ResponsiveContainer width="100%" height={h}>
         <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#EAE7E0" />
-          <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "#8A8580" }} />
-          <YAxis tick={{ fontSize: 10.5, fill: "#8A8580" }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+          <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
+          <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
           <Tooltip />
           <Line type="monotone" dataKey="value" stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} name={metricLabel} />
         </LineChart>
@@ -401,9 +401,9 @@ function ChartBlock({ chartType, data, metricLabel, height }) {
   return (
     <ResponsiveContainer width="100%" height={h}>
       <BarChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#EAE7E0" />
-        <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "#8A8580" }} interval={0} angle={-20} textAnchor="end" height={44} />
-        <YAxis tick={{ fontSize: 10.5, fill: "#8A8580" }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+        <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} interval={0} angle={-20} textAnchor="end" height={44} />
+        <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
         <Tooltip />
         <Bar dataKey="value" fill="#3E6F8E" name={metricLabel} radius={[3, 3, 0, 0]} />
       </BarChart>
@@ -423,22 +423,22 @@ function TypingDots() {
 }
 
 const FileChip = ({ name, rows, cols }) => (
-  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#EDEAE3", border: "1px solid #DDD8CE", borderRadius: 8, padding: "8px 12px", fontSize: 12.5 }}>
+  <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--bg-hover)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "8px 12px", fontSize: 12.5 }}>
     <div style={{ width: 26, height: 26, borderRadius: 6, background: "#3E6F8E", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700 }}>
       {name.split(".").pop().slice(0, 3).toUpperCase()}
     </div>
     <div>
-      <div style={{ fontWeight: 600, color: "#2B2A27" }}>{name}</div>
-      <div style={{ color: "#8A8580", fontSize: 11 }}>{rows.toLocaleString()} rows · {cols} cols</div>
+      <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{name}</div>
+      <div style={{ color: "var(--text-muted)", fontSize: 11 }}>{rows.toLocaleString()} rows · {cols} cols</div>
     </div>
   </div>
 );
 
 function KpiCard({ label, value }) {
   return (
-    <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: "10px 14px", minWidth: 110 }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', Consolas, monospace", fontSize: 18, fontWeight: 600, color: "#2B2A27" }}>{value}</div>
-      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: "#8A8580", marginTop: 2 }}>{label}</div>
+    <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 14px", minWidth: 110 }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', Consolas, monospace", fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>{value}</div>
+      <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
     </div>
   );
 }
@@ -447,12 +447,12 @@ function QualityCard({ quality }) {
   if (!quality) return null;
   const color = quality.score >= 90 ? "#6E8F63" : quality.score >= 70 ? "#C98A3E" : "#B85C5C";
   return (
-    <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: "10px 14px", minWidth: 150 }}>
+    <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 14px", minWidth: 150 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
         <div style={{ fontFamily: "'IBM Plex Mono', Consolas, monospace", fontSize: 18, fontWeight: 600, color }}>{quality.score}%</div>
-        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: "#8A8580" }}>Data Quality</div>
+        <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>Data Quality</div>
       </div>
-      <div style={{ fontSize: 11, color: "#8A8580", marginTop: 2 }}>{quality.missingCells.toLocaleString()} missing cells ({quality.missingRate}%)</div>
+      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{quality.missingCells.toLocaleString()} missing cells ({quality.missingRate}%)</div>
     </div>
   );
 }
@@ -461,11 +461,11 @@ function OutlierBlock({ outliers }) {
   const entries = Object.entries(outliers || {}).filter(([, o]) => o.rows.length > 0);
   if (entries.length === 0) return null;
   return (
-    <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10 }}>
-      <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5C584F", marginBottom: 6 }}>⚠ Outlier Detection</div>
+    <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>⚠ Outlier Detection</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {entries.map(([col, o]) => (
-          <div key={col} style={{ fontSize: 12.5, color: "#2B2A27" }}>
+          <div key={col} style={{ fontSize: 12.5, color: "var(--text-primary)" }}>
             <strong>{col}</strong>: {o.rows.length} unusual value{o.rows.length === 1 ? "" : "s"} outside {o.lower}–{o.upper}
           </div>
         ))}
@@ -477,11 +477,11 @@ function OutlierBlock({ outliers }) {
 function CorrelationBlock({ correlations }) {
   if (!correlations || correlations.length === 0) return null;
   return (
-    <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10 }}>
-      <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5C584F", marginBottom: 6 }}>Correlation Analysis</div>
+    <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Correlation Analysis</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {correlations.map((c, i) => (
-          <div key={i} style={{ fontSize: 12.5, color: "#2B2A27" }}>
+          <div key={i} style={{ fontSize: 12.5, color: "var(--text-primary)" }}>
             <strong>{c.colA}</strong> vs <strong>{c.colB}</strong>: {c.r} ({correlationLabel(c.r)})
           </div>
         ))}
@@ -496,7 +496,7 @@ function performDataCleaning(rows, columns, stats) {
   const safeCols = columns || [];
   const safeStats = stats || [];
 
-  const droppedCols = safeStats.filter(s => s.missing === safeRows.length).map(s => s.name);
+  const droppedCols = safeStats.filter(s => (s.missing ?? s.nulls ?? 0) === safeRows.length).map(s => s.name);
   const cleanCols = safeCols.filter(c => !droppedCols.includes(c));
   
   const imputedLog = [];
@@ -506,7 +506,8 @@ function performDataCleaning(rows, columns, stats) {
       const val = row[col];
       if (val === null || val === undefined || String(val).trim() === "") {
         const colStat = safeStats.find(s => s.name === col);
-        if (colStat && colStat.type === "numeric") {
+        const colType = colStat ? (colStat.type || (colStat.dtype && (colStat.dtype.includes("int") || colStat.dtype.includes("float") || colStat.dtype.includes("num")) ? "numeric" : "categorical")) : "categorical";
+        if (colStat && colType === "numeric") {
           newRow[col] = colStat.median || 0;
           imputedLog.push(`Row ${rIdx + 1}: Imputed missing value in "${col}" with median (${colStat.median || 0})`);
         } else {
@@ -523,7 +524,10 @@ function performDataCleaning(rows, columns, stats) {
 
 function trainTestSplitAndFit(rows, columns, stats) {
   if (!rows || rows.length < 3 || !stats) return null;
-  const numericCols = stats.filter(s => s.type === "numeric");
+  const numericCols = stats.filter(s => {
+    const colType = s.type || (s.dtype && (s.dtype.includes("int") || s.dtype.includes("float") || s.dtype.includes("num")) ? "numeric" : "categorical");
+    return colType === "numeric";
+  });
   if (numericCols.length < 1) return null;
 
   // Predict the last numeric column (like DelayDays or Findings)
@@ -868,8 +872,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   if (dashboard && dashboard.isRawText) {
     return (
       <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ fontWeight: 700, fontSize: 15, color: "#2B2A27" }}>📝 Document Analysis Report</div>
-        <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "#2B2A27" }}>{dashboard.narrative}</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>📝 Document Analysis Report</div>
+        <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)" }}>{dashboard.narrative}</div>
       </div>
     );
   }
@@ -1078,52 +1082,52 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   return (
     <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Dynamic Tab Bar */}
-      <div style={{ display: "flex", borderBottom: "1px solid #EAE7E0", paddingBottom: 1, gap: 16 }}>
+      <div style={{ display: "flex", borderBottom: "1px solid var(--border-color)", paddingBottom: 1, gap: 16 }}>
         <button
           onClick={() => setActiveTab("dashboard")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "dashboard" ? "2px solid #3E6F8E" : "none", color: activeTab === "dashboard" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "dashboard" ? "2px solid #3E6F8E" : "none", color: activeTab === "dashboard" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           📊 Dashboard
         </button>
         <button
           onClick={() => setActiveTab("cleaning")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "cleaning" ? "2px solid #3E6F8E" : "none", color: activeTab === "cleaning" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "cleaning" ? "2px solid #3E6F8E" : "none", color: activeTab === "cleaning" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           🧹 Data Cleaning
         </button>
         <button
           onClick={() => setActiveTab("eda")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "eda" ? "2px solid #3E6F8E" : "none", color: activeTab === "eda" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "eda" ? "2px solid #3E6F8E" : "none", color: activeTab === "eda" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           🔍 EDA Insights
         </button>
         <button
           onClick={() => setActiveTab("stats")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "stats" ? "2px solid #3E6F8E" : "none", color: activeTab === "stats" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "stats" ? "2px solid #3E6F8E" : "none", color: activeTab === "stats" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           📊 Stats Report
         </button>
         <button
           onClick={() => setActiveTab("ml")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "ml" ? "2px solid #3E6F8E" : "none", color: activeTab === "ml" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "ml" ? "2px solid #3E6F8E" : "none", color: activeTab === "ml" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           🤖 ML Modeling
         </button>
         <button
           onClick={() => setActiveTab("forecast")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "forecast" ? "2px solid #3E6F8E" : "none", color: activeTab === "forecast" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "forecast" ? "2px solid #3E6F8E" : "none", color: activeTab === "forecast" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           📈 Forecasting
         </button>
         <button
           onClick={() => setActiveTab("insights_tab")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "insights_tab" ? "2px solid #3E6F8E" : "none", color: activeTab === "insights_tab" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "insights_tab" ? "2px solid #3E6F8E" : "none", color: activeTab === "insights_tab" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           💡 AI Insights
         </button>
         <button
           onClick={() => { setActiveTab("data"); setDataPage(0); }}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "data" ? "2px solid #3E6F8E" : "none", color: activeTab === "data" ? "#2B2A27" : "#8A8580", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
+          style={{ background: "none", border: "none", borderBottom: activeTab === "data" ? "2px solid #3E6F8E" : "none", color: activeTab === "data" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
         >
           📋 Raw Data
         </button>
@@ -1133,17 +1137,17 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         <>
           {/* Slicers Section */}
           {slicerCols.length > 0 && (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", background: "#FDFCFA", padding: "10px 14px", borderRadius: 8, border: "1px solid #EAE7E0" }}>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: "#8A8580", alignSelf: "center" }}>🔍 Slicers:</div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", background: "#FDFCFA", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-color)" }}>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", alignSelf: "center" }}>🔍 Slicers:</div>
               {slicerCols.map(col => {
                 const uniqueVals = Array.from(new Set(dashboard.rawRows ? dashboard.rawRows.map(r => String(r[col.name])) : currentRows.map(r => String(r[col.name])))).filter(v => v && v !== "undefined");
                 return (
                   <div key={col.name} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 500, color: "#5C584F" }}>{col.name}:</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-secondary)" }}>{col.name}:</span>
                     <select
                       value={slicerFilters[col.name] || ""}
                       onChange={(e) => setSlicerFilters(prev => ({ ...prev, [col.name]: e.target.value }))}
-                      style={{ padding: "3px 6px", borderRadius: 5, border: "1px solid #DDD8CE", background: "#fff", fontSize: 11.5, color: "#2B2A27" }}
+                      style={{ padding: "3px 6px", borderRadius: 5, border: "1px solid #DDD8CE", background: "var(--bg-secondary)", fontSize: 11.5, color: "var(--text-primary)" }}
                     >
                       <option value="">All</option>
                       {uniqueVals.map(val => <option key={val} value={val}>{val}</option>)}
@@ -1162,7 +1166,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
             </div>
           )}
 
-          <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "#2B2A27" }}>{dashboard.narrative}</div>
+          <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)" }}>{dashboard.narrative}</div>
           
           {(kpis.length > 0 || quality) && (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -1173,12 +1177,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           <div style={{ display: "grid", gridTemplateColumns: categoryCharts.length > 1 ? "1fr 1fr" : "1fr", gap: 12 }}>
             {categoryCharts.map((c, i) => (
-              <div key={i} style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10 }}>
+              <div key={i} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5C584F" }}>{c.title}</div>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)" }}>{c.title}</div>
                   <button
                     onClick={() => toggleChartType(c.columnName, c.chartType)}
-                    style={{ background: "#EDEAE3", border: "1px solid #DDD8CE", borderRadius: 4, padding: "2px 6px", fontSize: 9.5, fontWeight: 600, cursor: "pointer", color: "#5C584F" }}
+                    style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", borderRadius: 4, padding: "2px 6px", fontSize: 9.5, fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)" }}
                   >
                     🔀 Style: {c.chartType.toUpperCase()}
                   </button>
@@ -1189,8 +1193,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           </div>
 
           {trend && (
-            <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5C584F", marginBottom: 4 }}>{trend.title}</div>
+            <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>{trend.title}</div>
               <ChartBlock chartType="line" data={trend.data} metricLabel={trend.metricLabel} height={200} />
             </div>
           )}
@@ -1198,8 +1202,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           {distributions && distributions.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: distributions.length > 1 ? "1fr 1fr" : "1fr", gap: 12 }}>
               {distributions.map((d, i) => (
-                <div key={i} style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10 }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5C584F", marginBottom: 4 }}>{d.title}</div>
+                <div key={i} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>{d.title}</div>
                   <ChartBlock chartType="histogram" data={d.data} metricLabel={d.metricLabel} />
                 </div>
               ))}
@@ -1212,25 +1216,25 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           </div>
 
           {stats && stats.filter(s => s.type === "numeric").length >= 2 && (
-            <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: "#5C584F", marginBottom: 8 }}>📊 Numeric Correlations Heatmap</div>
+            <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 12 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>📊 Numeric Correlations Heatmap</div>
               <div style={{ overflowX: "auto" }}>
-                <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 11, background: "#fff", border: "1px solid #EAE7E0" }}>
+                <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 11, background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
                   <thead>
                     <tr>
-                      <th style={{ background: "#F7F5F0", border: "1px solid #EAE7E0", padding: 6 }}></th>
-                      {stats.filter(s => s.type === "numeric").map(s => <th key={s.name} style={{ background: "#F7F5F0", border: "1px solid #EAE7E0", padding: 6 }}>{s.name}</th>)}
+                      <th style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", padding: 6 }}></th>
+                      {stats.filter(s => s.type === "numeric").map(s => <th key={s.name} style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", padding: 6 }}>{s.name}</th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {stats.filter(s => s.type === "numeric").map(rowCol => (
                       <tr key={rowCol.name}>
-                        <td style={{ background: "#F7F5F0", border: "1px solid #EAE7E0", padding: 6, fontWeight: 600 }}>{rowCol.name}</td>
+                        <td style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", padding: 6, fontWeight: 600 }}>{rowCol.name}</td>
                         {stats.filter(s => s.type === "numeric").map(colCol => {
                           const r = rowCol.name === colCol.name ? 1 : correlation(currentRows, rowCol.name, colCol.name);
-                          const color = r === 1 ? "#fff" : (r > 0 ? `rgba(110, 143, 99, ${Math.abs(r) * 0.45})` : `rgba(184, 92, 92, ${Math.abs(r) * 0.45})`);
+                          const color = r === 1 ? "var(--bg-secondary)" : (r > 0 ? `rgba(110, 143, 99, ${Math.abs(r) * 0.45})` : `rgba(184, 92, 92, ${Math.abs(r) * 0.45})`);
                           return (
-                            <td key={colCol.name} style={{ border: "1px solid #EAE7E0", padding: 6, textAlign: "center", background: color, fontWeight: 600 }}>
+                            <td key={colCol.name} style={{ border: "1px solid var(--border-color)", padding: 6, textAlign: "center", background: color, fontWeight: 600 }}>
                               {r !== null ? r.toFixed(2) : "-"}
                             </td>
                           );
@@ -1489,7 +1493,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 16 }}>
                   {edaCharts.map((chart, idx) => (
-                    <div key={idx} style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+                    <div key={idx} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{chart.title}</div>
                       <div style={{ width: "100%", height: 200 }}>
                         <ResponsiveContainer width="100%" height="100%">
@@ -1498,7 +1502,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                               <XAxis dataKey={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                               <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <Tooltip contentStyle={{ fontSize: 11, background: "#fff", border: "1px solid var(--border-color)", borderRadius: 4 }} />
+                              <Tooltip contentStyle={{ fontSize: 11, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 4 }} />
                               <Bar dataKey={chart.yAxis} fill="#3E6F8E" radius={[4, 4, 0, 0]} />
                             </BarChart>
                           ) : chart.type === "line" ? (
@@ -1506,7 +1510,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                               <XAxis dataKey={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                               <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <Tooltip contentStyle={{ fontSize: 11, background: "#fff", border: "1px solid var(--border-color)", borderRadius: 4 }} />
+                              <Tooltip contentStyle={{ fontSize: 11, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 4 }} />
                               <Line type="monotone" dataKey={chart.yAxis} stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                             </LineChart>
                           ) : chart.type === "scatter" ? (
@@ -1709,21 +1713,21 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Stage 1: Task and Target Analysis */}
           {mlAnalyzeStage === "loading" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
               <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
               <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-secondary)" }}>Running Automated ML task detection...</div>
             </div>
           )}
 
           {mlAnalyzeStage === "error" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>⚠ Analysis Failed: {mlAnalyzeError}</div>
               <button onClick={() => setMlAnalyzeStage("idle")} style={{ alignSelf: "flex-start", background: "var(--accent-color)", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>Retry</button>
             </div>
           )}
 
           {mlAnalyzeStage === "loaded" && mlAnalysisData && !selectedTask && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>🤖 Automated ML Task Decision Engine</div>
                 <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>We analyzed your dataset schema to identify viable machine learning candidates. Select a target column recommendation below:</p>
@@ -1813,7 +1817,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Stage 2: Configure and Train Model */}
           {selectedTask && mlTrainStage === "idle" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>⚙ Configure & Train ML Pipeline</div>
                 <button onClick={() => { setSelectedTask(""); setSelectedTarget(""); setSelectedFeatures([]); }} style={{ background: "none", border: "none", color: "#3E6F8E", fontSize: 12.5, cursor: "pointer", fontWeight: 600 }}>← Back to Tasks Selection</button>
@@ -1965,7 +1969,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Model Fitting loader */}
           {mlTrainStage === "loading" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
               <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>Fitting {selectedTask} model algorithms...</div>
@@ -1978,7 +1982,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           {mlTrainStage === "loaded" && mlTrainResult && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {/* Models Comparison Section */}
-              <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-primary)" }}>
@@ -2099,7 +2103,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
                 {/* Feature Importance bars */}
                 {selectedTask !== "clustering" && (
-                  <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+                  <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>💡 Explainability: Feature Importances</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {mlTrainResult.feature_importances.map(item => (
@@ -2116,7 +2120,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 )}
 
                 {/* Predictions simulator sandbox */}
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>🔮 Real-Time Model Inference Sandbox</div>
                   <p style={{ fontSize: 11.5, color: "var(--text-muted)", marginBottom: 12 }}>Input predictors values to simulate real-time pipeline inference:</p>
 
@@ -2188,7 +2192,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       {activeTab === "forecast" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Progress Navigation Header */}
-          <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", gap: 24, fontSize: 13, fontWeight: 600 }}>
               <span style={{ color: forecastStage === "detect" ? "var(--text-primary)" : "var(--text-muted)", cursor: "pointer" }} onClick={() => setForecastStage("detect")}>① Detect</span>
               <span style={{ color: forecastStage === "configure" ? "var(--text-primary)" : "var(--text-muted)", cursor: forecastAnalysisData ? "pointer" : "not-allowed" }} onClick={() => forecastAnalysisData && setForecastStage("configure")}>② Configure</span>
@@ -2205,14 +2209,14 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Loader and error states */}
           {forecastAnalyzeStage === "loading" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
               <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Analyzing dataset for time-series forecasting...</div>
             </div>
           )}
 
           {forecastAnalyzeStage === "error" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>⚠ Analysis Failed: {forecastAnalyzeError}</div>
               <button onClick={() => setForecastAnalyzeStage("idle")} style={{ alignSelf: "flex-start", background: "var(--accent-color)", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>Retry</button>
             </div>
@@ -2220,7 +2224,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Stage 1: Detect */}
           {forecastAnalyzeStage === "loaded" && forecastAnalysisData && forecastStage === "detect" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📈 Time-Series Forecastability Analysis</div>
                 <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>We scanned your dataset to identify chronological rows suitable for automated modeling.</p>
@@ -2290,7 +2294,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Stage 2: Configure */}
           {forecastStage === "configure" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>⚙ Configure Forecast Parameters</div>
               
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
@@ -2383,7 +2387,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           )}
 
           {forecastTrainStage === "loading" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
               <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "center" }}>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>Fitting Time-Series Models...</div>
@@ -2394,7 +2398,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Stage 3: Compare */}
           {forecastStage === "compare" && forecastTrainResult && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📊 Forecast Models Validation Comparisons</div>
                 <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>We calculated metrics over chronological validation splits to select the optimal model. ARIMA was matched against baseline estimators.</p>
@@ -2444,7 +2448,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Stage 4: Forecast Graph Chart */}
           {forecastStage === "forecast" && forecastTrainResult && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📈 Future Forecast Projections Plot</div>
                 <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>Visualizing historical data points (solid blue line) mapped with {forecastHorizon}-step forecasts (dotted yellow line) and confidence bounds.</p>
@@ -2462,7 +2466,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                     <XAxis dataKey="date" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                     <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                    <Tooltip contentStyle={{ fontSize: 11.5, background: "#fff", border: "1px solid var(--border-color)", borderRadius: 4 }} />
+                    <Tooltip contentStyle={{ fontSize: 11.5, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 4 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     
                     {/* Historical actual data line */}
@@ -2482,7 +2486,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 <button
                   onClick={handleExportForecastCSV}
                   disabled={!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0}
-                  style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 12.5, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
+                  style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 12.5, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
                 >
                   ⬇ Export CSV Projections
                 </button>
@@ -2495,7 +2499,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
           {/* Stage 5: Insights */}
           {forecastStage === "insights" && forecastTrainResult && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>💡 Automated Forecast Report Summary</div>
               
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
@@ -2542,7 +2546,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <button
                       onClick={handleExportForecastCSV}
                       disabled={!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0}
-                      style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
+                      style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
                     >
                       ⬇ Export CSV Projections
                     </button>
@@ -2567,14 +2571,14 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       {activeTab === "insights_tab" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {insightsStage === "loading" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "50px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
               <div style={{ width: 32, height: 32, border: "3px solid var(--border-color)", borderTopColor: "var(--text-primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Running automated AI insights and recommendation engine...</div>
             </div>
           )}
 
           {insightsStage === "error" && (
-            <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>⚠ Analysis Failed: {insightsError}</div>
               <button onClick={() => setInsightsStage("idle")} style={{ alignSelf: "flex-start", background: "var(--accent-color)", color: "#fff", border: "none", padding: "6px 12px", borderRadius: 4, fontSize: 12, cursor: "pointer" }}>Retry</button>
             </div>
@@ -2584,7 +2588,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
             <>
               {/* Header metrics card list */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Data Quality Score</div>
                   <div style={{ fontSize: 24, fontWeight: 700, color: insightsData.quality_score >= 85 ? "#6E8F63" : (insightsData.quality_score >= 60 ? "#C98A3E" : "#B85C5C"), marginTop: 4 }}>
                     {insightsData.quality_score.toFixed(1)}%
@@ -2594,7 +2598,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   </div>
                 </div>
 
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Dataset Rows</div>
                   <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
                     {currentRows.length.toLocaleString()}
@@ -2604,7 +2608,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   </div>
                 </div>
 
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Anomalies Flagged</div>
                   <div style={{ fontSize: 24, fontWeight: 700, color: insightsData.anomalies.length > 0 ? "#C98A3E" : "var(--text-primary)", marginTop: 4 }}>
                     {insightsData.anomalies.length}
@@ -2614,7 +2618,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   </div>
                 </div>
 
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Target Candidates</div>
                   <div style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
                     {insightsData.target_recommendations.length}
@@ -2627,7 +2631,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
               {/* Business KPIs Summary */}
               {insightsData.kpis && insightsData.kpis.length > 0 && (
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>💰 Business KPIs & Metric Aggregates</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                     {insightsData.kpis.map((kpi, idx) => (
@@ -2643,7 +2647,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
               {/* Data Quality Alerts warnings */}
               {insightsData.anomalies && insightsData.anomalies.length > 0 && (
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>⚠️ Data Quality Alerts & Spikes Log</div>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
@@ -2693,7 +2697,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
               {/* Core Associations & Relationships */}
               {insightsData.relationships && insightsData.relationships.length > 0 && (
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>🔗 Structural Relationships & Associations</div>
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
@@ -2738,7 +2742,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
               {/* Recommended Next Actions Banners */}
               {insightsData.recommendations && insightsData.recommendations.length > 0 && (
-                <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>🚀 Recommended Workflows</div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {insightsData.recommendations.map((rec, idx) => {
@@ -2825,7 +2829,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               )}
 
               {/* Executive Summary Markdown report */}
-              <div style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
+              <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                 {(() => {
                   const renderMarkdown = (text) => {
                     if (!text) return null;
@@ -3399,356 +3403,380 @@ export default function DataAnalystDashboardBot({ currentView }) {
   };
 
   const handleDownloadExcel = (thread) => {
-    if (!thread || !thread.dashboard) return;
-    const workbook = XLSX.utils.book_new();
+    try {
+      if (!thread || !thread.dashboard) return;
+      const workbook = XLSX.utils.book_new();
 
-    const safeName = thread.name || "dataset";
-    const safeRows = thread.rows || [];
-    const safeCols = thread.columns || [];
-    const safeStats = thread.stats || [];
+      const safeName = thread.name || "dataset";
+      const safeRows = thread.rows || [];
+      const safeCols = thread.columns || [];
+      const safeStats = thread.stats || [];
 
-    const summary = [
-      ["AI DATA ANALYSIS REPORT"],
-      ["Dataset", safeName],
-      ["Rows", safeRows.length],
-      ["Columns", safeCols.length],
-      ["Data Quality Score", thread.quality ? `${thread.quality.score}%` : ""],
-      [],
-      ["KEY INSIGHTS"],
-      [thread.dashboard.narrative || ""]
-    ];
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summary), "Executive Summary");
-
-    const statsRows = safeStats.map(s => ({
-      column: s.name, type: s.type, missing: s.missing, unique: s.unique,
-      mean: s.mean ?? "", median: s.median ?? "", min: s.min ?? "", max: s.max ?? ""
-    }));
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(statsRows), "Statistics");
-
-    // DATA CLEANING SHEET
-    const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
-    const cleaningSummary = [
-      ["DATA CLEANING PROCESS LOG"],
-      [`Total Cleaned Rows: ${cleaning.cleanedRows.length}`],
-      [`Dropped fully empty columns: ${cleaning.droppedCols.join(", ") || "None"}`],
-      [],
-      ["Detailed Imputations List:"],
-      ...cleaning.imputedLog.map(l => [l])
-    ];
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(cleaningSummary), "Data Cleaning Log");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(cleaning.cleanedRows), "Cleaned Data");
-
-    // MACHINE LEARNING SHEET
-    const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
-    if (ml) {
-      const mlRows = [
-        ["MACHINE LEARNING TRAINING RESULTS"],
-        ["Model Type", ml.type],
-        ["Target Column", ml.targetCol],
-        ["Best Predictor", ml.predictorCol || ml.predictors?.join(", ")],
-        ["Training Size (80%)", ml.trainSize],
-        ["Test Validation Size (20%)", ml.testSize],
-        ["Train Set R2 Accuracy", `${(ml.trainR2 * 100).toFixed(1)}%`],
-        ["Test Set Validation R2", `${(ml.testR2 * 100).toFixed(1)}%`],
+      const summary = [
+        ["AI DATA ANALYSIS REPORT"],
+        ["Dataset", safeName],
+        ["Rows", safeRows.length],
+        ["Columns", safeCols.length],
+        ["Data Quality Score", thread.quality ? `${thread.quality.score}%` : ""],
         [],
-        ["SAMPLE TEST SET PREDICTIONS (ACTUAL VS PREDICTED)"],
-        ["Predictor Value", "Actual Target Value", "Predicted Target Value", "Prediction Error"]
-      ].concat((ml.testPredictions || []).map(p => [p.input ?? "", p.actual, p.predicted, +(p.actual - p.predicted).toFixed(2)]));
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(mlRows), "ML Modeling Info");
-    }
-
-    // TIME-SERIES FORECAST SHEET
-    if (forecastTrainResult) {
-      const forecastHeader = [
-        ["TIME-SERIES FORECAST REPORT"],
-        ["Target Variable", selectedTargetCol || ""],
-        ["Chronological Date Column", selectedDateCol || ""],
-        ["Optimal Selected Model", forecastTrainResult.algorithm || ""],
-        ["Fitted Data Range", `${forecastTrainResult.training_start} to ${forecastTrainResult.training_end}`],
-        ["Historical Training Size", forecastTrainResult.training_rows || ""],
-        ["Validation Steps", forecastTrainResult.validation_rows || ""],
-        ["Seasonal Period Length", forecastTrainResult.insights?.seasonal_period ? `${forecastTrainResult.insights.seasonal_period} intervals` : "None"],
-        [],
-        ["MODEL PERFORMANCE METRICS (HOLDOUT EVALUATION)"],
-        ["Algorithm", "RMSE Error", "MAE Error", "MAPE (%)", "sMAPE (%)"]
+        ["KEY INSIGHTS"],
+        [thread.dashboard.narrative || ""]
       ];
-      
-      const metRows = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => [
-        algo,
-        metrics.rmse ?? "",
-        metrics.mae ?? "",
-        metrics.mape ?? "",
-        metrics.smape ?? ""
-      ]);
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summary), "Executive Summary");
 
-      const forecastSummary = forecastHeader.concat(metRows).concat([
+      const statsRows = safeStats.map(s => {
+        const colType = s.type || (s.dtype && (s.dtype.includes("int") || s.dtype.includes("float") || s.dtype.includes("num")) ? "numeric" : "categorical");
+        return {
+          column: s.name, 
+          type: colType, 
+          missing: s.missing ?? s.nulls ?? 0, 
+          unique: s.unique ?? s.unique_count ?? 0,
+          mean: s.mean ?? "", 
+          median: s.median ?? "", 
+          min: s.min ?? "", 
+          max: s.max ?? ""
+        };
+      });
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(statsRows), "Statistics");
+
+      // DATA CLEANING SHEET
+      const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
+      const cleaningSummary = [
+        ["DATA CLEANING PROCESS LOG"],
+        [`Total Cleaned Rows: ${cleaning.cleanedRows.length}`],
+        [`Dropped fully empty columns: ${cleaning.droppedCols.join(", ") || "None"}`],
         [],
-        ["AUTOMATED AI TREND INSIGHTS"],
-        ["Trend Direction", forecastTrainResult.insights?.trend ?? ""],
-        ["Expected Growth Rate", `${forecastTrainResult.insights?.expected_growth ?? 0}%`],
-        ["Uncertainty Level", forecastTrainResult.insights?.uncertainty ?? ""],
-        [],
-        ["FORECASTED PROJECTIONS (FUTURE TIME STEPS)"],
-        ["Date", "Forecasted Value (Predicted)", "Lower Bound (Confidence)", "Upper Bound (Confidence)"]
-      ]).concat((forecastTrainResult.forecast || []).map(f => [
-        f.date ?? "",
-        f.predicted !== undefined && f.predicted !== null ? f.predicted : "",
-        f.lower !== undefined && f.lower !== null ? f.lower : "",
-        f.upper !== undefined && f.upper !== null ? f.upper : ""
-      ]));
+        ["Detailed Imputations List:"],
+        ...cleaning.imputedLog.map(l => [l])
+      ];
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(cleaningSummary), "Data Cleaning Log");
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(cleaning.cleanedRows), "Cleaned Data");
 
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(forecastSummary), "Time-Series Forecast");
-    }
-
-    const outlierRows = [];
-    Object.entries(thread.dashboard.outliers || {}).forEach(([col, o]) => {
-      if (o && Array.isArray(o.rows)) {
-        o.rows.forEach(r => outlierRows.push({ column: col, ...r }));
+      // MACHINE LEARNING SHEET
+      const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
+      if (ml) {
+        const mlRows = [
+          ["MACHINE LEARNING TRAINING RESULTS"],
+          ["Model Type", ml.type],
+          ["Target Column", ml.targetCol],
+          ["Best Predictor", ml.predictorCol || ml.predictors?.join(", ")],
+          ["Training Size (80%)", ml.trainSize],
+          ["Test Validation Size (20%)", ml.testSize],
+          ["Train Set R2 Accuracy", `${(ml.trainR2 * 100).toFixed(1)}%`],
+          ["Test Set Validation R2", `${(ml.testR2 * 100).toFixed(1)}%`],
+          [],
+          ["SAMPLE TEST SET PREDICTIONS (ACTUAL VS PREDICTED)"],
+          ["Predictor Value", "Actual Target Value", "Predicted Target Value", "Prediction Error"]
+        ].concat((ml.testPredictions || []).map(p => [p.input ?? "", p.actual, p.predicted, +(p.actual - p.predicted).toFixed(2)]));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(mlRows), "ML Modeling Info");
       }
-    });
-    if (outlierRows.length) XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(outlierRows), "Outliers");
 
-    if (thread.dashboard.correlations && thread.dashboard.correlations.length) {
-      const corrRows = thread.dashboard.correlations.map(c => ({ column_a: c.colA, column_b: c.colB, correlation: c.r, strength: correlationLabel(c.r) }));
-      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(corrRows), "Correlations");
+      // TIME-SERIES FORECAST SHEET
+      if (forecastTrainResult) {
+        const forecastHeader = [
+          ["TIME-SERIES FORECAST REPORT"],
+          ["Target Variable", selectedTargetCol || ""],
+          ["Chronological Date Column", selectedDateCol || ""],
+          ["Optimal Selected Model", forecastTrainResult.algorithm || ""],
+          ["Fitted Data Range", `${forecastTrainResult.training_start} to ${forecastTrainResult.training_end}`],
+          ["Historical Training Size", forecastTrainResult.training_rows || ""],
+          ["Validation Steps", forecastTrainResult.validation_rows || ""],
+          ["Seasonal Period Length", forecastTrainResult.insights?.seasonal_period ? `${forecastTrainResult.insights.seasonal_period} intervals` : "None"],
+          [],
+          ["MODEL PERFORMANCE METRICS (HOLDOUT EVALUATION)"],
+          ["Algorithm", "RMSE Error", "MAE Error", "MAPE (%)", "sMAPE (%)"]
+        ];
+        
+        const metRows = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => [
+          algo,
+          metrics.rmse ?? "",
+          metrics.mae ?? "",
+          metrics.mape ?? "",
+          metrics.smape ?? ""
+        ]);
+
+        const forecastSummary = forecastHeader.concat(metRows).concat([
+          [],
+          ["AUTOMATED AI TREND INSIGHTS"],
+          ["Trend Direction", forecastTrainResult.insights?.trend ?? ""],
+          ["Expected Growth Rate", `${forecastTrainResult.insights?.expected_growth ?? 0}%`],
+          ["Uncertainty Level", forecastTrainResult.insights?.uncertainty ?? ""],
+          [],
+          ["FORECASTED PROJECTIONS (FUTURE TIME STEPS)"],
+          ["Date", "Forecasted Value (Predicted)", "Lower Bound (Confidence)", "Upper Bound (Confidence)"]
+        ]).concat((forecastTrainResult.forecast || []).map(f => [
+          f.date ?? "",
+          f.predicted !== undefined && f.predicted !== null ? f.predicted : "",
+          f.lower !== undefined && f.lower !== null ? f.lower : "",
+          f.upper !== undefined && f.upper !== null ? f.upper : ""
+        ]));
+
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(forecastSummary), "Time-Series Forecast");
+      }
+
+      const outlierRows = [];
+      Object.entries(thread.dashboard.outliers || {}).forEach(([col, o]) => {
+        if (o && Array.isArray(o.rows)) {
+          o.rows.forEach(r => outlierRows.push({ column: col, ...r }));
+        }
+      });
+      if (outlierRows.length) XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(outlierRows), "Outliers");
+
+      if (thread.dashboard.correlations && thread.dashboard.correlations.length) {
+        const corrRows = thread.dashboard.correlations.map(c => ({ column_a: c.colA, column_b: c.colB, correlation: c.r, strength: correlationLabel(c.r) }));
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(corrRows), "Correlations");
+      }
+
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(safeRows), "Raw Data");
+
+      XLSX.writeFile(workbook, safeName.replace(/\.[^.]+$/, "") + "-analysis-report.xlsx");
+    } catch (err) {
+      alert("Failed to export Excel report: " + err.message);
+      console.error(err);
     }
-
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(safeRows), "Raw Data");
-
-    XLSX.writeFile(workbook, safeName.replace(/\.[^.]+$/, "") + "-analysis-report.xlsx");
   };
 
   const handleDownloadReport = (thread) => {
-    if (!thread || !thread.dashboard) return;
-    const node = dashboardRefs.current[thread.id];
-    const chartsHTML = node ? node.innerHTML : "<p>No charts available.</p>";
-    
-    const safeRows = thread.rows || [];
-    const safeCols = thread.columns || [];
-    const safeStats = thread.stats || [];
+    try {
+      if (!thread || !thread.dashboard) return;
+      const node = dashboardRefs.current[thread.id];
+      const chartsHTML = node ? node.innerHTML : "<p>No charts available.</p>";
+      
+      const safeRows = thread.rows || [];
+      const safeCols = thread.columns || [];
+      const safeStats = thread.stats || [];
 
-    const sampleRows = safeRows.slice(0, 10);
-    const tableHead = safeCols.map(c => `<th>${c}</th>`).join("");
-    const tableBody = sampleRows.map(r => `<tr>${safeCols.map(c => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
-    const generatedDate = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+      const sampleRows = safeRows.slice(0, 10);
+      const tableHead = safeCols.map(c => `<th>${c}</th>`).join("");
+      const tableBody = sampleRows.map(r => `<tr>${safeCols.map(c => `<td>${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
+      const generatedDate = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 
-    // Perform Cleaning & ML fits for report
-    const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
-    const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
+      // Perform Cleaning & ML fits for report
+      const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
+      const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
 
-    const cleaningHTML = `
-      <h2>🧹 Data Cleaning Log</h2>
-      <p>Dropped Columns: ${cleaning.droppedCols.join(", ") || "None"}</p>
-      <div style="background:#F7F5F0;border:1px solid #EAE7E0;padding:10px;border-radius:6px;max-height:150px;overflow-y:auto;font-size:12px;margin-bottom:12px;">
-        ${cleaning.imputedLog.map(l => `<div>${l}</div>`).join("") || "<div>No missing cells imputed.</div>"}
-      </div>
-    `;
-
-    let mlHTML = "";
-    if (ml) {
-      mlHTML = `
-        <h2>🤖 Machine Learning Model Summary</h2>
-        <p><strong>Model type:</strong> ${ml.type}</p>
-        <p><strong>Predicting:</strong> ${ml.targetCol} using ${ml.predictorCol || ml.predictors?.join(", ")}</p>
-        <table style="max-width:400px;margin-bottom:20px;">
-          <tr><td>Train R² Accuracy</td><td><strong>${ml.trainR2 * 100}%</strong></td></tr>
-          <tr><td>Test Set Validation R²</td><td><strong>${ml.testR2 * 100}%</strong></td></tr>
-          <tr><td>Train / Test Split Rows</td><td><strong>${ml.trainSize} / ${ml.testSize}</strong></td></tr>
-        </table>
-      `;
-    }
-
-    let forecastHTML = "";
-    if (forecastTrainResult) {
-      const forecastRowsHTML = forecastTrainResult.forecast.map(f => `
-        <tr>
-          <td>${f.date ?? ""}</td>
-          <td>${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
-          <td>${f.lower !== undefined && f.lower !== null ? f.lower.toFixed(2) : ""}</td>
-          <td>${f.upper !== undefined && f.upper !== null ? f.upper.toFixed(2) : ""}</td>
-        </tr>
-      `).join("");
-
-      const comparisonsHTML = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => `
-        <tr>
-          <td><strong>${algo}</strong></td>
-          <td>${metrics.rmse !== undefined && metrics.rmse !== null ? metrics.rmse.toFixed(3) : "-"}</td>
-          <td>${metrics.mae !== undefined && metrics.mae !== null ? metrics.mae.toFixed(3) : "-"}</td>
-          <td>${metrics.mape !== undefined && metrics.mape !== null ? metrics.mape.toFixed(2) + "%" : "-"}</td>
-          <td>${metrics.smape !== undefined && metrics.smape !== null ? metrics.smape.toFixed(2) + "%" : "-"}</td>
-        </tr>
-      `).join("");
-
-      forecastHTML = `
-        <h2>📈 Time-Series Forecasting Model Summary</h2>
-        <p><strong>Selected Model:</strong> ${forecastTrainResult.algorithm} (trained on ${forecastTrainResult.training_rows} observations, frequency: ${forecastTrainResult.frequency})</p>
-        <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
-        <p><strong>AI Trend Direction:</strong> ${forecastTrainResult.insights?.trend ?? ""} (${forecastTrainResult.insights?.expected_growth ?? 0}% growth rate, uncertainty: ${forecastTrainResult.insights?.uncertainty ?? ""})</p>
-        
-        <h3>Validation Metrics (Holdout Evaluation)</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Algorithm</th>
-              <th>RMSE</th>
-              <th>MAE</th>
-              <th>MAPE</th>
-              <th>sMAPE</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${comparisonsHTML}
-          </tbody>
-        </table>
-
-        <h3>Forecast Projections (Future Intervals)</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Predicted Forecast</th>
-              <th>Lower Confidence Limit (95%)</th>
-              <th>Upper Confidence Limit (95%)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${forecastRowsHTML}
-          </tbody>
-        </table>
-      `;
-    }
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${thread.name} — Data Analysis Report</title>
-<style>
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2B2A27;max-width:820px;margin:40px auto;padding:0 24px;line-height:1.6;}
-h1{font-size:22px;margin-bottom:2px;} .meta{color:#8A8580;font-size:13px;margin-bottom:28px;}
-h2{font-size:15px;border-bottom:1px solid #EAE7E0;padding-bottom:6px;margin-top:32px;}
-table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:10px;}
-th,td{border:1px solid #EAE7E0;padding:6px 8px;text-align:left;}
-th{background:#F7F5F0;} p{font-size:13.5px;}
-@media print{body{margin:0;padding:16px;}}
-</style></head><body>
-<h1>Data Analysis Report</h1>
-<div class="meta">Dataset: ${thread.name} · ${thread.rows.length.toLocaleString()} rows · ${thread.columns.length} columns · Generated ${generatedDate}</div>
-<h2>Summary</h2>
-<p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
-${cleaningHTML}
-${mlHTML}
-${forecastHTML}
-<h2>Dashboard</h2>
-${chartsHTML}
-<h2>Data Sample (first 10 rows)</h2>
-<table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table>
-<p style="margin-top:24px;color:#8A8580;font-size:11.5px;">Open this file in a browser and use Print → Save as PDF to share as a PDF.</p>
-</body></html>`;
-
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = thread.name.replace(/\.[^.]+$/, "") + "-report.html";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleDownloadWord = (thread) => {
-    if (!thread || !thread.dashboard) return;
-    const safeRows = thread.rows || [];
-    const safeCols = thread.columns || [];
-    const safeStats = thread.stats || [];
-
-    const sampleRows = safeRows.slice(0, 50);
-    const tableHead = safeCols.map(c => `<th style="background:#F7F5F0;border:1px solid #EAE7E0;padding:6px;">${c}</th>`).join("");
-    const tableBody = sampleRows.map(r => `<tr>${safeCols.map(c => `<td style="border:1px solid #EAE7E0;padding:6px;">${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
-    const generatedDate = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
-
-    const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
-    const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
-
-    const docContent = `
-      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-      <head><title>Data Analysis Executive Report</title>
-      <style>
-        body { font-family: 'Calibri', 'Arial', sans-serif; line-height: 1.4; color: #2B2A27; }
-        h1 { font-size: 24pt; color: #3E6F8E; margin-bottom: 2pt; }
-        h2 { font-size: 16pt; color: #5C584F; border-bottom: 1px solid #DDD8CE; padding-bottom: 3pt; margin-top: 20pt; }
-        table { border-collapse: collapse; width: 100%; margin-top: 10pt; }
-        th, td { border: 1px solid #DDD8CE; padding: 6pt; text-align: left; font-size: 10pt; }
-      </style>
-      </head>
-      <body>
-        <h1>EXECUTIVE DATA ANALYSIS REPORT</h1>
-        <p style="color:#8A8580;font-size:10pt;">Dataset: ${thread.name} &middot; Rows: ${thread.rows.length} &middot; Columns: ${thread.columns.length} &middot; Generated: ${generatedDate}</p>
-        
-        <h2>1. Executive Summary</h2>
-        <p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
-
-        <h2>2. Data Cleaning Operations</h2>
+      const cleaningHTML = `
+        <h2>🧹 Data Cleaning Log</h2>
         <p>Dropped Columns: ${cleaning.droppedCols.join(", ") || "None"}</p>
-        <ul>
-          ${cleaning.imputedLog.map(l => `<li>${l}</li>`).join("") || "<li>No corrections required.</li>"}
-        </ul>
+        <div style="background:#F7F5F0;border:1px solid #EAE7E0;padding:10px;border-radius:6px;max-height:150px;overflow-y:auto;font-size:12px;margin-bottom:12px;">
+          ${cleaning.imputedLog.map(l => `<div>${l}</div>`).join("") || "<div>No missing cells imputed.</div>"}
+        </div>
+      `;
 
-        <h2>3. Machine Learning Predictor Model</h2>
-        ${ml ? `
-          <p><strong>Algorithm:</strong> ${ml.type}</p>
+      let mlHTML = "";
+      if (ml) {
+        mlHTML = `
+          <h2>🤖 Machine Learning Model Summary</h2>
+          <p><strong>Model type:</strong> ${ml.type}</p>
           <p><strong>Predicting:</strong> ${ml.targetCol} using ${ml.predictorCol || ml.predictors?.join(", ")}</p>
-          <p><strong>Model Accuracy (R²):</strong> ${(ml.testR2 * 100).toFixed(1)}%</p>
-          <p><strong>Equation:</strong> ${ml.targetCol} = (${ml.slope} * ${ml.predictorCol}) + ${ml.intercept}</p>
-        ` : "<p>No numeric columns available for regression modeling.</p>"}
+          <table style="max-width:400px;margin-bottom:20px;">
+            <tr><td>Train R² Accuracy</td><td><strong>${ml.trainR2 * 100}%</strong></td></tr>
+            <tr><td>Test Set Validation R²</td><td><strong>${ml.testR2 * 100}%</strong></td></tr>
+            <tr><td>Train / Test Split Rows</td><td><strong>${ml.trainSize} / ${ml.testSize}</strong></td></tr>
+          </table>
+        `;
+      }
 
-        ${forecastTrainResult ? `
-          <h2>4. Time-Series Forecasting Model Report</h2>
-          <p><strong>Selected Model Algorithm:</strong> ${forecastTrainResult.algorithm}</p>
+      let forecastHTML = "";
+      if (forecastTrainResult) {
+        const forecastRowsHTML = (forecastTrainResult.forecast || []).map(f => `
+          <tr>
+            <td>${f.date ?? ""}</td>
+            <td>${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
+            <td>${f.lower !== undefined && f.lower !== null ? f.lower.toFixed(2) : ""}</td>
+            <td>${f.upper !== undefined && f.upper !== null ? f.upper.toFixed(2) : ""}</td>
+          </tr>
+        `).join("");
+
+        const comparisonsHTML = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => `
+          <tr>
+            <td><strong>${algo}</strong></td>
+            <td>${metrics.rmse !== undefined && metrics.rmse !== null ? metrics.rmse.toFixed(3) : "-"}</td>
+            <td>${metrics.mae !== undefined && metrics.mae !== null ? metrics.mae.toFixed(3) : "-"}</td>
+            <td>${metrics.mape !== undefined && metrics.mape !== null ? metrics.mape.toFixed(2) + "%" : "-"}</td>
+            <td>${metrics.smape !== undefined && metrics.smape !== null ? metrics.smape.toFixed(2) + "%" : "-"}</td>
+          </tr>
+        `).join("");
+
+        forecastHTML = `
+          <h2>📈 Time-Series Forecasting Model Summary</h2>
+          <p><strong>Selected Model:</strong> ${forecastTrainResult.algorithm} (trained on ${forecastTrainResult.training_rows} observations, frequency: ${forecastTrainResult.frequency})</p>
           <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
-          <p><strong>Validation Score (RMSE):</strong> ${forecastTrainResult.metrics?.rmse !== undefined ? forecastTrainResult.metrics.rmse.toLocaleString() : "N/A"}</p>
-          <p><strong>Model Validation Mean Absolute Error (MAE):</strong> ${forecastTrainResult.metrics?.mae !== undefined ? forecastTrainResult.metrics.mae.toLocaleString() : "N/A"}</p>
-          <p><strong>Model Validation MAPE (%):</strong> ${forecastTrainResult.metrics?.mape !== undefined ? forecastTrainResult.metrics.mape.toFixed(2) + "%" : "N/A"}</p>
-          <p><strong>AI Growth Insight Trend:</strong> Expected ${forecastTrainResult.insights?.expected_growth ?? 0}% growth over future interval (${forecastTrainResult.insights?.trend ?? ""} trend with ${forecastTrainResult.insights?.uncertainty ?? ""} uncertainty)</p>
+          <p><strong>AI Trend Direction:</strong> ${forecastTrainResult.insights?.trend ?? ""} (${forecastTrainResult.insights?.expected_growth ?? 0}% growth rate, uncertainty: ${forecastTrainResult.insights?.uncertainty ?? ""})</p>
           
-          <h3>Future Forecast Predictions Table</h3>
+          <h3>Validation Metrics (Holdout Evaluation)</h3>
           <table>
             <thead>
-              <tr style="background:#F7F5F0;">
-                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Date</th>
-                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Forecast Prediction</th>
-                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Lower Bound (95%)</th>
-                <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Upper Bound (95%)</th>
+              <tr>
+                <th>Algorithm</th>
+                <th>RMSE</th>
+                <th>MAE</th>
+                <th>MAPE</th>
+                <th>sMAPE</th>
               </tr>
             </thead>
             <tbody>
-              ${forecastTrainResult.forecast.map(f => `
-                <tr>
-                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.date ?? ""}</td>
-                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
-                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.lower !== undefined && f.lower !== null ? f.lower.toFixed(2) : ""}</td>
-                  <td style="border:1px solid #DDD8CE;padding:6px;">${f.upper !== undefined && f.upper !== null ? f.upper.toFixed(2) : ""}</td>
-                </tr>
-              `).join("")}
+              ${comparisonsHTML}
             </tbody>
           </table>
-        ` : ""}
 
-        <h2>5. Data Preview (First 50 Rows)</h2>
-        <table>
-          <thead><tr>${tableHead}</tr></thead>
-          <tbody>${tableBody}</tbody>
-        </table>
-      </body>
-      </html>
-    `;
+          <h3>Forecast Projections (Future Intervals)</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Predicted Forecast</th>
+                <th>Lower Confidence Limit (95%)</th>
+                <th>Upper Confidence Limit (95%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${forecastRowsHTML}
+            </tbody>
+          </table>
+        `;
+      }
 
-    const blob = new Blob(['\ufeff' + docContent], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = thread.name.replace(/\.[^.]+$/, "") + "-executive-report.doc";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${thread.name} — Data Analysis Report</title>
+  <style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2B2A27;max-width:820px;margin:40px auto;padding:0 24px;line-height:1.6;}
+  h1{font-size:22px;margin-bottom:2px;} .meta{color:#8A8580;font-size:13px;margin-bottom:28px;}
+  h2{font-size:15px;border-bottom:1px solid #EAE7E0;padding-bottom:6px;margin-top:32px;}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:10px;}
+  th,td{border:1px solid #EAE7E0;padding:6px 8px;text-align:left;}
+  th{background:#F7F5F0;} p{font-size:13.5px;}
+  @media print{body{margin:0;padding:16px;}}
+  </style></head><body>
+  <h1>Data Analysis Report</h1>
+  <div class="meta">Dataset: ${thread.name} · ${thread.rows.length.toLocaleString()} rows · ${thread.columns.length} columns · Generated ${generatedDate}</div>
+  <h2>Summary</h2>
+  <p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
+  ${cleaningHTML}
+  ${mlHTML}
+  ${forecastHTML}
+  <h2>Dashboard</h2>
+  ${chartsHTML}
+  <h2>Data Sample (first 10 rows)</h2>
+  <table><thead><tr>${tableHead}</tr></thead><tbody>${tableBody}</tbody></table>
+  <p style="margin-top:24px;color:#8A8580;font-size:11.5px;">Open this file in a browser and use Print → Save as PDF to share as a PDF.</p>
+  </body></html>`;
+
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = thread.name.replace(/\.[^.]+$/, "") + "-report.html";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to export HTML report: " + err.message);
+      console.error(err);
+    }
+  };
+
+  const handleDownloadWord = (thread) => {
+    try {
+      if (!thread || !thread.dashboard) return;
+      const safeRows = thread.rows || [];
+      const safeCols = thread.columns || [];
+      const safeStats = thread.stats || [];
+
+      const sampleRows = safeRows.slice(0, 50);
+      const tableHead = safeCols.map(c => `<th style="background:#F7F5F0;border:1px solid #EAE7E0;padding:6px;">${c}</th>`).join("");
+      const tableBody = sampleRows.map(r => `<tr>${safeCols.map(c => `<td style="border:1px solid #EAE7E0;padding:6px;">${r[c] ?? ""}</td>`).join("")}</tr>`).join("");
+      const generatedDate = new Date().toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+
+      const cleaning = performDataCleaning(safeRows, safeCols, safeStats);
+      const ml = trainTestSplitAndFit(safeRows, safeCols, safeStats);
+
+      const docContent = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><title>Data Analysis Executive Report</title>
+        <style>
+          body { font-family: 'Calibri', 'Arial', sans-serif; line-height: 1.4; color: #2B2A27; }
+          h1 { font-size: 24pt; color: #3E6F8E; margin-bottom: 2pt; }
+          h2 { font-size: 16pt; color: #5C584F; border-bottom: 1px solid #DDD8CE; padding-bottom: 3pt; margin-top: 20pt; }
+          table { border-collapse: collapse; width: 100%; margin-top: 10pt; }
+          th, td { border: 1px solid #DDD8CE; padding: 6pt; text-align: left; font-size: 10pt; }
+        </style>
+        </head>
+        <body>
+          <h1>EXECUTIVE DATA ANALYSIS REPORT</h1>
+          <p style="color:#8A8580;font-size:10pt;">Dataset: ${thread.name} &middot; Rows: ${thread.rows.length} &middot; Columns: ${thread.columns.length} &middot; Generated: ${generatedDate}</p>
+          
+          <h2>1. Executive Summary</h2>
+          <p>${(thread.dashboard.narrative || "").replace(/\n/g, "<br/>")}</p>
+
+          <h2>2. Data Cleaning Operations</h2>
+          <p>Dropped Columns: ${cleaning.droppedCols.join(", ") || "None"}</p>
+          <ul>
+            ${cleaning.imputedLog.map(l => `<li>${l}</li>`).join("") || "<li>No corrections required.</li>"}
+          </ul>
+
+          <h2>3. Machine Learning Predictor Model</h2>
+          ${ml ? `
+            <p><strong>Algorithm:</strong> ${ml.type}</p>
+            <p><strong>Predicting:</strong> ${ml.targetCol} using ${ml.predictorCol || ml.predictors?.join(", ")}</p>
+            <p><strong>Model Accuracy (R²):</strong> ${(ml.testR2 * 100).toFixed(1)}%</p>
+            <p><strong>Equation:</strong> ${ml.targetCol} = (${ml.slope} * ${ml.predictorCol}) + ${ml.intercept}</p>
+          ` : "<p>No numeric columns available for regression modeling.</p>"}
+
+          ${forecastTrainResult ? `
+            <h2>4. Time-Series Forecasting Model Report</h2>
+            <p><strong>Selected Model Algorithm:</strong> ${forecastTrainResult.algorithm}</p>
+            <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
+            <p><strong>Validation Score (RMSE):</strong> ${forecastTrainResult.metrics?.rmse !== undefined ? forecastTrainResult.metrics.rmse.toLocaleString() : "N/A"}</p>
+            <p><strong>Model Validation Mean Absolute Error (MAE):</strong> ${forecastTrainResult.metrics?.mae !== undefined ? forecastTrainResult.metrics.mae.toLocaleString() : "N/A"}</p>
+            <p><strong>Model Validation MAPE (%):</strong> ${forecastTrainResult.metrics?.mape !== undefined ? forecastTrainResult.metrics.mape.toFixed(2) + "%" : "N/A"}</p>
+            <p><strong>AI Growth Insight Trend:</strong> Expected ${forecastTrainResult.insights?.expected_growth ?? 0}% growth over future interval (${forecastTrainResult.insights?.trend ?? ""} trend with ${forecastTrainResult.insights?.uncertainty ?? ""} uncertainty)</p>
+            
+            <h3>Future Forecast Predictions Table</h3>
+            <table>
+              <thead>
+                <tr style="background:#F7F5F0;">
+                  <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Date</th>
+                  <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Forecast Prediction</th>
+                  <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Lower Bound (95%)</th>
+                  <th style="border:1px solid #DDD8CE;padding:6px;background:#F7F5F0;">Upper Bound (95%)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${(forecastTrainResult.forecast || []).map(f => `
+                  <tr>
+                    <td style="border:1px solid #DDD8CE;padding:6px;">${f.date ?? ""}</td>
+                    <td style="border:1px solid #DDD8CE;padding:6px;">${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
+                    <td style="border:1px solid #DDD8CE;padding:6px;">${f.lower !== undefined && f.lower !== null ? f.lower.toFixed(2) : ""}</td>
+                    <td style="border:1px solid #DDD8CE;padding:6px;">${f.upper !== undefined && f.upper !== null ? f.upper.toFixed(2) : ""}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          ` : ""}
+
+          <h2>5. Data Preview (First 50 Rows)</h2>
+          <table>
+            <thead><tr>${tableHead}</tr></thead>
+            <tbody>${tableBody}</tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob(['\ufeff' + docContent], { type: "application/msword" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = thread.name.replace(/\.[^.]+$/, "") + "-executive-report.doc";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Failed to export Word report: " + err.message);
+      console.error(err);
+    }
   };
 
   const autoGrow = (e) => {
@@ -3774,32 +3802,33 @@ ${chartsHTML}
           <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
         </button>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
-        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "#A6A196", marginTop: 6, padding: "0 4px" }}>Recent</div>
+        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 6, padding: "0 4px" }}>Recent</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: 1 }}>
-          {threads.length === 0 && <div style={{ fontSize: 11.5, color: "#A6A196", padding: "6px 4px" }}>No recent files</div>}
+          {threads.length === 0 && <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "6px 4px" }}>No recent files</div>}
           {threads.map(t => (
             <div key={t.id} onClick={() => handleSelectThread(t)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12.5, background: t.id === activeId ? "#EDEAE3" : "transparent", color: "#2B2A27" }}>
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12.5, background: t.id === activeId ? "var(--bg-hover)" : "transparent", color: "var(--text-primary)" }}>
               <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", opacity: t.loaded ? 1 : 0.6 }}>{t.name}</span>
               <button onClick={(e) => handleDeleteThread(t, e)} title="Delete dataset"
-                style={{ flexShrink: 0, background: "none", border: "none", color: "#A6A196", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1 }}>
+                style={{ flexShrink: 0, background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1 }}>
                 ✕
               </button>
             </div>
           ))}
         </div>
         {usageStats && usageStats.tier === "free" && (
-          <div style={{ background: "linear-gradient(135deg, #FFFDF9 0%, #F6F0EC 100%)", border: "1px solid #E9D9AE", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>
+          <div style={{ background: "linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-primary) 100%)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#8A7038", textTransform: "uppercase" }}>AI Credits</span>
-              <span style={{ fontSize: 11, color: "#8A8580" }}>{usageStats.usedTokens.toLocaleString()}/{usageStats.limit.toLocaleString()}</span>
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>AI Credits</span>
+              <span style={{ fontSize: 11.5, fontWeight: 600, color: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--text-secondary)" }}>
+                {Math.round(usageStats.usedTokens).toLocaleString()} / {usageStats.limit.toLocaleString()}
+              </span>
             </div>
             
-            {/* Progress Bar */}
-            <div style={{ width: "100%", background: "#EFEAE0", borderRadius: 4, height: 6, overflow: "hidden" }}>
+            <div style={{ background: "var(--border-color)", height: 8, borderRadius: 4, overflow: "hidden" }}>
               <div style={{ 
                 width: `${Math.min(100, (usageStats.usedTokens / usageStats.limit) * 100)}%`, 
-                background: usageStats.usedTokens >= usageStats.limit ? "#DF4B3B" : "#C98A3E", 
+                background: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--warning)", 
                 height: "100%", 
                 borderRadius: 4,
                 transition: "width 0.3s ease"
@@ -3807,32 +3836,32 @@ ${chartsHTML}
             </div>
 
             {usageStats.nextResetTime && (
-              <div style={{ fontSize: 9.5, color: "#A6A196", marginTop: 2, textAlign: "center" }}>
+              <div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 2, textAlign: "center" }}>
                 Locked. Refreshes: {new Date(usageStats.nextResetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </div>
             )}
 
             <button onClick={() => setShowUpgradeModal(true)}
-              style={{ width: "100%", background: "#C98A3E", color: "#fff", border: "none", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}>
+              style={{ width: "100%", background: "var(--text-primary)", color: "var(--bg-secondary)", border: "none", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}>
               Upgrade to Pro ➔
             </button>
           </div>
         )}
         {usageStats && usageStats.tier !== "free" && (
-          <div style={{ background: "linear-gradient(135deg, #F0F6F9 0%, #E6EDF2 100%)", border: "1px solid #B9CDE3", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 4, margin: "6px 0", textAlign: "center" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#3E6F8E", textTransform: "uppercase" }}>Pro Version Active</span>
-            <span style={{ fontSize: 11, color: "#5C7F99" }}>Unlimited tokens unlocked</span>
+          <div style={{ background: "linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-primary) 100%)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 4, margin: "6px 0", textAlign: "center" }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", textTransform: "uppercase" }}>Pro Version Active</span>
+            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Unlimited tokens unlocked</span>
           </div>
         )}
-        <div style={{ borderTop: "1px solid #E4E0D8", paddingTop: 10, marginTop: "auto" }}>
-          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "#A6A196", padding: "0 4px", marginBottom: 6 }}>Samples</div>
+        <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 10, marginTop: "auto" }}>
+          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", padding: "0 4px", marginBottom: 6 }}>Samples</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {SAMPLE_DATASETS.map((sample, idx) => (
               <button
                 key={idx}
                 onClick={() => handleLoadSample(sample)}
                 disabled={loading}
-                style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "#fff", border: "1px solid #DDD8CE", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, color: "#2B2A27", fontWeight: 500, cursor: loading ? "default" : "pointer", textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, color: "var(--text-primary)", fontWeight: 500, cursor: loading ? "default" : "pointer", textAlign: "left" }}
               >
                 📊 {sample.name.replace(" Sample", "")}
               </button>
@@ -3841,7 +3870,7 @@ ${chartsHTML}
         </div>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", background: dragOver ? "#F7F5F0" : "#fff", height: "100%", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", background: dragOver ? "var(--bg-hover)" : "var(--bg-secondary)", height: "100%", overflow: "hidden" }}>
         {dragOver && (
           <div style={{ position: "absolute", inset: 8, border: "2px dashed #3E6F8E", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#3E6F8E", background: "rgba(255,255,255,0.85)", zIndex: 5, fontWeight: 600 }}>
             Drop file to analyze
@@ -3851,15 +3880,15 @@ ${chartsHTML}
         {active && (
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 20px 0" }}>
             <button onClick={() => handleDownloadExcel(active)} disabled={!active.dashboard}
-              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "#2B2A27" : "#C7C2B8", background: "#F7F5F0", border: "1px solid #E4E0D8", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
+              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
               ⬇ Excel Report
             </button>
             <button onClick={() => handleDownloadReport(active)} disabled={!active.dashboard}
-              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "#2B2A27" : "#C7C2B8", background: "#F7F5F0", border: "1px solid #E4E0D8", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
+              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
               ⬇ HTML Report
             </button>
             <button onClick={() => handleDownloadWord(active)} disabled={!active.dashboard}
-              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "#2B2A27" : "#C7C2B8", background: "#F7F5F0", border: "1px solid #E4E0D8", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
+              style={{ fontSize: 12, fontWeight: 600, color: active.dashboard ? "var(--text-primary)" : "var(--text-muted)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 7, padding: "7px 12px", cursor: active.dashboard ? "pointer" : "default" }}>
               ⬇ Word Report
             </button>
           </div>
@@ -3876,7 +3905,7 @@ ${chartsHTML}
             {active && active.messages.map((m, i) => {
               if (m.kind === "file") return <div key={i} style={{ alignSelf: "flex-end" }}><FileChip name={m.fileName} rows={m.rowCount} cols={m.colCount} /></div>;
               if (m.kind === "dashboard") return (
-                <div key={i} style={{ alignSelf: "stretch", background: "#FDFCFA", border: "1px solid #EAE7E0", borderRadius: 10, padding: 16 }}>
+                <div key={i} style={{ alignSelf: "stretch", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
                   <DashboardBlock 
                     dashboard={active.dashboard} 
                     filteredRows={filteredRows} 
@@ -3894,11 +3923,11 @@ ${chartsHTML}
                 </div>
               );
               if (m.role === "user") return (
-                <div key={i} style={{ alignSelf: "flex-end", maxWidth: "80%", background: "#F0EEE9", color: "#2B2A27", borderRadius: "14px 14px 3px 14px", padding: "10px 15px", fontSize: 14, lineHeight: 1.55 }}>{m.content}</div>
+                <div key={i} style={{ alignSelf: "flex-end", maxWidth: "80%", background: "var(--bg-hover)", color: "var(--text-primary)", borderRadius: "14px 14px 3px 14px", padding: "10px 15px", fontSize: 14, lineHeight: 1.55 }}>{m.content}</div>
               );
               if (m.kind === "grounded_chat") {
                 return (
-                  <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)", display: "flex", flexDirection: "column", gap: 10, background: "#FDFCFA", border: "1px solid #EAE7E0", borderRadius: "14px 14px 14px 3px", padding: 14 }}>
+                  <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)", display: "flex", flexDirection: "column", gap: 10, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "14px 14px 14px 3px", padding: 14 }}>
                     {/* Grounding dataset context indicator badge */}
                     {m.dataset_context && (
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -3941,7 +3970,7 @@ ${chartsHTML}
                         {(() => {
                           const keys = Object.keys(m.supporting_values[0]);
                           return (
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, background: "#fff", border: "1px solid var(--border-color)" }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-secondary)", borderBottom: "1px solid var(--border-color)" }}>
                                   {keys.map(k => <th key={k} style={{ padding: "6px 8px", color: "var(--text-secondary)", fontWeight: 600, border: "1px solid var(--border-color)", textAlign: "left" }}>{k.replace("_", " ").toUpperCase()}</th>)}
@@ -3984,16 +4013,16 @@ ${chartsHTML}
                   )}
                   {m.kind === "text+table" && m.table && (
                     <div style={{ marginTop: 10, background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10, overflowX: "auto" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, background: "#fff", border: "1px solid #EAE7E0" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
                         <thead>
-                          <tr style={{ background: "#F7F5F0" }}>
+                          <tr style={{ background: "var(--bg-hover)" }}>
                             {m.table.columns.map(c => <th key={c} style={{ padding: "6px 8px", border: "1px solid #EAE7E0", textAlign: "left" }}>{c}</th>)}
                           </tr>
                         </thead>
                         <tbody>
                           {m.table.rows.map((row, rowIdx) => (
                             <tr key={rowIdx}>
-                              {m.table.columns.map(c => <td key={c} style={{ padding: "6px 8px", border: "1px solid #EAE7E0" }}>{String(row[c] ?? "")}</td>)}
+                              {m.table.columns.map(c => <td key={c} style={{ padding: "6px 8px", border: "1px solid var(--border-color)" }}>{String(row[c] ?? "")}</td>)}
                             </tr>
                           ))}
                         </tbody>
@@ -4018,7 +4047,7 @@ ${chartsHTML}
                       setInput(q);
                       textareaRef.current?.focus();
                     }}
-                    style={{ background: "#fff", border: "1px solid var(--border-color)", borderRadius: 16, padding: "5px 12px", fontSize: 11.5, color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "5px 12px", fontSize: 11.5, color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s ease" }}
                   >
                     💡 {q}
                   </button>
