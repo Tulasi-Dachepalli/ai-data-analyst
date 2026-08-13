@@ -3284,10 +3284,11 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const active = threads.find(t => t.id === activeId);
 
   const suggestedQuestions = useMemo(() => {
-    if (!active || !active.columns || !active.stats) return [];
-    const numCols = active.stats.filter(s => s.type === "numeric").map(s => s.name);
-    const catCols = active.stats.filter(s => s.type === "categorical" && s.unique <= 15).map(s => s.name);
-    const dateCols = active.stats.filter(s => s.type === "date").map(s => s.name);
+    if (!active || !Array.isArray(active.columns) || !Array.isArray(active.stats)) return [];
+    const safeStats = active.stats || [];
+    const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
+    const catCols = safeStats.filter(s => s.type === "categorical" && s.unique <= 15).map(s => s.name);
+    const dateCols = safeStats.filter(s => s.type === "date").map(s => s.name);
     
     const suggestions = [];
     if (numCols.length > 0) {
@@ -3322,7 +3323,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [active && active.messages.length, loading]);
+  }, [active?.messages?.length || 0, loading]);
 
   // Load this company's previously saved datasets and token usage stats on mount.
   // Set up listener for quota limit exceeded notifications.
@@ -4438,7 +4439,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 Upload your file (csv or excel) - I'll build a dashboard and you can ask follow-up questions.
               </div>
             )}
-            {active && active.messages.map((m, i) => {
+            {active && (active.messages || []).map((m, i) => {
               if (m.kind === "file") return <div key={i} style={{ alignSelf: "flex-end" }}><FileChip name={m.fileName} rows={m.rowCount} cols={m.colCount} /></div>;
               if (m.kind === "dashboard") return (
                 <div key={i} style={{ alignSelf: "stretch", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
