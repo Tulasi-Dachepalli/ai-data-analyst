@@ -10,6 +10,15 @@ const upload = multer({ storage: multer.memoryStorage() });
 const MAX_JSON_LENGTH = 12 * 1024 * 1024; // ~12MB of serialized rows/columns/stats
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://127.0.0.1:8000";
 
+function cleanErrorText(raw) {
+  if (!raw || typeof raw !== "string") return "Service temporarily unavailable.";
+  const trimmed = raw.trim();
+  if (trimmed.startsWith("<") || trimmed.includes("<!DOCTYPE") || trimmed.includes("<html") || trimmed.includes("502")) {
+    return "Analysis engine service is warming up or temporarily unavailable.";
+  }
+  return trimmed.replace(/<[^>]*>/g, "").slice(0, 300);
+}
+
 function toListItem(row) {
   return {
     id: row.id,
@@ -115,7 +124,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
       console.error("Python service profile error:", pythonRes.status, errText);
-      return res.status(pythonRes.status).json({ error: `Profiling service failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `Profiling service failed: ${cleanErrorText(errText)}` });
     }
 
     const profile = await pythonRes.json();
@@ -164,7 +173,7 @@ router.post("/:id/clean", requireTokenQuota, async (req, res) => {
     if (!pythonCleanRes.ok) {
       const errText = await pythonCleanRes.text();
       console.error("Python cleaning service error:", pythonCleanRes.status, errText);
-      return res.status(pythonCleanRes.status).json({ error: `Cleaning service failed: ${errText}` });
+      return res.status(pythonCleanRes.status).json({ error: `Cleaning service failed: ${cleanErrorText(errText)}` });
     }
 
     const cleanResult = await pythonCleanRes.json();
@@ -192,7 +201,7 @@ router.post("/:id/clean", requireTokenQuota, async (req, res) => {
     if (!pythonProfileRes.ok) {
       const errText = await pythonProfileRes.text();
       console.error("Python profiling service error:", pythonProfileRes.status, errText);
-      return res.status(pythonProfileRes.status).json({ error: `Profiling cleaned data failed: ${errText}` });
+      return res.status(pythonProfileRes.status).json({ error: `Profiling cleaned data failed: ${cleanErrorText(errText)}` });
     }
 
     const cleanProfile = await pythonProfileRes.json();
@@ -316,7 +325,7 @@ router.post("/:id/eda", async (req, res) => {
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
       console.error("Python EDA service error:", pythonRes.status, errText);
-      return res.status(pythonRes.status).json({ error: `EDA analysis failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `EDA analysis failed: ${cleanErrorText(errText)}` });
     }
 
     const edaResult = await pythonRes.json();
@@ -380,7 +389,7 @@ router.post("/:id/statistics", async (req, res) => {
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
       console.error("Python Statistics service error:", pythonRes.status, errText);
-      return res.status(pythonRes.status).json({ error: `Statistics analysis failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `Statistics analysis failed: ${cleanErrorText(errText)}` });
     }
 
     const statsResult = await pythonRes.json();
@@ -447,7 +456,7 @@ router.post("/:id/insights", async (req, res) => {
 
     if (!pythonStatsRes.ok) {
       const errText = await pythonStatsRes.text();
-      return res.status(pythonStatsRes.status).json({ error: `Insights failed during stats phase: ${errText}` });
+      return res.status(pythonStatsRes.status).json({ error: `Insights failed during stats phase: ${cleanErrorText(errText)}` });
     }
     const statisticsData = await pythonStatsRes.json();
 
@@ -480,7 +489,7 @@ router.post("/:id/insights", async (req, res) => {
 
     if (!pythonInsightsRes.ok) {
       const errText = await pythonInsightsRes.text();
-      return res.status(pythonInsightsRes.status).json({ error: `Insights generation failed: ${errText}` });
+      return res.status(pythonInsightsRes.status).json({ error: `Insights generation failed: ${cleanErrorText(errText)}` });
     }
 
     const insightsResult = await pythonInsightsRes.json();
@@ -691,7 +700,7 @@ router.post("/:id/ml/analyze", requireTokenQuota, async (req, res) => {
 
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
-      return res.status(pythonRes.status).json({ error: `ML analysis failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `ML analysis failed: ${cleanErrorText(errText)}` });
     }
 
     const result = await pythonRes.json();
@@ -764,7 +773,7 @@ router.post("/:id/ml/train", requireTokenQuota, async (req, res) => {
 
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
-      return res.status(pythonRes.status).json({ error: `Model training failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `Model training failed: ${cleanErrorText(errText)}` });
     }
 
     const trainResult = await pythonRes.json();
@@ -870,7 +879,7 @@ router.post("/:id/ml/predict", requireTokenQuota, async (req, res) => {
 
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
-      return res.status(pythonRes.status).json({ error: `Predictions failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `Predictions failed: ${cleanErrorText(errText)}` });
     }
 
     const result = await pythonRes.json();
@@ -922,7 +931,7 @@ router.post("/:id/forecast/analyze", requireTokenQuota, async (req, res) => {
 
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
-      return res.status(pythonRes.status).json({ error: `Forecasting analysis failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `Forecasting analysis failed: ${cleanErrorText(errText)}` });
     }
 
     const result = await pythonRes.json();
@@ -1002,7 +1011,7 @@ router.post("/:id/forecast/train", requireTokenQuota, async (req, res) => {
 
     if (!pythonRes.ok) {
       const errText = await pythonRes.text();
-      return res.status(pythonRes.status).json({ error: `Forecasting training failed: ${errText}` });
+      return res.status(pythonRes.status).json({ error: `Forecasting training failed: ${cleanErrorText(errText)}` });
     }
 
     const trainResult = await pythonRes.json();

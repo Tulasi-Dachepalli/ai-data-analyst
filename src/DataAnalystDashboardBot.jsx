@@ -809,26 +809,65 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setStatsError("");
   }, [serverId]);
 
+  const buildLocalStatistics = (stats, rows) => {
+    const numCols = (stats || []).filter(s => s.type === "numeric");
+    const catCols = (stats || []).filter(s => s.type === "categorical");
+    const dateCols = (stats || []).filter(s => s.type === "date");
+
+    const numericStats = numCols.map(c => ({
+      column: c.name,
+      count: c.count || rows.length,
+      missing: c.missing || 0,
+      mean: c.mean ?? "N/A",
+      std: "N/A",
+      min: c.min ?? "N/A",
+      median: c.median ?? "N/A",
+      max: c.max ?? "N/A"
+    }));
+
+    const categoricalStats = catCols.map(c => ({
+      column: c.name,
+      count: c.count || rows.length,
+      missing: c.missing || 0,
+      unique: c.unique || 0,
+      top: c.top?.[0]?.value ?? "N/A",
+      freq: c.top?.[0]?.count ?? 0
+    }));
+
+    return {
+      numeric_count: numCols.length,
+      categorical_count: catCols.length,
+      datetime_count: dateCols.length,
+      numeric: numericStats,
+      categorical: categoricalStats
+    };
+  };
+
   useEffect(() => {
-    if (activeTab === "stats" && statsStage === "idle" && serverId) {
+    if (activeTab === "stats" && statsStage === "idle") {
       setStatsStage("loading");
       setStatsError("");
-      api.getDatasetStatistics(serverId)
-        .then(res => {
-          if (res && res.success && res.statistics) {
-            setStatisticsData(res.statistics);
+      if (serverId) {
+        api.getDatasetStatistics(serverId)
+          .then(res => {
+            if (res && res.success && res.statistics) {
+              setStatisticsData(res.statistics);
+              setStatsStage("loaded");
+            } else {
+              setStatisticsData(buildLocalStatistics(stats, filteredRows));
+              setStatsStage("loaded");
+            }
+          })
+          .catch(() => {
+            setStatisticsData(buildLocalStatistics(stats, filteredRows));
             setStatsStage("loaded");
-          } else {
-            throw new Error("Invalid statistics data returned from server.");
-          }
-        })
-        .catch(err => {
-          console.error("Statistics retrieval error:", err);
-          setStatsError(err.message || "Failed to load descriptive statistics metrics.");
-          setStatsStage("error");
-        });
+          });
+      } else {
+        setStatisticsData(buildLocalStatistics(stats, filteredRows));
+        setStatsStage("loaded");
+      }
     }
-  }, [activeTab, serverId, statsStage]);
+  }, [activeTab, serverId, statsStage, stats, filteredRows]);
 
   useEffect(() => {
     setEdaStage("idle");
@@ -837,25 +876,30 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }, [serverId]);
 
   useEffect(() => {
-    if (activeTab === "eda" && edaStage === "idle" && serverId) {
+    if (activeTab === "eda" && edaStage === "idle") {
       setEdaStage("loading");
       setEdaError("");
-      api.getDatasetEda(serverId)
-        .then(res => {
-          if (res && res.success && Array.isArray(res.charts)) {
-            setEdaCharts(res.charts);
+      if (serverId) {
+        api.getDatasetEda(serverId)
+          .then(res => {
+            if (res && res.success && Array.isArray(res.charts) && res.charts.length > 0) {
+              setEdaCharts(res.charts);
+              setEdaStage("loaded");
+            } else {
+              setEdaCharts(dashboard?.categoryCharts || []);
+              setEdaStage("loaded");
+            }
+          })
+          .catch(() => {
+            setEdaCharts(dashboard?.categoryCharts || []);
             setEdaStage("loaded");
-          } else {
-            throw new Error("Invalid charts data returned from server.");
-          }
-        })
-        .catch(err => {
-          console.error("EDA retrieval error:", err);
-          setEdaError(err.message || "Failed to load exploratory data analysis recommendations.");
-          setEdaStage("error");
-        });
+          });
+      } else {
+        setEdaCharts(dashboard?.categoryCharts || []);
+        setEdaStage("loaded");
+      }
     }
-  }, [activeTab, serverId, edaStage]);
+  }, [activeTab, serverId, edaStage, dashboard]);
 
   const handleSort = (key) => {
     if (sortKey === key) {
