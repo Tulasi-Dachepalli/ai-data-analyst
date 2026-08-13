@@ -20,7 +20,7 @@ export default function DashboardsPage({ onOpen }) {
         </div>
         <button
           onClick={onOpen}
-          style={{ background: "var(--accent-color, #0F172A)", color: "#fff", border: "none", borderRadius: 8, padding: "9px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+          style={{ background: "var(--text-primary)", color: "var(--bg-primary)", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
         >
           → Open AI Analyst
         </button>
