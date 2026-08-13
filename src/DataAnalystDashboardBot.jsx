@@ -202,7 +202,7 @@ function pickDashboardPlan(stats) {
   const dateCols = stats.filter(s => s.type === "date");
   const kpiCols = numeric.slice(0, 4);
   const categoryCols = categorical.slice(0, 2);
-  const trendPlan = dateCols.length && numeric.length ? { dateCol: dateCols[0].name, metricCol: numeric[0].name } : null;
+  const trendPlan = (dateCols.length && dateCols[0]?.name && numeric.length && numeric[0]?.name) ? { dateCol: dateCols[0].name, metricCol: numeric[0].name } : null;
   const distributionCols = numeric.slice(0, 2);
   const outlierCols = numeric.slice(0, 4);
   const correlationPairs = [];
@@ -297,10 +297,11 @@ function parseFile(file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target.result, { type: "binary" });
-          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const firstSheet = wb.SheetNames && wb.SheetNames.length ? wb.SheetNames[0] : null;
+          if (!firstSheet) throw new Error("No sheet found in workbook.");
+          const sheet = wb.Sheets[firstSheet];
           const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-          const columns = rows.length ? Object.keys(rows[0]) : [];
+          const columns = rows.length && rows[0] ? Object.keys(rows[0]) : [];
           resolve({ rows, columns });
         } catch (err) {
           // If Excel parsing fails, read it as plain text fallback
@@ -562,9 +563,9 @@ function trainTestSplitAndFit(rows, columns, stats) {
       trainR2: 0.88, // simulated classification accuracy
       testR2: 0.81,
       testPredictions: shuffled.slice(trainSize, trainSize + 5).map(r => ({
-        input: String(r[catCols[0]]),
-        actual: String(r[targetCol]),
-        predicted: String(r[targetCol])
+        input: catCols[0] && r ? String(r[catCols[0]] ?? "") : "",
+        actual: targetCol && r ? String(r[targetCol] ?? "") : "",
+        predicted: targetCol && r ? String(r[targetCol] ?? "") : ""
       }))
     };
   }
@@ -576,7 +577,7 @@ function trainTestSplitAndFit(rows, columns, stats) {
   const testRows = shuffled.slice(trainSize);
 
   // Find predictor with strongest correlation
-  let bestPredictor = predictorCols[0];
+  let bestPredictor = predictorCols.length ? predictorCols[0] : "";
   let maxCorr = 0;
   predictorCols.forEach(col => {
     const rVal = correlation(rows, col, targetCol);
@@ -1752,12 +1753,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                             }
                           }
                         });
-                        const dates = stats.filter(c => c.name.toLowerCase().includes("date") || c.name.toLowerCase().includes("time"));
-                        if (dates.length > 0) {
+                        const dates = stats.filter(c => c && c.name && (c.name.toLowerCase().includes("date") || c.name.toLowerCase().includes("time")));
+                        if (dates.length > 0 && dates[0] && dates[0].name) {
                           list.push(`Time-series chronological aggregations generated using "${dates[0].name}".`);
                         }
-                        const nums = stats.filter(c => c.dtype && (c.dtype.includes("int") || c.dtype.includes("float")));
-                        if (nums.length >= 2) {
+                        const nums = stats.filter(c => c && c.dtype && (c.dtype.includes("int") || c.dtype.includes("float")));
+                        if (nums.length >= 2 && nums[0] && nums[0].name && nums[1] && nums[1].name) {
                           list.push(`Numeric bivariate relationships analyzed for pair "${nums[0].name}" vs "${nums[1].name}".`);
                         }
                       }
@@ -3781,7 +3782,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
     }
     for (const col of catCols) {
       const cName = col.name.toLowerCase();
-      if (q.includes(cName) && col.top && col.top.length > 0) {
+      if (q.includes(cName) && col.top && col.top.length > 0 && col.top[0]) {
         const topItem = col.top[0];
         return `For **${col.name}**, there are **${col.unique}** unique categories. Most frequent: **${topItem.value}** (${topItem.count} rows).`;
       }
@@ -4577,7 +4578,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
                         <span style={{ fontSize: 11, fontWeight: 700, color: "#3E6F8E", textTransform: "uppercase", display: "block", marginBottom: 6 }}>Verified Supporting Facts:</span>
                         
                         {(() => {
-                          const keys = Object.keys(m.supporting_values[0]);
+                          const firstVal = m.supporting_values && m.supporting_values[0];
+                          if (!firstVal || typeof firstVal !== "object") return null;
+                          const keys = Object.keys(firstVal);
                           return (
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
                               <thead>
