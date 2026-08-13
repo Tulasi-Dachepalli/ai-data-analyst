@@ -738,8 +738,9 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }, [serverId]);
 
   const buildLocalMlAnalysis = (stats) => {
-    const numCols = (stats || []).filter(s => s.type === "numeric").map(s => s.name);
-    const catCols = (stats || []).filter(s => s.type === "categorical").map(s => s.name);
+    const safeStats = stats || [];
+    const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
+    const catCols = safeStats.filter(s => s.type === "categorical").map(s => s.name);
 
     return {
       classification_candidates: catCols.length > 0 ? catCols : [],
@@ -752,12 +753,13 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   };
 
   const buildLocalForecastAnalysis = (stats) => {
-    const dateCols = (stats || []).filter(s => s.type === "date" || /date|time|year|day|month/i.test(s.name)).map(s => s.name);
-    const numCols = (stats || []).filter(s => s.type === "numeric").map(s => s.name);
+    const safeStats = stats || [];
+    const dateCols = safeStats.filter(s => s.type === "date" || /date|time|year|day|month/i.test(s.name)).map(s => s.name);
+    const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
 
     return {
       forecastable: true,
-      date_column: dateCols[0] || (stats && stats[0] ? stats[0].name : ""),
+      date_column: dateCols[0] || (safeStats[0] ? safeStats[0].name : ""),
       target_column: numCols[0] || "",
       frequency: "D",
       frequency_details: { recommended_horizon: 12, detected_frequency: "Daily" }
@@ -765,12 +767,14 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   };
 
   const buildLocalInsights = (stats, rows) => {
-    const numCols = (stats || []).filter(s => s.type === "numeric");
+    const safeStats = stats || [];
+    const safeRows = rows || [];
+    const numCols = safeStats.filter(s => s.type === "numeric");
     
     return {
-      executive_summary: `This dataset has ${rows.length.toLocaleString()} rows and ${stats.length} columns. Key variables include ${stats.slice(0, 4).map(s => s.name).join(", ")}.`,
+      executive_summary: `This dataset has ${safeRows.length.toLocaleString()} rows and ${safeStats.length} columns. Key variables include ${safeStats.slice(0, 4).map(s => s.name).join(", ")}.`,
       key_takeaways: [
-        `Dataset size: ${rows.length.toLocaleString()} rows × ${stats.length} columns.`,
+        `Dataset size: ${safeRows.length.toLocaleString()} rows × ${safeStats.length} columns.`,
         numCols.length > 0 ? `Key numeric column '${numCols[0].name}' averages ${numCols[0].mean ?? "N/A"}.` : "Contains categorical & text features.",
         `Explore interactive charts on the Dashboard tab above.`
       ],
@@ -883,13 +887,15 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }, [serverId]);
 
   const buildLocalStatistics = (stats, rows) => {
-    const numCols = (stats || []).filter(s => s.type === "numeric");
-    const catCols = (stats || []).filter(s => s.type === "categorical");
-    const dateCols = (stats || []).filter(s => s.type === "date");
+    const safeStats = stats || [];
+    const safeRows = rows || [];
+    const numCols = safeStats.filter(s => s.type === "numeric");
+    const catCols = safeStats.filter(s => s.type === "categorical");
+    const dateCols = safeStats.filter(s => s.type === "date");
 
     const numericStats = numCols.map(c => ({
       column: c.name,
-      count: c.count || rows.length,
+      count: c.count || safeRows.length,
       missing: c.missing || 0,
       mean: c.mean ?? "N/A",
       std: "N/A",
@@ -900,7 +906,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
     const categoricalStats = catCols.map(c => ({
       column: c.name,
-      count: c.count || rows.length,
+      count: c.count || safeRows.length,
       missing: c.missing || 0,
       unique: c.unique || 0,
       top: c.top?.[0]?.value ?? "N/A",
