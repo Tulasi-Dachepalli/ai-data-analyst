@@ -6,23 +6,47 @@ function authHeaders() {
 }
 
 async function request(path, options = {}) {
-  const res = await fetch(`${base()}${path}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...authHeaders(), ...(options.headers || {}) }
-  });
+  let res;
+  try {
+    res = await fetch(`${base()}${path}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", ...authHeaders(), ...(options.headers || {}) }
+    });
+  } catch (netErr) {
+    throw new Error("Network offline or server unreachable. Operating in browser mode.");
+  }
+
   if (res.status === 401) {
     localStorage.removeItem("aida_token");
     localStorage.removeItem("aida_user");
     window.location.reload();
     return null;
   }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     if (res.status === 402 || body.error === "TOKEN_QUOTA_EXCEEDED") {
       window.dispatchEvent(new CustomEvent("aida_quota_exceeded", { detail: body }));
     }
-    throw new Error(body.error || `Request failed (${res.status})`);
+    
+    let userMsg = body.error;
+    if (!userMsg || typeof userMsg !== "string" || userMsg.includes("<!DOCTYPE") || userMsg.includes("<html")) {
+      switch (res.status) {
+        case 400: userMsg = "Invalid request format or input values."; break;
+        case 403: userMsg = "Permission denied for this workspace resource."; break;
+        case 404: userMsg = "Requested dataset or resource not found."; break;
+        case 413: userMsg = "File size exceeds maximum allowed 10MB limit."; break;
+        case 422: userMsg = "Unprocessable payload parameters."; break;
+        case 429: userMsg = "Rate limit exceeded. Please wait a moment."; break;
+        case 502:
+        case 503:
+        case 504: userMsg = "Analysis service is warming up or temporarily busy."; break;
+        default: userMsg = `Server error (${res.status}).`; break;
+      }
+    }
+    throw new Error(userMsg);
   }
+
   return res.json();
 }
 

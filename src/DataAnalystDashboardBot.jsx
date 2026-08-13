@@ -2147,6 +2147,17 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               <button
                 disabled={selectedTask !== "clustering" && !selectedTarget}
                 onClick={() => {
+                  if (selectedTask !== "clustering") {
+                    if (!selectedTarget) {
+                      setMlTrainError("Please select a target variable.");
+                      return;
+                    }
+                    const targetValues = new Set(currentRows.map(r => r[selectedTarget]).filter(v => v !== null && v !== undefined && String(v).trim() !== ""));
+                    if (targetValues.size < 2) {
+                      setMlTrainError(`Target column "${selectedTarget}" contains constant or uniform values. Machine learning requires at least two distinct values to train.`);
+                      return;
+                    }
+                  }
                   setMlTrainStage("loading");
                   setMlTrainError("");
                   const payload = {
@@ -2593,6 +2604,14 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               <button
                 disabled={!selectedDateCol || !selectedTargetCol || forecastTrainStage === "loading"}
                 onClick={() => {
+                  if (!selectedDateCol || !selectedTargetCol) {
+                    setForecastTrainError("Please select both a date column and a numeric target column.");
+                    return;
+                  }
+                  if (currentRows.length < 3) {
+                    setForecastTrainError("Time-series forecasting requires at least 3 historical data points.");
+                    return;
+                  }
                   setForecastTrainStage("loading");
                   setForecastTrainError("");
                   const payload = {
