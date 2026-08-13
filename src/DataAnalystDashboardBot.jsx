@@ -3389,22 +3389,29 @@ export default function DataAnalystDashboardBot({ currentView }) {
       return `**Dataset Executive Overview:**\n• Dataset Name: **${active?.name || "Uploaded Data"}**\n• Size: **${rows.length.toLocaleString()} rows** × **${(stats || []).length} columns**\n• Quality Score: **${score}%**\n• Key Numeric Variables: ${numCols.map(c => c.name).join(", ") || "None"}\n\nExplore interactive KPIs, category breakdowns, and trend charts on the **Dashboard** above!`;
     }
 
-    // 6. Specific column metrics queries
+    // 6. Specific column metrics queries (typo-tolerant)
     for (const col of numCols) {
       const cName = col.name.toLowerCase();
-      if (q.includes(cName)) {
-        if (q.includes("average") || q.includes("avg") || q.includes("mean")) {
-          return `The average of **${col.name}** is **${col.mean !== undefined ? col.mean.toLocaleString() : "N/A"}** across ${rows.length.toLocaleString()} rows (range: ${col.min} to ${col.max}).`;
-        }
-        if (q.includes("sum") || q.includes("total")) {
+      // Match exact column name, or token match for short/clean column names
+      const tokens = q.split(/\s+/);
+      const matchesCol = q.includes(cName) || tokens.some(t => t === cName || (cName.length > 2 && t.includes(cName)));
+      
+      if (matchesCol) {
+        const isSum = /sum|tot[al]*/i.test(q);
+        const isMax = /max|high|top/i.test(q);
+        const isMin = /min|low|bottom/i.test(q);
+        
+        if (isSum) {
           return `The total sum of **${col.name}** is **${col.sum !== undefined ? col.sum.toLocaleString() : "N/A"}**.`;
         }
-        if (q.includes("max") || q.includes("highest")) {
+        if (isMax) {
           return `The maximum value of **${col.name}** is **${col.max}**.`;
         }
-        if (q.includes("min") || q.includes("lowest")) {
+        if (isMin) {
           return `The minimum value of **${col.name}** is **${col.min}**.`;
         }
+        // Default for average / mean queries or general metric questions (including typos like avarage, averge, avrg, etc.)
+        return `The average of **${col.name}** is **${col.mean !== undefined ? col.mean.toLocaleString() : "N/A"}** across ${rows.length.toLocaleString()} rows (range: ${col.min} to ${col.max}).`;
       }
     }
     for (const col of catCols) {
