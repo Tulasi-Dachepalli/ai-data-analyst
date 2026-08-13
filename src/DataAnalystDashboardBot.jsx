@@ -3200,45 +3200,78 @@ export default function DataAnalystDashboardBot({ currentView }) {
       setLoading(true);
       setLoadingLabel("Uploading and profiling dataset…");
       try {
-        // 1. Upload to Node.js backend which proxies to Python FastAPI for profiling
-        const profile = await api.uploadDatasetFile(file);
-        if (!profile) {
-          setLoading(false);
-          continue;
+        let profile = null;
+        try {
+          profile = await api.uploadDatasetFile(file);
+        } catch (apiErr) {
+          console.warn("Backend profiling service unavailable — using resilient client-side parser fallback:", apiErr);
         }
 
-        const rows = profile.rows_data;
-        const cleanCols = profile.columns_list;
-        const stats = mapBackendStats(profile.columns_info);
-        const quality = {
-          score: profile.quality_score,
-          missingCells: profile.missing_cells,
-          missingRate: profile.missing_percentage,
-          duplicateRows: profile.duplicate_rows
-        };
+        let rows = [];
+        let cleanCols = [];
+        let stats = [];
+        let quality = { score: 95, missingCells: 0, missingRate: 0, duplicateRows: 0 };
+        let isRawText = false;
+        let rawText = "";
+
+        if (profile && profile.rows_data) {
+          rows = profile.rows_data;
+          cleanCols = profile.columns_list;
+          stats = mapBackendStats(profile.columns_info);
+          quality = {
+            score: profile.quality_score,
+            missingCells: profile.missing_cells,
+            missingRate: profile.missing_percentage,
+            duplicateRows: profile.duplicate_rows
+          };
+        } else {
+          // Robust client-side fallback if backend is sleeping or unreachable
+          const parsed = await parseFile(file);
+          if (parsed.isRawText) {
+            isRawText = true;
+            rawText = parsed.rawText || "";
+          } else {
+            rows = parsed.rows || [];
+            cleanCols = parsed.columns || (rows.length ? Object.keys(rows[0]) : []);
+            stats = cleanCols.map(col => computeColumnStats(rows, col));
+            
+            let missingCount = 0;
+            const totalCells = (rows.length * cleanCols.length) || 1;
+            rows.forEach(r => {
+              cleanCols.forEach(c => {
+                if (r[c] === null || r[c] === undefined || String(r[c]).trim() === "") missingCount++;
+              });
+            });
+            quality = {
+              score: Math.max(0, Math.round(100 - (missingCount / totalCells) * 100)),
+              missingCells: missingCount,
+              missingRate: +((missingCount / totalCells) * 100).toFixed(1),
+              duplicateRows: 0
+            };
+          }
+        }
 
         const id = Date.now() + "-" + file.name;
         const initialMessages = [{ role: "user", kind: "file", fileName: file.name, rowCount: rows.length, colCount: cleanCols.length }];
         const thread = {
           id, name: file.name, rows, columns: cleanCols, stats, quality, dashboard: null,
-          messages: initialMessages, loaded: true, serverId: null, isRawText: false, rawText: ""
+          messages: initialMessages, loaded: true, serverId: null, isRawText, rawText
         };
         setThreads(prev => [thread, ...prev]);
         setActiveId(id);
 
         let serverId = null;
         try {
-          const created = await api.createDataset({ name: file.name, rows, columns: cleanCols, stats, quality, messages: initialMessages, isRawText: false, rawText: "" });
+          const created = await api.createDataset({ name: file.name, rows, columns: cleanCols, stats, quality, messages: initialMessages, isRawText, rawText });
           serverId = created?.dataset?.id || null;
           if (serverId) updateThread(id, t => ({ ...t, serverId }));
         } catch (err) {
           console.error("Failed to save dataset — continuing without persistence:", err);
         }
 
-        generateOverview(id, stats, rows.length, rows, quality, serverId, false, "");
+        generateOverview(id, stats, rows.length, rows, quality, serverId, isRawText, rawText);
       } catch (err) { 
-        console.error("Profiling error:", err);
-        alert(err.message || "Failed to parse and profile the uploaded dataset.");
+        console.error("Resilient upload handling error:", err);
         setLoading(false);
       }
     }
