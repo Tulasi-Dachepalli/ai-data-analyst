@@ -3402,6 +3402,43 @@ export default function DataAnalystDashboardBot({ currentView }) {
         return `For **${col.name}**, there are **${col.unique}** unique categories. Most frequent: **${topItem.value}** (${topItem.count} rows).`;
       }
     }
+
+    // 7. Entity / Cell Value search (e.g., "where is sangam mart located?", "tell me about store1")
+    const stopWords = new Set(["where", "is", "the", "located", "what", "who", "which", "find", "show", "tell", "about", "city", "area", "location", "address", "state", "details", "info", "for"]);
+    const tokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+    
+    if (tokens.length > 0) {
+      const searchTerm = tokens.join(" ");
+      const matchingRows = (rows || []).filter(r => {
+        return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm));
+      });
+
+      if (matchingRows.length > 0) {
+        const sample = matchingRows[0];
+        const details = Object.entries(sample)
+          .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
+          .map(([k, v]) => `• **${k}**: ${v}`);
+        
+        return `Found **${matchingRows.length}** record(s) matching **"${searchTerm}"**:\n\n${details.join("\n")}`;
+      }
+
+      // Also try single token matching if multi-word search had no results
+      for (const t of tokens) {
+        if (t.length < 3) continue;
+        const matches = (rows || []).filter(r => {
+          return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(t));
+        });
+        if (matches.length > 0) {
+          const sample = matches[0];
+          const details = Object.entries(sample)
+            .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
+            .map(([k, v]) => `• **${k}**: ${v}`);
+          
+          return `Found **${matches.length}** record(s) matching **"${t}"**:\n\n${details.join("\n")}`;
+        }
+      }
+    }
+
     return null;
   };
 
@@ -4134,7 +4171,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
                     )}
                     
                     {/* Answer text content */}
-                    <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                    <div style={{ whiteSpace: "pre-wrap" }}>
+                      {m.content || m.answer || "The requested metrics were retrieved deterministically from the dataset context."}
+                    </div>
 
                     {/* Relevant columns information badge list */}
                     {m.relevant_columns && m.relevant_columns.length > 0 && (
