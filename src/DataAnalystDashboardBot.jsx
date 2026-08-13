@@ -1302,56 +1302,76 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
   return (
     <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Dynamic Tab Bar */}
-      <div style={{ display: "flex", borderBottom: "1px solid var(--border-color)", paddingBottom: 1, gap: 16 }}>
-        <button
-          onClick={() => setActiveTab("dashboard")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "dashboard" ? "2px solid #3E6F8E" : "none", color: activeTab === "dashboard" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          📊 Dashboard
-        </button>
-        <button
-          onClick={() => setActiveTab("cleaning")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "cleaning" ? "2px solid #3E6F8E" : "none", color: activeTab === "cleaning" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          🧹 Data Cleaning
-        </button>
-        <button
-          onClick={() => setActiveTab("eda")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "eda" ? "2px solid #3E6F8E" : "none", color: activeTab === "eda" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          🔍 EDA Insights
-        </button>
-        <button
-          onClick={() => setActiveTab("stats")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "stats" ? "2px solid #3E6F8E" : "none", color: activeTab === "stats" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          📊 Stats Report
-        </button>
-        <button
-          onClick={() => setActiveTab("ml")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "ml" ? "2px solid #3E6F8E" : "none", color: activeTab === "ml" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          🤖 ML Modeling
-        </button>
-        <button
-          onClick={() => setActiveTab("forecast")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "forecast" ? "2px solid #3E6F8E" : "none", color: activeTab === "forecast" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          📈 Forecasting
-        </button>
-        <button
-          onClick={() => setActiveTab("insights_tab")}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "insights_tab" ? "2px solid #3E6F8E" : "none", color: activeTab === "insights_tab" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          💡 AI Insights
-        </button>
-        <button
-          onClick={() => { setActiveTab("data"); setDataPage(0); }}
-          style={{ background: "none", border: "none", borderBottom: activeTab === "data" ? "2px solid #3E6F8E" : "none", color: activeTab === "data" ? "var(--text-primary)" : "var(--text-muted)", fontSize: 13.5, fontWeight: 600, padding: "6px 0", cursor: "pointer" }}
-        >
-          📋 Raw Data
-        </button>
+      {/* Dynamic Tab Bar with Copilot Role Badges */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid var(--border-color)", paddingBottom: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", background: "var(--bg-hover)", padding: "2px 8px", borderRadius: 4 }}>
+            🤖 AI Copilot Mode
+          </span>
+          <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+            {["dashboard", "cleaning", "eda", "stats", "insights_tab", "data"].includes(activeTab) ? "📊 Data Analyst Mode — Business KPIs, EDA & Reports" : "🧠 Data Scientist Mode — ML Predictive Models & Forecasting"}
+          </span>
+        </div>
+
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          {/* Analyst Mode Group */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--bg-primary)", padding: "3px 6px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#3E6F8E", paddingRight: 4 }}>📊 ANALYST:</span>
+            {[
+              { id: "dashboard", label: "Dashboard" },
+              { id: "cleaning", label: "Cleaning" },
+              { id: "eda", label: "EDA Insights" },
+              { id: "stats", label: "Stats Report" },
+              { id: "insights_tab", label: "AI Insights" },
+              { id: "data", label: "Raw Data" }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); if (tab.id === "data") setDataPage(0); }}
+                style={{
+                  background: activeTab === tab.id ? "var(--accent-color, #0F172A)" : "none",
+                  color: activeTab === tab.id ? "#FFF" : "var(--text-secondary)",
+                  border: "none",
+                  borderRadius: 4,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Scientist Mode Group */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--bg-primary)", padding: "3px 6px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#8B5CF6", paddingRight: 4 }}>🧠 SCIENTIST:</span>
+            {[
+              { id: "ml", label: "🤖 ML Modeling" },
+              { id: "forecast", label: "📈 Forecasting" }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  background: activeTab === tab.id ? "#8B5CF6" : "none",
+                  color: activeTab === tab.id ? "#FFF" : "var(--text-secondary)",
+                  border: "none",
+                  borderRadius: 4,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "4px 8px",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {activeTab === "dashboard" && (
