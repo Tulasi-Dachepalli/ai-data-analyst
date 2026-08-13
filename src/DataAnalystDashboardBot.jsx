@@ -3742,7 +3742,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
     if (q.includes("correlation") || q.includes("relationship") || q.includes("related") || q.includes("correlate")) {
       const corrs = dashboard?.correlations || [];
       if (corrs.length > 0) {
-        const list = corrs.map(c => `• **${c.colA}** vs **${c.colB}**: ${c.r.toFixed(2)} (${correlationLabel(c.r)})`);
+        const list = corrs.map(c => `• **${c.colA}** vs **${c.colB}**: ${c.r != null ? c.r.toFixed(2) : "0.00"} (${correlationLabel(c.r ?? 0)})`);
         return `**Key Numeric Correlations:**\n${list.join("\n")}`;
       }
       return `No strong correlations (r ≥ 0.5) were detected between numeric variables in this dataset.`;
@@ -4009,12 +4009,12 @@ export default function DataAnalystDashboardBot({ currentView }) {
           ["Best Predictor", ml.predictorCol || ml.predictors?.join(", ")],
           ["Training Size (80%)", ml.trainSize],
           ["Test Validation Size (20%)", ml.testSize],
-          ["Train Set R2 Accuracy", `${(ml.trainR2 * 100).toFixed(1)}%`],
-          ["Test Set Validation R2", `${(ml.testR2 * 100).toFixed(1)}%`],
+          ["Train Set R2 Accuracy", `${ml.trainR2 != null ? (ml.trainR2 * 100).toFixed(1) : 0}%`],
+          ["Test Set Validation R2", `${ml.testR2 != null ? (ml.testR2 * 100).toFixed(1) : 0}%`],
           [],
           ["SAMPLE TEST SET PREDICTIONS (ACTUAL VS PREDICTED)"],
           ["Predictor Value", "Actual Target Value", "Predicted Target Value", "Prediction Error"]
-        ].concat((ml.testPredictions || []).map(p => [p.input ?? "", p.actual, p.predicted, +(p.actual - p.predicted).toFixed(2)]));
+        ].concat((ml.testPredictions || []).map(p => [p.input ?? "", p.actual ?? "", p.predicted ?? "", (p.actual != null && p.predicted != null) ? +(p.actual - p.predicted).toFixed(2) : 0]));
         XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(mlRows), "ML Modeling Info");
       }
 
@@ -4072,8 +4072,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
       });
       if (outlierRows.length) XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(outlierRows), "Outliers");
 
-      if (thread.dashboard.correlations && thread.dashboard.correlations.length) {
-        const corrRows = thread.dashboard.correlations.map(c => ({ column_a: c.colA, column_b: c.colB, correlation: c.r, strength: correlationLabel(c.r) }));
+      if (thread?.dashboard?.correlations?.length) {
+        const corrRows = thread.dashboard.correlations.map(c => ({ column_a: c.colA, column_b: c.colB, correlation: c.r, strength: correlationLabel(c.r ?? 0) }));
         XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(corrRows), "Correlations");
       }
 
