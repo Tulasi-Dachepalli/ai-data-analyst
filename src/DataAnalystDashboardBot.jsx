@@ -3331,6 +3331,44 @@ export default function DataAnalystDashboardBot({ currentView }) {
     const numCols = (stats || []).filter(s => s.type === "numeric");
     const catCols = (stats || []).filter(s => s.type === "categorical");
 
+    // 1. Forecasting / Future Projections queries
+    if (q.includes("forecast") || q.includes("predict") || q.includes("future") || q.includes("next ")) {
+      let targetColName = "your target metric";
+      for (const nCol of numCols) {
+        if (q.includes(nCol.name.toLowerCase())) { targetColName = nCol.name; break; }
+      }
+      if (targetColName === "your target metric" && numCols.length > 0) targetColName = numCols[0].name;
+
+      return `To run time-series forecasting for **${targetColName}**, click on the **📈 Forecasting** tab above!\n\nThere you can select your date column, target variable, and horizon to train Prophet, ARIMA, and ETS models with projected confidence intervals.`;
+    }
+
+    // 2. Grouped Aggregation / Breakdown queries (e.g., "average Sales by Category", "Sales by Region")
+    const hasByWord = q.includes(" by ");
+    let matchedNumCol = null;
+    let matchedCatCol = null;
+
+    for (const nCol of numCols) {
+      if (q.includes(nCol.name.toLowerCase())) { matchedNumCol = nCol; break; }
+    }
+    for (const cCol of catCols) {
+      if (q.includes(cCol.name.toLowerCase())) { matchedCatCol = cCol; break; }
+    }
+
+    if (hasByWord || (matchedNumCol && matchedCatCol)) {
+      const nCol = matchedNumCol || (numCols.length ? numCols[0] : null);
+      const cCol = matchedCatCol || (catCols.length ? catCols[0] : null);
+      
+      if (nCol && cCol) {
+        const isSum = /sum|tot[al]*/i.test(q);
+        const aggType = isSum ? "sum" : "avg";
+        const aggName = isSum ? "Total Sum" : "Average";
+        const aggData = computeAggregate(rows, cCol.name, nCol.name, aggType);
+        
+        const list = aggData.map(item => `• **${item.group}**: ${item.value.toLocaleString()}`);
+        return `**${aggName} of ${nCol.name} by ${cCol.name}:**\n\n${list.join("\n")}`;
+      }
+    }
+
     // 1. Outlier / Unusual values queries
     if (q.includes("unusual") || q.includes("outlier") || q.includes("anomaly") || q.includes("anomalies")) {
       const outlierList = [];
