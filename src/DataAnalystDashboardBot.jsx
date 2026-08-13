@@ -997,6 +997,10 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       setActiveTab("eda");
     } else if (currentView === "reports") {
       setActiveTab("stats");
+    } else if (currentView === "ai-analyst") {
+      setActiveTab("insights_tab");
+    } else if (currentView === "overview" || currentView === "dashboard") {
+      setActiveTab("dashboard");
     }
   }, [currentView]);
 
