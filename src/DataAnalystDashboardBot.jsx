@@ -240,6 +240,18 @@ async function callClaude(system, userText, { requestType, datasetId } = {}) {
   return data.text || "";
 }
 
+function renderFormattedText(text) {
+  if (!text) return null;
+  const str = String(text);
+  const parts = str.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
+      return <strong key={idx} style={{ fontWeight: 700, color: "var(--text-primary)" }}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
 function parseJSONSafe(text) {
   try {
     const cleaned = text.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -4172,7 +4184,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
                     
                     {/* Answer text content */}
                     <div style={{ whiteSpace: "pre-wrap" }}>
-                      {m.content || m.answer || "The requested metrics were retrieved deterministically from the dataset context."}
+                      {renderFormattedText(m.content || m.answer || "The requested metrics were retrieved deterministically from the dataset context.")}
                     </div>
 
                     {/* Relevant columns information badge list */}
@@ -4229,8 +4241,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
               }
 
               return (
-                <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", fontSize: 14, lineHeight: 1.65, color: "#2B2A27" }}>
-                  <div style={{ whiteSpace: "pre-wrap" }}>{m.content}</div>
+                <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", fontSize: 14, lineHeight: 1.65, color: "var(--text-primary)" }}>
+                  <div style={{ whiteSpace: "pre-wrap" }}>{renderFormattedText(m.content)}</div>
                   {m.kind === "text+chart" && (
                     <div style={{ marginTop: 10, background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 10 }}>
                       <ChartBlock chartType={m.chart.type} data={m.chart.data} metricLabel={m.chart.metricLabel} />
