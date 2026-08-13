@@ -627,7 +627,7 @@ function trainTestSplitAndFit(rows, columns, stats) {
   };
 }
 
-function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated }) {
+function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete }) {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dataPage, setDataPage] = useState(0);
   const [sandboxVal, setSandboxVal] = useState("");
@@ -1079,6 +1079,31 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleExportForecastCSV = () => {
+    if (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) return;
+    const headers = ["Date", "Predicted", "Lower_Bound", "Upper_Bound"];
+    const csvRows = [headers.join(",")];
+    forecastTrainResult.forecast.forEach(f => {
+      const dateVal = f.date ?? "";
+      const predVal = f.predicted !== undefined && f.predicted !== null ? f.predicted : "";
+      const lowerVal = f.lower !== undefined && f.lower !== null ? f.lower : "";
+      const upperVal = f.upper !== undefined && f.upper !== null ? f.upper : "";
+      const rowString = [
+        String(dateVal), String(predVal), String(lowerVal), String(upperVal)
+      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
+      csvRows.push(rowString);
+    });
+    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "forecast-projections.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -2361,6 +2386,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                         setForecastServerId(serverId);
                         setForecastTrainStage("loaded");
                         setForecastStage("compare");
+                        if (onForecastComplete) onForecastComplete(res, selectedDateCol, selectedTargetCol);
                       } else {
                         throw new Error("Invalid response received from forecasting engine.");
                       }
@@ -3360,51 +3386,6 @@ export default function DataAnalystDashboardBot({ currentView }) {
     if (activeId === t.id) setActiveId(null);
   };
 
-  const handleExportForecastCSV = () => {
-    if (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) return;
-    
-    const headers = ["Date", "Predicted", "Lower_Bound", "Upper_Bound"];
-    const csvRows = [headers.join(",")];
-    
-    forecastTrainResult.forecast.forEach(f => {
-      const dateVal = f.date ?? "";
-      const predVal = f.predicted !== undefined && f.predicted !== null ? f.predicted : "";
-      const lowerVal = f.lower !== undefined && f.lower !== null ? f.lower : "";
-      const upperVal = f.upper !== undefined && f.upper !== null ? f.upper : "";
-      
-      const rowString = [
-        String(dateVal),
-        String(predVal),
-        String(lowerVal),
-        String(upperVal)
-      ].map(val => `"${String(val).replace(/"/g, '""')}"`).join(",");
-      
-      csvRows.push(rowString);
-    });
-    
-    const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    
-    const sanitizeFileName = (name) => {
-      if (!name) return "dataset";
-      return name
-        .replace(/\.[^.]+$/, "")
-        .replace(/[\r\n]+/g, " ")
-        .replace(/[\\/:*?"<>|,]/g, "_")
-        .trim();
-    };
-    
-    const safeName = sanitizeFileName(active?.name || "dataset");
-    const fileName = `${safeName}-forecast-projections.csv`;
-    
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   const handleDownloadExcel = (thread) => {
     try {
@@ -3476,22 +3457,25 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
 
       // TIME-SERIES FORECAST SHEET (only if this thread ran forecasting)
-      if (forecastTrainResult && forecastServerId === thread.serverId) {
+      const _fc = thread.forecastResult || null;
+      const _fcDateCol = thread.forecastDateCol || "";
+      const _fcTargetCol = thread.forecastTargetCol || "";
+      if (_fc) {
         const forecastHeader = [
           ["TIME-SERIES FORECAST REPORT"],
-          ["Target Variable", selectedTargetCol || ""],
-          ["Chronological Date Column", selectedDateCol || ""],
-          ["Optimal Selected Model", forecastTrainResult.algorithm || ""],
-          ["Fitted Data Range", `${forecastTrainResult.training_start} to ${forecastTrainResult.training_end}`],
-          ["Historical Training Size", forecastTrainResult.training_rows || ""],
-          ["Validation Steps", forecastTrainResult.validation_rows || ""],
-          ["Seasonal Period Length", forecastTrainResult.insights?.seasonal_period ? `${forecastTrainResult.insights.seasonal_period} intervals` : "None"],
+          ["Target Variable", _fcTargetCol],
+          ["Chronological Date Column", _fcDateCol],
+          ["Optimal Selected Model", _fc.algorithm || ""],
+          ["Fitted Data Range", `${_fc.training_start} to ${_fc.training_end}`],
+          ["Historical Training Size", _fc.training_rows || ""],
+          ["Validation Steps", _fc.validation_rows || ""],
+          ["Seasonal Period Length", _fc.insights?.seasonal_period ? `${_fc.insights.seasonal_period} intervals` : "None"],
           [],
           ["MODEL PERFORMANCE METRICS (HOLDOUT EVALUATION)"],
           ["Algorithm", "RMSE Error", "MAE Error", "MAPE (%)", "sMAPE (%)"]
         ];
         
-        const metRows = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => [
+        const metRows = Object.entries(_fc.comparisons || {}).map(([algo, metrics]) => [
           algo,
           metrics.rmse ?? "",
           metrics.mae ?? "",
@@ -3502,13 +3486,13 @@ export default function DataAnalystDashboardBot({ currentView }) {
         const forecastSummary = forecastHeader.concat(metRows).concat([
           [],
           ["AUTOMATED AI TREND INSIGHTS"],
-          ["Trend Direction", forecastTrainResult.insights?.trend ?? ""],
-          ["Expected Growth Rate", `${forecastTrainResult.insights?.expected_growth ?? 0}%`],
-          ["Uncertainty Level", forecastTrainResult.insights?.uncertainty ?? ""],
+          ["Trend Direction", _fc.insights?.trend ?? ""],
+          ["Expected Growth Rate", `${_fc.insights?.expected_growth ?? 0}%`],
+          ["Uncertainty Level", _fc.insights?.uncertainty ?? ""],
           [],
           ["FORECASTED PROJECTIONS (FUTURE TIME STEPS)"],
           ["Date", "Forecasted Value (Predicted)", "Lower Bound (Confidence)", "Upper Bound (Confidence)"]
-        ]).concat((forecastTrainResult.forecast || []).map(f => [
+        ]).concat((_fc.forecast || []).map(f => [
           f.date ?? "",
           f.predicted !== undefined && f.predicted !== null ? f.predicted : "",
           f.lower !== undefined && f.lower !== null ? f.lower : "",
@@ -3591,8 +3575,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
 
       let forecastHTML = "";
-      if (forecastTrainResult && forecastServerId === thread.serverId) {
-        const forecastRowsHTML = (forecastTrainResult.forecast || []).map(f => `
+      const _fcH = thread.forecastResult || null;
+      if (_fcH) {
+        const forecastRowsHTML = (_fcH.forecast || []).map(f => `
           <tr>
             <td>${f.date ?? ""}</td>
             <td>${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
@@ -3601,7 +3586,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
           </tr>
         `).join("");
 
-        const comparisonsHTML = Object.entries(forecastTrainResult.comparisons || {}).map(([algo, metrics]) => `
+        const comparisonsHTML = Object.entries(_fcH.comparisons || {}).map(([algo, metrics]) => `
           <tr>
             <td><strong>${algo}</strong></td>
             <td>${metrics.rmse !== undefined && metrics.rmse !== null ? metrics.rmse.toFixed(3) : "-"}</td>
@@ -3613,9 +3598,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         forecastHTML = `
           <h2>📈 Time-Series Forecasting Model Summary</h2>
-          <p><strong>Selected Model:</strong> ${forecastTrainResult.algorithm} (trained on ${forecastTrainResult.training_rows} observations, frequency: ${forecastTrainResult.frequency})</p>
-          <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
-          <p><strong>AI Trend Direction:</strong> ${forecastTrainResult.insights?.trend ?? ""} (${forecastTrainResult.insights?.expected_growth ?? 0}% growth rate, uncertainty: ${forecastTrainResult.insights?.uncertainty ?? ""})</p>
+          <p><strong>Selected Model:</strong> ${_fcH.algorithm} (trained on ${_fcH.training_rows} observations, frequency: ${_fcH.frequency})</p>
+          <p><strong>Date Column:</strong> ${thread.forecastDateCol || ""} &middot; <strong>Target Column:</strong> ${thread.forecastTargetCol || ""}</p>
+          <p><strong>AI Trend Direction:</strong> ${_fcH.insights?.trend ?? ""} (${_fcH.insights?.expected_growth ?? 0}% growth rate, uncertainty: ${_fcH.insights?.uncertainty ?? ""})</p>
           
           <h3>Validation Metrics (Holdout Evaluation)</h3>
           <table>
@@ -3736,14 +3721,14 @@ export default function DataAnalystDashboardBot({ currentView }) {
             <p><strong>Equation:</strong> ${ml.targetCol} = (${ml.slope} * ${ml.predictorCol}) + ${ml.intercept}</p>
           ` : "<p>No numeric columns available for regression modeling.</p>"}
 
-          ${forecastTrainResult && forecastServerId === thread.serverId ? `
+          ${thread.forecastResult ? `
             <h2>4. Time-Series Forecasting Model Report</h2>
-            <p><strong>Selected Model Algorithm:</strong> ${forecastTrainResult.algorithm}</p>
-            <p><strong>Date Column:</strong> ${selectedDateCol} &middot; <strong>Target Column:</strong> ${selectedTargetCol}</p>
-            <p><strong>Validation Score (RMSE):</strong> ${forecastTrainResult.metrics?.rmse !== undefined ? forecastTrainResult.metrics.rmse.toLocaleString() : "N/A"}</p>
-            <p><strong>Model Validation Mean Absolute Error (MAE):</strong> ${forecastTrainResult.metrics?.mae !== undefined ? forecastTrainResult.metrics.mae.toLocaleString() : "N/A"}</p>
-            <p><strong>Model Validation MAPE (%):</strong> ${forecastTrainResult.metrics?.mape !== undefined ? forecastTrainResult.metrics.mape.toFixed(2) + "%" : "N/A"}</p>
-            <p><strong>AI Growth Insight Trend:</strong> Expected ${forecastTrainResult.insights?.expected_growth ?? 0}% growth over future interval (${forecastTrainResult.insights?.trend ?? ""} trend with ${forecastTrainResult.insights?.uncertainty ?? ""} uncertainty)</p>
+            <p><strong>Selected Model Algorithm:</strong> ${thread.forecastResult.algorithm}</p>
+            <p><strong>Date Column:</strong> ${thread.forecastDateCol || ""} &middot; <strong>Target Column:</strong> ${thread.forecastTargetCol || ""}</p>
+            <p><strong>Validation Score (RMSE):</strong> ${thread.forecastResult.metrics?.rmse !== undefined ? forecastTrainResult.metrics.rmse.toLocaleString() : "N/A"}</p>
+            <p><strong>Model Validation Mean Absolute Error (MAE):</strong> ${thread.forecastResult.metrics?.mae !== undefined ? forecastTrainResult.metrics.mae.toLocaleString() : "N/A"}</p>
+            <p><strong>Model Validation MAPE (%):</strong> ${thread.forecastResult.metrics?.mape !== undefined ? forecastTrainResult.metrics.mape.toFixed(2) + "%" : "N/A"}</p>
+            <p><strong>AI Growth Insight Trend:</strong> Expected ${thread.forecastResult.insights?.expected_growth ?? 0}% growth over future interval (${thread.forecastResult.insights?.trend ?? ""} trend with ${thread.forecastResult.insights?.uncertainty ?? ""} uncertainty)</p>
             
             <h3>Future Forecast Predictions Table</h3>
             <table>
@@ -3756,7 +3741,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 </tr>
               </thead>
               <tbody>
-                ${(forecastTrainResult.forecast || []).map(f => `
+                ${(thread.forecastResult.forecast || []).map(f => `
                   <tr>
                     <td style="border:1px solid #DDD8CE;padding:6px;">${f.date ?? ""}</td>
                     <td style="border:1px solid #DDD8CE;padding:6px;">${f.predicted !== undefined && f.predicted !== null ? f.predicted.toFixed(2) : ""}</td>
@@ -3971,6 +3956,14 @@ export default function DataAnalystDashboardBot({ currentView }) {
                     currentView={currentView}
                     serverId={active.serverId}
                     onDatasetCreated={handleDatasetCreated}
+                    onForecastComplete={(result, dateCol, targetCol) => {
+                      updateThread(active.id, prev => ({
+                        ...prev,
+                        forecastResult: result,
+                        forecastDateCol: dateCol,
+                        forecastTargetCol: targetCol
+                      }));
+                    }}
                   />
                 </div>
               );
