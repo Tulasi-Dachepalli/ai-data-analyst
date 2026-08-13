@@ -17,21 +17,41 @@ export default class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: "#F8FAFC", color: "#0F172A", fontFamily: "sans-serif", gap: 16, padding: 20, textAlign: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#F8FAFC", color: "#0F172A", fontFamily: "sans-serif", gap: 16, padding: 20, textAlign: "center" }}>
           <div style={{ fontSize: 36 }}>📊</div>
           <div style={{ fontSize: 20, fontWeight: 700 }}>Data Analyst Workspace</div>
           <div style={{ fontSize: 13.5, color: "#64748B", maxWidth: 500, lineHeight: 1.6 }}>
-            A temporary display glitch occurred. Click the button below to instantly restore your workspace.
+            A temporary display glitch occurred. Click below to reload your workspace.
           </div>
-          <button
-            onClick={() => {
-              this.setState({ hasError: false });
-              window.location.reload();
-            }}
-            style={{ background: "#0F172A", color: "#FFFFFF", border: "none", borderRadius: 8, padding: "10px 22px", fontSize: 13.5, fontWeight: 600, cursor: "pointer" }}
-          >
-            🔄 Restore Workspace
-          </button>
+
+          {this.state.error && (
+            <div style={{ background: "#FFF1F2", border: "1px solid #FECDD3", color: "#9F1239", padding: "10px 14px", borderRadius: 6, fontSize: 12, fontFamily: "monospace", maxWidth: 600, overflowX: "auto", textAlign: "left" }}>
+              <strong>Error Details:</strong> {String(this.state.error.message || this.state.error)}
+            </div>
+          )}
+
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              style={{ background: "#0F172A", color: "#FFFFFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              🔄 Reload Workspace
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("aida_token");
+                localStorage.removeItem("aida_user");
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              style={{ background: "#E2E8F0", color: "#0F172A", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            >
+              🧹 Reset Session & Login
+            </button>
+          </div>
         </div>
       );
     }
