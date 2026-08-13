@@ -547,7 +547,8 @@ router.post("/:id/chat", requireTokenQuota, async (req, res) => {
 
     if (!pythonStatsRes.ok) {
       const errText = await pythonStatsRes.text();
-      return res.status(pythonStatsRes.status).json({ error: `Chat nlp failed during stats lookup: ${errText}` });
+      const cleanErr = errText.startsWith("<") ? "Analysis engine service is temporarily unavailable." : errText;
+      return res.status(pythonStatsRes.status).json({ error: `Chat NLP unavailable: ${cleanErr}` });
     }
     const statisticsData = await pythonStatsRes.json();
 
@@ -594,7 +595,8 @@ router.post("/:id/chat", requireTokenQuota, async (req, res) => {
 
     if (!pythonChatRes.ok) {
       const errText = await pythonChatRes.text();
-      return res.status(pythonChatRes.status).json({ error: `NLQ Chat Engine failed: ${errText}` });
+      const cleanErr = errText.startsWith("<") ? "Analysis engine service is temporarily unavailable." : errText;
+      return res.status(pythonChatRes.status).json({ error: `NLQ Chat Engine unavailable: ${cleanErr}` });
     }
 
     const chatResult = await pythonChatRes.json();
