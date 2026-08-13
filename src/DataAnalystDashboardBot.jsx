@@ -3314,11 +3314,70 @@ export default function DataAnalystDashboardBot({ currentView }) {
     }
   };
 
-  const answerQueryLocally = (question, rows, stats) => {
+  const answerQueryLocally = (question, rows, stats, quality, dashboard) => {
     const q = question.toLowerCase();
     const numCols = (stats || []).filter(s => s.type === "numeric");
     const catCols = (stats || []).filter(s => s.type === "categorical");
 
+    // 1. Outlier / Unusual values queries
+    if (q.includes("unusual") || q.includes("outlier") || q.includes("anomaly") || q.includes("anomalies")) {
+      const outlierList = [];
+      const outliersObj = dashboard?.outliers || {};
+      
+      Object.entries(outliersObj).forEach(([col, info]) => {
+        if (info && info.rows && info.rows.length > 0) {
+          outlierList.push(`**${col}** (${info.rows.length} unusual values outside ${info.lower}–${info.upper})`);
+        }
+      });
+
+      if (outlierList.length === 0 && numCols.length > 0) {
+        numCols.forEach(col => {
+          const res = detectOutliers(rows, col.name);
+          if (res && res.rows && res.rows.length > 0) {
+            outlierList.push(`**${col.name}** (${res.rows.length} unusual values outside ${res.lower}–${res.upper})`);
+          }
+        });
+      }
+
+      if (outlierList.length > 0) {
+        return `Yes, unusual values/outliers were detected in the dataset:\n\n• ${outlierList.join("\n• ")}\n\nYou can review and clean these in the **Data Cleaning** or **EDA Insights** tab.`;
+      } else {
+        return `No significant unusual values or extreme statistical outliers were detected in the numeric columns of this dataset.`;
+      }
+    }
+
+    // 2. Data Quality / Missing / Duplicates queries
+    if (q.includes("quality") || q.includes("missing") || q.includes("duplicate") || q.includes("null") || q.includes("clean")) {
+      const score = quality?.score ?? 100;
+      const missing = quality?.missingCells ?? 0;
+      const missingPct = quality?.missingRate ?? 0;
+      const dupes = quality?.duplicateRows ?? 0;
+      return `**Data Quality Summary:**\n• Overall Quality Score: **${score}%**\n• Missing Cells: **${missing.toLocaleString()}** (${missingPct}% missing rate)\n• Duplicate Rows: **${dupes.toLocaleString()}**\n\nUse the **Data Cleaning** tab to automatically resolve missing values or duplicates with one click.`;
+    }
+
+    // 3. Row count / Column count / Size queries
+    if (q.includes("row") || q.includes("column") || q.includes("size") || q.includes("how many") || q.includes("count of rows")) {
+      const colNames = (stats || []).map(s => s.name).join(", ");
+      return `This dataset has **${rows.length.toLocaleString()} rows** and **${(stats || []).length} columns**.\n\nColumns included: ${colNames}`;
+    }
+
+    // 4. Correlation / Relationship queries
+    if (q.includes("correlation") || q.includes("relationship") || q.includes("related") || q.includes("correlate")) {
+      const corrs = dashboard?.correlations || [];
+      if (corrs.length > 0) {
+        const list = corrs.map(c => `• **${c.colA}** vs **${c.colB}**: ${c.r.toFixed(2)} (${correlationLabel(c.r)})`);
+        return `**Key Numeric Correlations:**\n${list.join("\n")}`;
+      }
+      return `No strong correlations (r ≥ 0.5) were detected between numeric variables in this dataset.`;
+    }
+
+    // 5. Summary / Overview / Tell me about queries
+    if (q.includes("summary") || q.includes("overview") || q.includes("tell me about") || q.includes("insights")) {
+      const score = quality?.score ?? 100;
+      return `**Dataset Executive Overview:**\n• Dataset Name: **${active?.name || "Uploaded Data"}**\n• Size: **${rows.length.toLocaleString()} rows** × **${(stats || []).length} columns**\n• Quality Score: **${score}%**\n• Key Numeric Variables: ${numCols.map(c => c.name).join(", ") || "None"}\n\nExplore interactive KPIs, category breakdowns, and trend charts on the **Dashboard** above!`;
+    }
+
+    // 6. Specific column metrics queries
     for (const col of numCols) {
       const cName = col.name.toLowerCase();
       if (q.includes(cName)) {
@@ -3376,7 +3435,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
       if (!serverId) {
         // Local evaluation fallback if dataset wasn't saved on backend
-        const localAnswer = answerQueryLocally(question, active.rows, active.stats);
+        const localAnswer = answerQueryLocally(question, active.rows, active.stats, active.quality, active.dashboard);
         if (localAnswer) {
           updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: localAnswer, confidence_score: 0.95 }] }));
           setLoading(false);
@@ -3396,7 +3455,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
     } catch (err) {
       console.error("Secure chat endpoint error:", err);
       // Try local answer fallback first
-      const localAnswer = answerQueryLocally(question, active.rows, active.stats);
+      const localAnswer = answerQueryLocally(question, active.rows, active.stats, active.quality, active.dashboard);
       let answerText = localAnswer;
       if (!answerText) {
         let rawErrMsg = err.message || "";
