@@ -893,32 +893,43 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     const catCols = safeStats.filter(s => s.type === "categorical");
     const dateCols = safeStats.filter(s => s.type === "date");
 
-    const numericStats = numCols.map(c => ({
-      column: c.name,
-      count: c.count || safeRows.length,
-      missing: c.missing || 0,
-      mean: c.mean ?? "N/A",
-      std: "N/A",
-      min: c.min ?? "N/A",
-      median: c.median ?? "N/A",
-      max: c.max ?? "N/A"
-    }));
+    const numeric_stats = {};
+    numCols.forEach(c => {
+      numeric_stats[c.name] = {
+        mean: c.mean ?? "N/A",
+        median: c.median ?? c.mean ?? "N/A",
+        min: c.min ?? "N/A",
+        max: c.max ?? "N/A",
+        std: c.std ?? "N/A",
+        skewness: 0,
+        outlier_count: 0
+      };
+    });
 
-    const categoricalStats = catCols.map(c => ({
-      column: c.name,
-      count: c.count || safeRows.length,
-      missing: c.missing || 0,
-      unique: c.unique || 0,
-      top: c.top?.[0]?.value ?? "N/A",
-      freq: c.top?.[0]?.count ?? 0
-    }));
+    const categorical_stats = {};
+    catCols.forEach(c => {
+      const topItems = (c.top || []).map(t => ({
+        value: String(t.value ?? "Unknown"),
+        count: t.count ?? 0,
+        percentage: safeRows.length ? +((t.count / safeRows.length) * 100).toFixed(1) : 0
+      }));
+
+      categorical_stats[c.name] = {
+        unique: c.unique || topItems.length,
+        frequencies: topItems
+      };
+    });
 
     return {
       numeric_count: numCols.length,
       categorical_count: catCols.length,
       datetime_count: dateCols.length,
-      numeric: numericStats,
-      categorical: categoricalStats
+      numeric_stats,
+      categorical_stats,
+      correlation: {
+        columns: numCols.map(c => c.name),
+        matrix: []
+      }
     };
   };
 
@@ -1819,7 +1830,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                       </tr>
                     </thead>
                     <tbody>
-                      {Object.entries(statisticsData.numeric_stats).map(([col, s]) => (
+                      {Object.entries(statisticsData.numeric_stats || {}).map(([col, s]) => (
                         <tr key={col} style={{ borderBottom: "1px solid var(--border-color)" }}>
                           <td style={{ padding: "8px 10px", fontWeight: 600, color: "var(--text-primary)" }}>{col}</td>
                           <td style={{ padding: "8px 10px", color: "var(--text-secondary)" }}>{s.mean != null ? s.mean.toLocaleString() : "-"}</td>
@@ -1838,17 +1849,17 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               </div>
 
               {/* Categorical Breakdowns Grid */}
-              {Object.keys(statisticsData.categorical_stats).length > 0 && (
+              {Object.keys(statisticsData.categorical_stats || {}).length > 0 && (
                 <div>
                   <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>🏷 Categorical Frequencies Summary</div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-                    {Object.entries(statisticsData.categorical_stats).map(([col, s]) => (
+                    {Object.entries(statisticsData.categorical_stats || {}).map(([col, s]) => (
                       <div key={col} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12 }}>
                         <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", borderBottom: "1px solid var(--border-color)", paddingBottom: 4, marginBottom: 6 }}>
                           {col} <span style={{ fontSize: 10.5, fontWeight: 400, color: "var(--text-muted)" }}>({s.unique} unique)</span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11.5 }}>
-                          {s.frequencies.map((f, idx) => (
+                          {(s.frequencies || []).map((f, idx) => (
                             <div key={idx} style={{ display: "flex", justifyContent: "space-between", color: "var(--text-secondary)" }}>
                               <span style={{ textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap", maxWidth: 140 }}>{f.value}</span>
                               <span style={{ fontWeight: 600 }}>{f.count} ({f.percentage}%)</span>
