@@ -3930,40 +3930,32 @@ export default function DataAnalystDashboardBot({ currentView }) {
     }
 
     // 7. Entity / Cell Value search (e.g., "where is sangam mart located?", "tell me about store1")
-    const stopWords = new Set(["where", "is", "the", "located", "what", "who", "which", "find", "show", "tell", "about", "city", "area", "location", "address", "state", "details", "info", "for"]);
-    const tokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+    const isAggOrListQuery = /highest|most|longest|lowest|least|max|min|average|sum|list|all|count/i.test(q);
     
-    if (tokens.length > 0) {
-      const searchTerm = tokens.join(" ");
-      const matchingRows = (rows || []).filter(r => {
-        return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm));
-      });
-
-      if (matchingRows.length > 0 && matchingRows[0] && typeof matchingRows[0] === "object") {
-        const sample = matchingRows[0];
-        const details = Object.entries(sample)
-          .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
-          .map(([k, v]) => `• **${k}**: ${v}`);
-        
-        return `Found **${matchingRows.length}** record(s) matching **"${searchTerm}"**:\n\n${details.join("\n")}`;
-      }
-
-      // Also try single token matching if multi-word search had no results
-      for (const t of tokens) {
-        if (t.length < 3) continue;
-        const matches = (rows || []).filter(r => {
-          return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(t));
+    if (!isAggOrListQuery) {
+      const stopWords = new Set(["where", "is", "the", "located", "what", "who", "which", "find", "show", "tell", "about", "city", "area", "location", "address", "state", "details", "info", "for"]);
+      const tokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+      
+      if (tokens.length > 0) {
+        const searchTerm = tokens.join(" ");
+        const matchingRows = (rows || []).filter(r => {
+          return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm));
         });
-        if (matches.length > 0 && matches[0] && typeof matches[0] === "object") {
-          const sample = matches[0];
+
+        if (matchingRows.length > 0 && matchingRows[0] && typeof matchingRows[0] === "object") {
+          const sample = matchingRows[0];
           const details = Object.entries(sample)
             .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
             .map(([k, v]) => `• **${k}**: ${v}`);
           
-          return `Found **${matches.length}** record(s) matching **"${t}"**:\n\n${details.join("\n")}`;
+          return `Found **${matchingRows.length}** record(s) matching **"${searchTerm}"**:\n\n${details.join("\n")}`;
         }
       }
     }
+
+    // 8. Explicit fallback if question cannot be structured
+    const colList = (stats || []).map(s => s.name).filter(n => n && !n.startsWith("__")).join(", ");
+    return `I couldn't determine a calculation for **"${question}"** from the structured columns in this dataset.\n\n**Available dataset fields:** ${colList || "All fields"}.`;
 
     return null;
   };
