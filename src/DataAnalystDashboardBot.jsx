@@ -35,7 +35,7 @@ function computeColumnStats(rows, col) {
     const sum = nums.reduce((a, b) => a + b, 0);
     const mean = nums.length ? sum / nums.length : 0;
     const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
-    return { ...base, sum: +sum.toFixed(2), min: sorted[0], max: sorted[sorted.length - 1], mean: +mean.toFixed(2), median: +median.toFixed(2) };
+    return { ...base, sum: +sum.toFixed(2), min: sorted.length ? sorted[0] : 0, max: sorted.length ? sorted[sorted.length - 1] : 0, mean: +mean.toFixed(2), median: +median.toFixed(2) };
   }
   if (type === "categorical") {
     const counts = {};
@@ -278,7 +278,7 @@ function parseFile(file) {
         try {
           const parsed = JSON.parse(e.target.result);
           if (Array.isArray(parsed)) {
-            resolve({ rows: parsed, columns: Object.keys(parsed[0] || {}) });
+            resolve({ rows: parsed, columns: (parsed.length && parsed[0]) ? Object.keys(parsed[0]) : [] });
           } else {
             resolve({ rows: [], columns: [], isRawText: true, rawText: JSON.stringify(parsed, null, 2) });
           }
@@ -2707,7 +2707,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                       for (let i = 1; i <= forecastHorizon; i++) {
                         const d = new Date(now);
                         d.setMonth(d.getMonth() + i);
-                        const dateStr = d.toISOString().split("T")[0];
+                        const isoParts = d.toISOString().split("T");
+                        const dateStr = isoParts && isoParts.length ? isoParts[0] : "";
                         const projVal = +(baseMean * (1 + (i * 0.02))).toFixed(2);
                         horizonPoints.push({
                           ds: dateStr,
