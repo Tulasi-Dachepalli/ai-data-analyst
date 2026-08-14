@@ -439,9 +439,10 @@ function normalizeChartData(chartData, xAxisKey, yAxisKey) {
   const xK = xAxisKey || "group";
   const yK = yAxisKey || "value";
   return chartData.map(d => {
-    if (!d || typeof d !== "object") return { group: String(d), value: 0 };
-    const gVal = d.group !== undefined ? d.group : (d[xK] !== undefined ? d[xK] : Object.values(d)[0]);
-    const vVal = d.value !== undefined ? d.value : (d[yK] !== undefined ? d[yK] : (Object.values(d)[1] !== undefined ? Object.values(d)[1] : 0));
+    if (!d || typeof d !== "object") return { group: String(d ?? ""), value: 0 };
+    const vals = Object.values(d);
+    const gVal = d.group !== undefined ? d.group : (d[xK] !== undefined ? d[xK] : (vals.length > 0 ? vals[0] : ""));
+    const vVal = d.value !== undefined ? d.value : (d[yK] !== undefined ? d[yK] : (vals.length > 1 ? vals[1] : (vals.length > 0 ? vals[0] : 0)));
     return { ...d, group: gVal, value: vVal };
   });
 }
@@ -2460,14 +2461,14 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📐 Tested Cluster Coefficients (Silhouette Scores)</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {Object.entries(mlTrainResult.silhouette_scores).map(([kVal, score]) => (
+                        {Object.entries(mlTrainResult?.silhouette_scores || {}).map(([kVal, score]) => (
                           <div key={kVal} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--text-secondary)" }}>
                             <span style={{ width: 80, fontWeight: 600 }}>k = {kVal} clusters:</span>
                             <div style={{ flex: 1, height: 8, background: "var(--bg-primary)", borderRadius: 4, overflow: "hidden" }}>
-                              <div style={{ width: `${Math.max(0, score) * 100}%`, height: "100%", background: parseInt(kVal) === mlTrainResult.best_k ? "#C98A3E" : "#94A3B8" }} />
+                              <div style={{ width: `${Math.max(0, score) * 100}%`, height: "100%", background: parseInt(kVal) === mlTrainResult?.best_k ? "#C98A3E" : "#94A3B8" }} />
                             </div>
                             <span style={{ width: 40, textAlign: "right" }}>{score}</span>
-                            {parseInt(kVal) === mlTrainResult.best_k && <span style={{ fontSize: 10, color: "#C98A3E", fontWeight: 700 }}>★ Best k</span>}
+                            {parseInt(kVal) === mlTrainResult?.best_k && <span style={{ fontSize: 10, color: "#C98A3E", fontWeight: 700 }}>★ Best k</span>}
                           </div>
                         ))}
                       </div>
@@ -2477,8 +2478,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>📊 Cluster Sizes Distributions</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        {Object.entries(mlTrainResult.cluster_sizes).map(([cls, size]) => {
-                          const pct = Math.round((size / mlTrainResult.training_rows) * 100);
+                        {Object.entries(mlTrainResult?.cluster_sizes || {}).map(([cls, size]) => {
+                          const pct = Math.round((size / (mlTrainResult?.training_rows || 1)) * 100);
                           return (
                             <div key={cls} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 10px", background: "var(--bg-primary)", borderRadius: 6, fontSize: 12.5, color: "var(--text-secondary)" }}>
                               <span><strong>{cls}</strong> ({size} rows)</span>
@@ -2517,7 +2518,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                           </tr>
                         </thead>
                         <tbody>
-                          {Object.entries(mlTrainResult.comparisons).map(([algo, metrics]) => {
+                          {Object.entries(mlTrainResult?.comparisons || {}).map(([algo, metrics]) => {
                             const isBest = algo === mlTrainResult.best_model;
                             return (
                               <tr key={algo} style={{ borderBottom: "1px solid var(--border-color)", background: isBest ? "rgba(62, 111, 142, 0.03)" : "none" }}>
