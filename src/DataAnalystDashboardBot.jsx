@@ -3761,10 +3761,39 @@ export default function DataAnalystDashboardBot({ currentView }) {
       return `**Data Quality Summary:**\n• Overall Quality Score: **${score}%**\n• Missing Cells: **${missing.toLocaleString()}** (${missingPct}% missing rate)\n• Duplicate Rows: **${dupes.toLocaleString()}**\n\nUse the **Data Cleaning** tab to automatically resolve missing values or duplicates with one click.`;
     }
 
-    // 3. Row count / Column count / Size queries
-    if (q.includes("row") || q.includes("column") || q.includes("size") || q.includes("how many") || q.includes("count of rows")) {
-      const colNames = (stats || []).map(s => s.name).join(", ");
-      return `This dataset has **${rows.length.toLocaleString()} rows** and **${(stats || []).length} columns**.\n\nColumns included: ${colNames}`;
+    // 3. Specific filtering & counting queries (e.g. "how many audits", "how many high risk", "how many rows")
+    if (q.includes("how many") || q.includes("count of") || q.includes("number of")) {
+      if (/how many (total |all )?(rows|records|entries|lines|columns)/i.test(q)) {
+        const colNames = (stats || []).map(s => s.name).filter(n => n && !n.startsWith("__")).join(", ");
+        return `This dataset has **${rows.length.toLocaleString()} rows** and **${(stats || []).length} columns**.\n\nColumns included: ${colNames || "All dataset fields"}`;
+      }
+
+      const countStopWords = new Set(["how", "many", "are", "is", "in", "there", "the", "dataset", "data", "file", "table", "total", "count", "of", "with", "rows", "records", "number"]);
+      const queryTokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 1 && !countStopWords.has(w));
+      
+      if (queryTokens.length > 0) {
+        const filterTerm = queryTokens.join(" ");
+        const matchingRows = (rows || []).filter(r => {
+          return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(filterTerm));
+        });
+
+        if (matchingRows.length > 0) {
+          return `Found **${matchingRows.length.toLocaleString()}** row(s) matching **"${filterTerm}"** out of ${rows.length.toLocaleString()} total rows in the dataset.`;
+        }
+
+        // Fallback: try individual token matches (e.g. "high risk" -> "risk")
+        for (const t of queryTokens) {
+          if (t.length < 3) continue;
+          const matches = (rows || []).filter(r => {
+            return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(t));
+          });
+          if (matches.length > 0) {
+            return `Found **${matches.length.toLocaleString()}** row(s) matching **"${t}"** out of ${rows.length.toLocaleString()} total rows in the dataset.`;
+          }
+        }
+
+        return `Found **0** rows matching **"${queryTokens.join(" ")}"** in the dataset (Total dataset size: ${rows.length.toLocaleString()} rows).`;
+      }
     }
 
     // 4. Correlation / Relationship queries
