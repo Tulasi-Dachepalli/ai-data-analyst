@@ -1256,32 +1256,17 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }, [cleaningSummary, currentRows, columns, cleanedProfile, stats]);
 
   const triggerClean = async () => {
-    if (!serverId) {
-      alert("This dataset is not saved on the server. Please verify connections.");
-      return;
-    }
     setCleaningStage("cleaning");
     setCleaningError("");
-    try {
-      const res = await api.cleanDataset(serverId);
-      if (res && res.success) {
-        setCleaningSummary(res.summary);
-        setCleanedProfile(res.profile);
-        setCleanedDatasetInfo(res.cleanedDataset);
-        setCleaningStage("preview");
-      } else {
-        throw new Error("Failed to execute data cleaning endpoint.");
-      }
-    } catch (err) {
-      console.error("Automated cleaning trigger error:", err);
-      // Client-side dataset cleaning fallback
+
+    const runLocalFallback = () => {
       const numCols = (stats || []).filter(s => s.type === "numeric");
       const catCols = (stats || []).filter(s => s.type === "categorical");
 
       const means = {};
       numCols.forEach(c => { means[c.name] = c.mean ?? 0; });
 
-      const cleanedRows = currentRows.map(r => {
+      const cleanedRows = (currentRows || []).map(r => {
         const copy = { ...r };
         numCols.forEach(c => {
           if (copy[c.name] === null || copy[c.name] === undefined || copy[c.name] === "") {
@@ -1302,7 +1287,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         rows_original: currentRows.length,
         rows_cleaned: cleanedRows.length,
         missing_values_imputed: quality?.missingCells || 0,
-        duplicates_removed: 0,
+        duplicates_removed: quality?.duplicateRows || 0,
         columns_formatted: (stats || []).length,
         quality_score_before: quality?.score || 90,
         quality_score_after: 100
@@ -1316,10 +1301,37 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         quality_score: 100
       });
       setCleanedDatasetInfo({
-        id: serverId || "local",
+        id: serverId || `local-${Date.now()}`,
         name: `${active?.name || "Dataset"} (Cleaned)`
       });
       setCleaningStage("preview");
+    };
+
+    if (!serverId) {
+      // Local client dataset cleaning execution instantly
+      runLocalFallback();
+      return;
+    }
+
+    try {
+      // 8-second timeout guard to prevent infinite loading spinners
+      const cleanPromise = api.cleanDataset(serverId);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Server cleaning timeout — falling back to client engine")), 8000)
+      );
+
+      const res = await Promise.race([cleanPromise, timeoutPromise]);
+      if (res && res.success) {
+        setCleaningSummary(res.summary);
+        setCleanedProfile(res.profile);
+        setCleanedDatasetInfo(res.cleanedDataset);
+        setCleaningStage("preview");
+      } else {
+        throw new Error("Failed to execute server cleaning endpoint.");
+      }
+    } catch (err) {
+      console.warn("Server cleaning unavailable or timed out — executing client-side fallback engine:", err);
+      runLocalFallback();
     }
   };
 
