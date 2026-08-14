@@ -268,6 +268,71 @@ function parseJSONSafe(text) {
   } catch (e) { return null; }
 }
 
+function selectBestExcelSheet(wb) {
+  if (!wb || !wb.SheetNames || !wb.SheetNames.length) return null;
+  
+  const reportPenaltyRegex = /executive|summary|log|info|metadata|statistics|overview|readme|notes/i;
+  const dataBonusRegex = /cleaned data|raw data|data|dataset|transactions|records|sales|customers|audits|sheet1|main/i;
+
+  let bestSheetName = wb.SheetNames[0];
+  let maxScore = -9999;
+  let bestRows = [];
+  let bestCols = [];
+
+  wb.SheetNames.forEach(name => {
+    try {
+      const sheet = wb.Sheets[name];
+      if (!sheet) return;
+      const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      if (!rawRows || rawRows.length === 0) return;
+
+      const rawCols = Object.keys(rawRows[0] || {}).filter(c => c && !c.startsWith("__EMPTY") && c.trim() !== "");
+      const rowCount = rawRows.length;
+      const colCount = rawCols.length;
+
+      if (colCount === 0 || rowCount === 0) return;
+
+      let score = (colCount * 10) + (rowCount * 2);
+
+      const nameLower = name.toLowerCase();
+      if (reportPenaltyRegex.test(nameLower)) {
+        score -= 100;
+      }
+      if (dataBonusRegex.test(nameLower)) {
+        score += 50;
+      }
+
+      // Clean rows to remove empty columns (__EMPTY)
+      const cleanRows = rawRows.map(r => {
+        const cleanObj = {};
+        rawCols.forEach(col => {
+          cleanObj[col] = r[col];
+        });
+        return cleanObj;
+      });
+
+      if (score > maxScore) {
+        maxScore = score;
+        bestSheetName = name;
+        bestRows = cleanRows;
+        bestCols = rawCols;
+      }
+    } catch (e) {
+      // skip errored sheets
+    }
+  });
+
+  if (bestRows.length === 0) {
+    const firstSheet = wb.SheetNames[0];
+    const sheet = wb.Sheets[firstSheet];
+    const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    const rawCols = (rawRows.length && rawRows[0]) ? Object.keys(rawRows[0]).filter(c => c && !c.startsWith("__EMPTY")) : [];
+    return { sheetName: firstSheet, rows: rawRows, columns: rawCols };
+  }
+
+  return { sheetName: bestSheetName, rows: bestRows, columns: bestCols };
+}
+
 function parseFile(file) {
   return new Promise((resolve, reject) => {
     const ext = file.name.split(".").pop().toLowerCase();
@@ -300,16 +365,14 @@ function parseFile(file) {
       reader.onerror = reject;
       reader.readAsText(file);
     } else {
-      // Excel with text fallback
+      // Excel with intelligent worksheet detection
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const firstSheet = wb.SheetNames && wb.SheetNames.length ? wb.SheetNames[0] : null;
-          if (!firstSheet) throw new Error("No sheet found in workbook.");
-          const sheet = wb.Sheets[firstSheet];
-          const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-          const columns = rows.length && rows[0] ? Object.keys(rows[0]) : [];
-          resolve({ rows, columns });
+          const wb = XLSX.read(e.target.result, { type: "binary" });
+          const best = selectBestExcelSheet(wb);
+          if (!best) throw new Error("No data sheet found in workbook.");
+          resolve({ rows: best.rows, columns: best.columns });
         } catch (err) {
           // If Excel parsing fails, read it as plain text fallback
           const txtReader = new FileReader();
@@ -3812,6 +3875,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
       return `**Dataset Executive Overview:**\n• Dataset Name: **${active?.name || "Uploaded Data"}**\n• Size: **${rows.length.toLocaleString()} rows** × **${(stats || []).length} columns**\n• Quality Score: **${score}%**\n• Key Numeric Variables: ${numCols.map(c => c.name).join(", ") || "None"}\n\nExplore interactive KPIs, category breakdowns, and trend charts on the **Dashboard** above!`;
     }
 
+    // 5b. List / Show all items query (e.g. "List all audit names", "Show all audits")
+    if (q.includes("list") || q.includes("show all") || q.includes("all names") || q.includes("all audits")) {
+      const nameCol = (stats || []).find(s => /name|audit|title|item|code/i.test(s.name)) || (stats && stats[0] ? stats[0] : null);
+      if (nameCol) {
+        const values = (rows || []).map(r => r[nameCol.name]).filter(v => v !== null && v !== undefined && String(v).trim() !== "");
+        return `**List of ${nameCol.name} (${values.length} items):**\n\n• ` + values.join("\n• ");
+      }
+    }
+
     // 6. Specific column metrics queries (typo-tolerant)
     for (const col of numCols) {
       const cName = col.name.toLowerCase();
@@ -3821,16 +3893,28 @@ export default function DataAnalystDashboardBot({ currentView }) {
       
       if (matchesCol) {
         const isSum = /sum|tot[al]*/i.test(q);
-        const isMax = /max|high|top/i.test(q);
-        const isMin = /min|low|bottom/i.test(q);
+        const isMax = /max|high|top|longest|greatest|most/i.test(q);
+        const isMin = /min|low|bottom|shortest|least/i.test(q);
         
         if (isSum) {
           return `The total sum of **${col.name}** is **${col.sum !== undefined ? col.sum.toLocaleString() : "N/A"}**.`;
         }
         if (isMax) {
+          const sortedRows = [...(rows || [])].filter(r => r[col.name] !== null && r[col.name] !== undefined && !isNaN(Number(r[col.name]))).sort((a, b) => Number(b[col.name]) - Number(a[col.name]));
+          if (sortedRows.length > 0) {
+            const topRow = sortedRows[0];
+            const nameVal = topRow["Name"] || topRow["Audit"] || topRow["Code"] || Object.values(topRow)[1] || Object.values(topRow)[0];
+            return `**${nameVal}** has the highest **${col.name}** with **${topRow[col.name]}** (Max: ${col.max}).`;
+          }
           return `The maximum value of **${col.name}** is **${col.max}**.`;
         }
         if (isMin) {
+          const sortedRows = [...(rows || [])].filter(r => r[col.name] !== null && r[col.name] !== undefined && !isNaN(Number(r[col.name]))).sort((a, b) => Number(a[col.name]) - Number(b[col.name]));
+          if (sortedRows.length > 0) {
+            const minRow = sortedRows[0];
+            const nameVal = minRow["Name"] || minRow["Audit"] || minRow["Code"] || Object.values(minRow)[1] || Object.values(minRow)[0];
+            return `**${nameVal}** has the lowest **${col.name}** with **${minRow[col.name]}** (Min: ${col.min}).`;
+          }
           return `The minimum value of **${col.name}** is **${col.min}**.`;
         }
         // Default for average / mean queries or general metric questions (including typos like avarage, averge, avrg, etc.)
