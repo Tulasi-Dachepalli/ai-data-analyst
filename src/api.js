@@ -7,12 +7,21 @@ function authHeaders() {
 
 async function request(path, options = {}) {
   let res;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
   try {
     res = await fetch(`${base()}${path}`, {
       ...options,
+      signal: options.signal || controller.signal,
       headers: { "Content-Type": "application/json", ...authHeaders(), ...(options.headers || {}) }
     });
+    clearTimeout(timeoutId);
   } catch (netErr) {
+    clearTimeout(timeoutId);
+    if (netErr.name === "AbortError") {
+      throw new Error("Server request timed out after 10s. Operating in browser mode.");
+    }
     throw new Error("Network offline or server unreachable. Operating in browser mode.");
   }
 
