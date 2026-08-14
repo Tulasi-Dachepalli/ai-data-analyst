@@ -22,6 +22,11 @@ function detectType(values) {
   return "categorical";
 }
 
+function anyIdKeywords(colName) {
+  if (!colName || typeof colName !== "string") return false;
+  return /_?id$|^id$|uuid|guid|index|row_num|hash|token/i.test(colName);
+}
+
 function computeColumnStats(rows, col) {
   const values = rows.map(r => r[col]);
   const nonMissing = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
