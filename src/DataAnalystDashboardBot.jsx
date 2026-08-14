@@ -747,6 +747,11 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     return {
       classification_candidates: catCols.length > 0 ? catCols : [],
       regression_candidates: numCols.length > 0 ? numCols : [],
+      clustering: {
+        available: numCols.length >= 2,
+        reason: numCols.length >= 2 ? `Dataset contains ${numCols.length} numeric columns suitable for K-Means segmentation.` : "At least 2 numeric columns are required for K-Means clustering.",
+        numeric_features: numCols
+      },
       recommended_tasks: [
         ...catCols.map(c => ({ task_type: "classification", target: c, description: `Predict ${c} category` })),
         ...numCols.map(c => ({ task_type: "regression", target: c, description: `Predict numeric ${c}` }))
@@ -2080,13 +2085,13 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 {/* Clustering Candidate */}
                 <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#C98A3E" }}>🏷 Unsupervised Clustering</div>
-                  <p style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>{mlAnalysisData.clustering.reason}</p>
-                  {mlAnalysisData.clustering.available ? (
+                  <p style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>{mlAnalysisData?.clustering?.reason || "Segment dataset observations using K-Means."}</p>
+                  {mlAnalysisData?.clustering?.available ? (
                     <button
                       onClick={() => {
                         setSelectedTask("clustering");
                         setSelectedTarget("");
-                        setSelectedFeatures(mlAnalysisData.clustering.numeric_features);
+                        setSelectedFeatures(mlAnalysisData.clustering.numeric_features || []);
                       }}
                       style={{ background: "#C98A3E", color: "#fff", border: "none", borderRadius: 4, padding: "6px 12px", fontSize: 11.5, cursor: "pointer", fontWeight: 600, marginTop: "auto" }}
                     >
@@ -2596,20 +2601,20 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 </div>
               </div>
 
-              {forecastAnalysisData.frequency_details?.warning && (
+              {forecastAnalysisData?.frequency_details?.warning && (
                 <div style={{ color: "var(--warning)", background: "rgba(201, 138, 62, 0.05)", border: "1px solid rgba(201, 138, 62, 0.2)", borderRadius: 6, padding: "8px 12px", fontSize: 12 }}>
                   ⚠ {forecastAnalysisData.frequency_details.warning}
                 </div>
               )}
 
               <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-                {forecastAnalysisData.forecastable ? (
+                {forecastAnalysisData?.forecastable ? (
                   <button onClick={() => setForecastStage("configure")} style={{ background: "var(--accent-color)", color: "#fff", border: "none", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
                     Continue to Configuration →
                   </button>
                 ) : (
                   <div style={{ color: "var(--danger)", fontSize: 12.5, fontWeight: 600 }}>
-                    ✗ Forecasting is unavailable: {forecastAnalysisData.reason}
+                    ✗ Forecasting is unavailable: {forecastAnalysisData?.reason || "Check column requirements."}
                   </div>
                 )}
               </div>
