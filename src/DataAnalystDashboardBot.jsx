@@ -988,7 +988,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       categorical_stats,
       correlation: {
         columns: corrCols,
-        matrix: corrMatrix
+        matrix: corrMatrix,
+        relationships: []
       }
     };
   };
@@ -1993,12 +1994,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   <div>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>💡 Statistical Relationship Insights</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {statisticsData.correlation.relationships.length === 0 ? (
+                      {(!statisticsData.correlation?.relationships || statisticsData.correlation.relationships.length === 0) ? (
                         <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No cross-column correlations detected.</div>
                       ) : (
                         statisticsData.correlation.relationships.map((rel, idx) => (
                           <div key={idx} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 6, padding: "8px 10px", fontSize: 12, color: "var(--text-secondary)" }}>
-                            • <strong>{rel.column}</strong> has a <strong>{rel.strength} {rel.direction}</strong> relationship with <strong>{rel.with}</strong> (r = {rel.value})
+                            • <strong>{rel.column || rel.column_a}</strong> has a <strong>{rel.strength} {rel.direction}</strong> relationship with <strong>{rel.with || rel.column_b}</strong> (r = {rel.value ?? rel.correlation})
                           </div>
                         ))
                       )}
