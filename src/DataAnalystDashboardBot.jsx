@@ -2871,8 +2871,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
                 <button
                   onClick={handleExportForecastCSV}
-                  disabled={!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0}
-                  style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 12.5, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
+                  disabled={!forecastTrainResult?.forecast?.length}
+                  style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "8px 16px", fontSize: 12.5, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult?.forecast?.length) ? 0.5 : 1 }}
                 >
                   ⬇ Export CSV Projections
                 </button>
@@ -2894,22 +2894,22 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   <div style={{ background: "var(--bg-primary)", padding: 14, borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", gap: 8 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>Future Projections Trend</span>
                     <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
-                      Expected Trend direction: <strong style={{ textTransform: "capitalize", color: "#3E6F8E" }}>{forecastTrainResult.insights.trend}</strong>
+                      Expected Trend direction: <strong style={{ textTransform: "capitalize", color: "#3E6F8E" }}>{forecastTrainResult?.insights?.trend || "Stable"}</strong>
                     </div>
                     <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
-                      Forecast growth rate: <strong style={{ color: forecastTrainResult.insights.expected_growth >= 0 ? "#6E8F63" : "#B85C5C" }}>{forecastTrainResult.insights.expected_growth}%</strong>
+                      Forecast growth rate: <strong style={{ color: (forecastTrainResult?.insights?.expected_growth ?? 0) >= 0 ? "#6E8F63" : "#B85C5C" }}>{forecastTrainResult?.insights?.expected_growth ?? 0}%</strong>
                     </div>
                     <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
-                      Uncertainty rating: <strong style={{ textTransform: "uppercase", color: forecastTrainResult.insights.uncertainty === "low" ? "#6E8F63" : (forecastTrainResult.insights.uncertainty === "moderate" ? "#C98A3E" : "#B85C5C") }}>{forecastTrainResult.insights.uncertainty}</strong>
+                      Uncertainty rating: <strong style={{ textTransform: "uppercase", color: forecastTrainResult?.insights?.uncertainty === "low" ? "#6E8F63" : (forecastTrainResult?.insights?.uncertainty === "moderate" ? "#C98A3E" : "#B85C5C") }}>{forecastTrainResult?.insights?.uncertainty || "Low"}</strong>
                     </div>
                   </div>
 
                   <div style={{ border: "1px solid var(--border-color)", padding: 14, borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "var(--text-muted)" }}>Training Lineage Context</span>
-                    <div>• Fitted range: <strong>{forecastTrainResult.training_start} ➔ {forecastTrainResult.training_end}</strong></div>
-                    <div>• Total training observations: <strong>{forecastTrainResult.training_rows}</strong></div>
-                    <div>• Time-ordered validation steps: <strong>{forecastTrainResult.validation_rows}</strong></div>
-                    {forecastTrainResult.insights.seasonal_period && (
+                    <div>• Fitted range: <strong>{forecastTrainResult?.training_start || "Start"} ➔ {forecastTrainResult?.training_end || "End"}</strong></div>
+                    <div>• Total training observations: <strong>{forecastTrainResult?.training_rows || 0}</strong></div>
+                    <div>• Time-ordered validation steps: <strong>{forecastTrainResult?.validation_rows || 0}</strong></div>
+                    {forecastTrainResult?.insights?.seasonal_period && (
                       <div>• Seasonal cycle period length: <strong>{forecastTrainResult.insights.seasonal_period} intervals</strong></div>
                     )}
                   </div>
@@ -2920,19 +2920,19 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   <div style={{ border: "1px solid var(--border-color)", padding: 14, borderRadius: "var(--radius-md)", background: "rgba(62, 111, 142, 0.02)", display: "flex", flexDirection: "column", gap: 10 }}>
                     <span style={{ fontSize: 11.5, fontWeight: 700, textTransform: "uppercase", color: "#3E6F8E" }}>Executive Explanation</span>
                     <p style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5, margin: 0 }}>
-                      Based on chronological evaluation metrics, the dataset was modeled using the **{forecastTrainResult.algorithm}** algorithm (selected with a holdout error RMSE of {forecastTrainResult.metrics.rmse.toLocaleString()}).
+                      Based on chronological evaluation metrics, the dataset was modeled using the **{forecastTrainResult?.algorithm || "Selected"}** algorithm (selected with a holdout error RMSE of {(forecastTrainResult?.metrics?.rmse ?? 0).toLocaleString()}).
                     </p>
                     <p style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5, margin: 0 }}>
-                      The model projects a **{forecastTrainResult.insights.trend}** trend for target **{selectedTargetCol}** over the next **{forecastHorizon}** periods, with an estimated growth delta of **{forecastTrainResult.insights.expected_growth}%**. 
-                      Residual volatility indicates **{forecastTrainResult.insights.uncertainty}** prediction confidence intervals bounds.
+                      The model projects a **{forecastTrainResult?.insights?.trend || "stable"}** trend for target **{selectedTargetCol}** over the next **{forecastHorizon}** periods, with an estimated growth delta of **{forecastTrainResult?.insights?.expected_growth ?? 0}%**. 
+                      Residual volatility indicates **{forecastTrainResult?.insights?.uncertainty || "low"}** prediction confidence intervals bounds.
                     </p>
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", flexWrap: "wrap", gap: 10 }}>
                     <button
                       onClick={handleExportForecastCSV}
-                      disabled={!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0}
-                      style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult || !forecastTrainResult.forecast || forecastTrainResult.forecast.length === 0) ? 0.5 : 1 }}
+                      disabled={!forecastTrainResult?.forecast?.length}
+                      style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: "10px 16px", fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", cursor: "pointer", opacity: (!forecastTrainResult?.forecast?.length) ? 0.5 : 1 }}
                     >
                       ⬇ Export CSV Projections
                     </button>
