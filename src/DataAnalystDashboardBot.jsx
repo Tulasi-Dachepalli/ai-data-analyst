@@ -434,19 +434,33 @@ function RegionMap({ data }) {
   );
 }
 
-function ChartBlock({ chartType, data, metricLabel, height }) {
-  if (!data || data.length === 0) return null;
-  const h = height || 210;
+function normalizeChartData(chartData, xAxisKey, yAxisKey) {
+  if (!Array.isArray(chartData)) return [];
+  const xK = xAxisKey || "group";
+  const yK = yAxisKey || "value";
+  return chartData.map(d => {
+    if (!d || typeof d !== "object") return { group: String(d), value: 0 };
+    const gVal = d.group !== undefined ? d.group : (d[xK] !== undefined ? d[xK] : Object.values(d)[0]);
+    const vVal = d.value !== undefined ? d.value : (d[yK] !== undefined ? d[yK] : (Object.values(d)[1] !== undefined ? Object.values(d)[1] : 0));
+    return { ...d, group: gVal, value: vVal };
+  });
+}
 
-  if (chartType === "map") {
-    return <RegionMap data={data} />;
+function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
+  const normData = normalizeChartData(data, xAxis, yAxis);
+  if (!normData || normData.length === 0) return null;
+  const h = height || 210;
+  const cType = String(chartType || "bar").toLowerCase();
+
+  if (cType === "map") {
+    return <RegionMap data={normData} />;
   }
 
-  if (chartType === "treemap") {
+  if (cType === "treemap") {
     return (
       <ResponsiveContainer width="100%" height={h}>
         <Treemap
-          data={data}
+          data={normData}
           dataKey="value"
           nameKey="group"
           stroke="#fff"
@@ -456,39 +470,53 @@ function ChartBlock({ chartType, data, metricLabel, height }) {
     );
   }
 
-  if (chartType === "pie" && data.length <= 8) {
+  if (cType === "pie" && normData.length <= 8) {
     return (
       <ResponsiveContainer width="100%" height={h}>
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="group" cx="50%" cy="50%" outerRadius={75} label={(d) => d.group}>
-            {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+          <Pie data={normData} dataKey="value" nameKey="group" cx="50%" cy="50%" outerRadius={75} label={(d) => d.group}>
+            {normData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
           </Pie>
           <Tooltip />
         </PieChart>
       </ResponsiveContainer>
     );
   }
-  if (chartType === "line") {
+  if (cType === "line") {
     return (
       <ResponsiveContainer width="100%" height={h}>
-        <LineChart data={data}>
+        <LineChart data={normData}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
           <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
           <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
           <Tooltip />
-          <Line type="monotone" dataKey="value" stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} name={metricLabel} />
+          <Line type="monotone" dataKey="value" stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} name={metricLabel || "Value"} />
         </LineChart>
       </ResponsiveContainer>
     );
   }
+  if (cType === "scatter") {
+    return (
+      <ResponsiveContainer width="100%" height={h}>
+        <ScatterChart margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+          <XAxis dataKey="group" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
+          <YAxis dataKey="value" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
+          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+          <Scatter name={metricLabel || "Scatter"} data={normData} fill="#3E6F8E" />
+        </ScatterChart>
+      </ResponsiveContainer>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={h}>
-      <BarChart data={data}>
+      <BarChart data={normData}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
         <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} interval={0} angle={-20} textAnchor="end" height={44} />
         <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
         <Tooltip />
-        <Bar dataKey="value" fill="#3E6F8E" name={metricLabel} radius={[3, 3, 0, 0]} />
+        <Bar dataKey="value" fill="#3E6F8E" name={metricLabel || "Value"} radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -1860,38 +1888,15 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   {edaCharts.map((chart, idx) => (
                     <div key={idx} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{chart.title}</div>
-                      <div style={{ width: "100%", height: 200 }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                          {chart.type === "bar" ? (
-                            <BarChart data={chart.data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                              <XAxis dataKey={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <Tooltip contentStyle={{ fontSize: 11, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 4 }} />
-                              <Bar dataKey={chart.yAxis} fill="#3E6F8E" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          ) : chart.type === "line" ? (
-                            <LineChart data={chart.data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                              <XAxis dataKey={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <Tooltip contentStyle={{ fontSize: 11, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 4 }} />
-                              <Line type="monotone" dataKey={chart.yAxis} stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 5 }} />
-                            </LineChart>
-                          ) : chart.type === "scatter" ? (
-                            <ScatterChart margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                              <XAxis type="number" dataKey={chart.xAxis} name={chart.xAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <YAxis type="number" dataKey={chart.yAxis} name={chart.yAxis} stroke="var(--text-muted)" fontSize={10} tickLine={false} />
-                              <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={{ fontSize: 11 }} />
-                              <Scatter name="Data Correlation" data={chart.data} fill="#3E6F8E" />
-                            </ScatterChart>
-                          ) : (
-                            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", fontSize: 12, color: "var(--text-muted)" }}>
-                              Unsupported chart specifications type
-                            </div>
-                          )}
-                        </ResponsiveContainer>
+                      <div style={{ width: "100%", height: 210 }}>
+                        <ChartBlock
+                          chartType={chart.chartType || chart.type || "bar"}
+                          data={chart.data}
+                          metricLabel={chart.metricLabel || chart.yAxis || "count"}
+                          xAxis={chart.xAxis || chart.xKey}
+                          yAxis={chart.yAxis || chart.yKey}
+                          height={210}
+                        />
                       </div>
                     </div>
                   ))}
