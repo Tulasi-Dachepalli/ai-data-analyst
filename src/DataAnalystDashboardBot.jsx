@@ -105,11 +105,12 @@ function detectOutliers(rows, column) {
 }
 
 function correlation(rows, colA, colB) {
-  const pairs = rows.map(r => [Number(r[colA]), Number(r[colB])]).filter(([a, b]) => !isNaN(a) && !isNaN(b));
+  if (!rows || !Array.isArray(rows) || !colA || !colB) return null;
+  const pairs = rows.map(r => r ? [Number(r[colA]), Number(r[colB])] : [NaN, NaN]).filter(([a, b]) => !isNaN(a) && !isNaN(b));
   const n = pairs.length;
   if (n < 2) return null;
-  const meanA = pairs.reduce((s, p) => s + p[0], 0) / n;
-  const meanB = pairs.reduce((s, p) => s + p[1], 0) / n;
+  const meanA = pairs.reduce((s, p) => s + (p && p[0] != null ? p[0] : 0), 0) / n;
+  const meanB = pairs.reduce((s, p) => s + (p && p[1] != null ? p[1] : 0), 0) / n;
   const numerator = pairs.reduce((s, [a, b]) => s + (a - meanA) * (b - meanB), 0);
   const denominator = Math.sqrt(
     pairs.reduce((s, [a]) => s + Math.pow(a - meanA, 2), 0) *
@@ -587,14 +588,14 @@ function trainTestSplitAndFit(rows, columns, stats) {
     }
   });
 
-  const getXY = (set) => set.map(r => [Number(r[bestPredictor]), Number(r[targetCol])]).filter(([x, y]) => !isNaN(x) && !isNaN(y));
+  const getXY = (set) => (set || []).map(r => (r && bestPredictor && targetCol) ? [Number(r[bestPredictor]), Number(r[targetCol])] : [NaN, NaN]).filter(([x, y]) => !isNaN(x) && !isNaN(y));
   const trainPoints = getXY(trainRows);
   const testPoints = getXY(testRows);
 
   if (trainPoints.length < 2) return null;
 
-  const meanX = trainPoints.reduce((s, p) => s + p[0], 0) / trainPoints.length;
-  const meanY = trainPoints.reduce((s, p) => s + p[1], 0) / trainPoints.length;
+  const meanX = trainPoints.reduce((s, p) => s + (p && p[0] != null ? p[0] : 0), 0) / trainPoints.length;
+  const meanY = trainPoints.reduce((s, p) => s + (p && p[1] != null ? p[1] : 0), 0) / trainPoints.length;
 
   let num = 0;
   let den = 0;
@@ -791,7 +792,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     }));
 
     const relationships = [];
-    if (numCols.length >= 2) {
+    if (numCols.length >= 2 && numCols[0]?.name && numCols[1]?.name) {
       relationships.push({
         column_a: numCols[0].name,
         column_b: numCols[1].name,
@@ -810,7 +811,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       executive_summary: `This dataset has ${safeRows.length.toLocaleString()} rows and ${safeStats.length} columns. Key variables include ${safeStats.slice(0, 4).map(s => s.name).join(", ")}.`,
       key_takeaways: [
         `Dataset size: ${safeRows.length.toLocaleString()} rows × ${safeStats.length} columns.`,
-        numCols.length > 0 ? `Key numeric column '${numCols[0].name}' averages ${numCols[0].mean ?? "N/A"}.` : "Contains categorical & text features.",
+        numCols.length > 0 && numCols[0]?.name ? `Key numeric column '${numCols[0].name}' averages ${numCols[0].mean ?? "N/A"}.` : "Contains categorical & text features.",
         `Explore interactive charts on the Dashboard tab above.`
       ],
       recommendations: [
@@ -3663,9 +3664,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
     if (q.includes("forecast") || q.includes("predict") || q.includes("future") || q.includes("next ")) {
       let targetColName = "your target metric";
       for (const nCol of numCols) {
-        if (q.includes(nCol.name.toLowerCase())) { targetColName = nCol.name; break; }
+        if (nCol && nCol.name && q.includes(nCol.name.toLowerCase())) { targetColName = nCol.name; break; }
       }
-      if (targetColName === "your target metric" && numCols.length > 0) targetColName = numCols[0].name;
+      if (targetColName === "your target metric" && numCols.length > 0 && numCols[0]?.name) targetColName = numCols[0].name;
 
       return `To run time-series forecasting for **${targetColName}**, click on the **📈 Forecasting** tab above!\n\nThere you can select your date column, target variable, and horizon to train Prophet, ARIMA, and ETS models with projected confidence intervals.`;
     }
@@ -3676,15 +3677,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
     let matchedCatCol = null;
 
     for (const nCol of numCols) {
-      if (q.includes(nCol.name.toLowerCase())) { matchedNumCol = nCol; break; }
+      if (nCol && nCol.name && q.includes(nCol.name.toLowerCase())) { matchedNumCol = nCol; break; }
     }
     for (const cCol of catCols) {
-      if (q.includes(cCol.name.toLowerCase())) { matchedCatCol = cCol; break; }
+      if (cCol && cCol.name && q.includes(cCol.name.toLowerCase())) { matchedCatCol = cCol; break; }
     }
 
     if (hasByWord || (matchedNumCol && matchedCatCol)) {
-      const nCol = matchedNumCol || (numCols.length ? numCols[0] : null);
-      const cCol = matchedCatCol || (catCols.length ? catCols[0] : null);
+      const nCol = matchedNumCol || (numCols.length && numCols[0] ? numCols[0] : null);
+      const cCol = matchedCatCol || (catCols.length && catCols[0] ? catCols[0] : null);
       
       if (nCol && cCol) {
         const isSum = /sum|tot[al]*/i.test(q);
@@ -3798,7 +3799,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
         return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm));
       });
 
-      if (matchingRows.length > 0) {
+      if (matchingRows.length > 0 && matchingRows[0] && typeof matchingRows[0] === "object") {
         const sample = matchingRows[0];
         const details = Object.entries(sample)
           .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
@@ -3813,7 +3814,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
         const matches = (rows || []).filter(r => {
           return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(t));
         });
-        if (matches.length > 0) {
+        if (matches.length > 0 && matches[0] && typeof matches[0] === "object") {
           const sample = matches[0];
           const details = Object.entries(sample)
             .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
