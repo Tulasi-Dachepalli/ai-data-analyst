@@ -842,11 +842,24 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     const catCols = safeStats.filter(s => s.type === "categorical").map(s => s.name);
 
     return {
-      classification_candidates: catCols.map(c => ({ column: c, confidence: 0.88 })),
-      regression_candidates: numCols.map(c => ({ column: c, confidence: 0.85 })),
+      classification_candidates: catCols.map(c => {
+        const sObj = safeStats.find(s => s.name === c);
+        const uCount = sObj?.unique ?? 5;
+        const confidence = uCount <= 10 ? 0.92 : 0.88;
+        return {
+          column: c,
+          confidence,
+          reason: `${uCount} unique discrete categories (ideal target distribution)`
+        };
+      }),
+      regression_candidates: numCols.map(c => ({
+        column: c,
+        confidence: 0.88,
+        reason: "Continuous numeric metric with non-zero variance"
+      })),
       clustering: {
         available: numCols.length >= 2,
-        reason: numCols.length >= 2 ? `Dataset contains ${numCols.length} numeric columns suitable for K-Means segmentation.` : "At least 2 numeric columns are required for K-Means clustering.",
+        reason: numCols.length >= 2 ? `Dataset contains ${numCols.length} numeric columns (${numCols.join(", ")}) suitable for K-Means segmentation.` : "At least 2 numeric columns are required for K-Means clustering.",
         numeric_features: numCols
       },
       recommended_tasks: [
@@ -2116,7 +2129,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>We analyzed your dataset schema to identify viable machine learning candidates. Select a target column recommendation below:</p>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
                 {/* Classification Candidates */}
                 <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#3E6F8E" }}>🎯 Classification Target Candidates</div>
@@ -2127,11 +2140,15 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                       {mlAnalysisData.classification_candidates.map((cand, idx) => {
                         const colName = typeof cand === "string" ? cand : (cand.column || cand.name || "");
                         const confVal = typeof cand === "object" && cand.confidence != null && !isNaN(cand.confidence) ? Math.round(cand.confidence * 100) : 88;
+                        const reasonStr = typeof cand === "object" && cand.reason ? cand.reason : "Discrete categorical target distribution";
                         return (
-                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: "10px 12px", borderRadius: 6, fontSize: 12, border: "1px solid var(--border-color)" }}>
                             <div>
-                              <strong style={{ color: "var(--text-primary)" }}>{colName}</strong>
-                              <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({confVal}% conf)</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <strong style={{ color: "var(--text-primary)" }}>{colName}</strong>
+                                <span style={{ fontSize: 10, background: "rgba(62, 111, 142, 0.1)", color: "#3E6F8E", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>{confVal}% conf</span>
+                              </div>
+                              <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 2 }}>{reasonStr}</div>
                             </div>
                             <button
                               onClick={() => {
@@ -2139,7 +2156,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                                 setSelectedTarget(colName);
                                 setSelectedFeatures(columns.filter(c => c !== colName && !anyIdKeywords(c)));
                               }}
-                              style={{ background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+                              style={{ background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 4, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
                             >
                               Select Target
                             </button>
@@ -2160,11 +2177,15 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                       {mlAnalysisData.regression_candidates.map((cand, idx) => {
                         const colName = typeof cand === "string" ? cand : (cand.column || cand.name || "");
                         const confVal = typeof cand === "object" && cand.confidence != null && !isNaN(cand.confidence) ? Math.round(cand.confidence * 100) : 85;
+                        const reasonStr = typeof cand === "object" && cand.reason ? cand.reason : "Continuous numeric metric with non-zero variance";
                         return (
-                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: "10px 12px", borderRadius: 6, fontSize: 12, border: "1px solid var(--border-color)" }}>
                             <div>
-                              <strong style={{ color: "var(--text-primary)" }}>{colName}</strong>
-                              <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({confVal}% conf)</span>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <strong style={{ color: "var(--text-primary)" }}>{colName}</strong>
+                                <span style={{ fontSize: 10, background: "rgba(110, 143, 99, 0.1)", color: "#6E8F63", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>{confVal}% conf</span>
+                              </div>
+                              <div style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 2 }}>{reasonStr}</div>
                             </div>
                             <button
                               onClick={() => {
@@ -2172,7 +2193,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                                 setSelectedTarget(colName);
                                 setSelectedFeatures(columns.filter(c => c !== colName && !anyIdKeywords(c)));
                               }}
-                              style={{ background: "#6E8F63", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+                              style={{ background: "#6E8F63", color: "#fff", border: "none", borderRadius: 4, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
                             >
                               Select Target
                             </button>
