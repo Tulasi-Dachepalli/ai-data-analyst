@@ -969,6 +969,11 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       };
     });
 
+    const corrCols = numCols.map(c => c.name);
+    const corrMatrix = corrCols.map((c1, i) =>
+      corrCols.map((c2, j) => (i === j ? 1.0 : (correlation(safeRows, c1, c2) ?? 0)))
+    );
+
     return {
       numeric_count: numCols.length,
       categorical_count: catCols.length,
@@ -976,8 +981,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       numeric_stats,
       categorical_stats,
       correlation: {
-        columns: numCols.map(c => c.name),
-        matrix: []
+        columns: corrCols,
+        matrix: corrMatrix
       }
     };
   };
@@ -1942,7 +1947,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               )}
 
               {/* Bivariate Correlation Grid */}
-              {statisticsData.correlation.columns.length > 0 && (
+              {statisticsData.correlation?.columns?.length > 0 && statisticsData.correlation?.matrix && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
                   {/* Correlation Heatmap Grid */}
                   <div>
@@ -1962,8 +1967,9 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                             <tr key={rowCol} style={{ borderBottom: "1px solid var(--border-color)" }}>
                               <td style={{ padding: "6px 8px", fontWeight: 600, textAlign: "left", color: "var(--text-primary)" }}>{rowCol}</td>
                               {statisticsData.correlation.columns.map((colCol, colIndex) => {
-                                const r = statisticsData.correlation.matrix[rowIndex][colIndex];
-                                const color = r === 1 ? "var(--bg-primary)" : (r > 0 ? `rgba(16, 185, 129, ${Math.abs(r) * 0.25})` : `rgba(239, 68, 68, ${Math.abs(r) * 0.25})`);
+                                const rowArr = statisticsData.correlation.matrix[rowIndex];
+                                const r = rowArr ? rowArr[colIndex] : null;
+                                const color = r === 1 ? "var(--bg-primary)" : (r != null && r > 0 ? `rgba(16, 185, 129, ${Math.abs(r) * 0.25})` : `rgba(239, 68, 68, ${Math.abs(r ?? 0) * 0.25})`);
                                 return (
                                   <td key={colCol} style={{ padding: "6px 8px", background: color, fontWeight: 600, color: "var(--text-secondary)" }}>
                                     {r != null ? r.toFixed(2) : "-"}
