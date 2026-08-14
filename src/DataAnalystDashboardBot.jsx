@@ -1202,7 +1202,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         if (origVal === null || origVal === undefined || origVal === "") {
           if (cleanVal !== null && cleanVal !== undefined && cleanVal !== "") {
             const colStat = stats ? stats.find(s => s.name === col) : null;
-            const isNumeric = colStat && (colStat.dtype.includes("int") || colStat.dtype.includes("float"));
+            const isNumeric = colStat && (colStat.type === "numeric" || (colStat.dtype && String(colStat.dtype).includes("int")));
             changeType = isNumeric ? "Imputed (Median)" : "Imputed (Mode)";
           }
         } else if (String(origVal) !== String(cleanVal)) {
@@ -1803,13 +1803,13 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <div>
                       <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Numeric Cols</div>
                       <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
-                        {stats ? stats.filter(c => c.dtype && (c.dtype.includes("int") || c.dtype.includes("float"))).length : 0}
+                        {stats ? stats.filter(c => c && (c.type === "numeric" || (c.dtype && String(c.dtype).includes("int")))).length : 0}
                       </div>
                     </div>
                     <div>
                       <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Categorical Cols</div>
                       <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
-                        {stats ? stats.filter(c => c.type === "categorical").length : 0}
+                        {stats ? stats.filter(c => c && c.type === "categorical").length : 0}
                       </div>
                     </div>
                   </div>
@@ -1834,11 +1834,11 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                             }
                           }
                         });
-                        const dates = stats.filter(c => c && c.name && (c.name.toLowerCase().includes("date") || c.name.toLowerCase().includes("time")));
+                        const dates = stats.filter(c => c && c.name && (String(c.name).toLowerCase().includes("date") || String(c.name).toLowerCase().includes("time")));
                         if (dates.length > 0 && dates[0] && dates[0].name) {
                           list.push(`Time-series chronological aggregations generated using "${dates[0].name}".`);
                         }
-                        const nums = stats.filter(c => c && c.dtype && (c.dtype.includes("int") || c.dtype.includes("float")));
+                        const nums = stats.filter(c => c && (c.type === "numeric" || (c.dtype && String(c.dtype).includes("int"))));
                         if (nums.length >= 2 && nums[0] && nums[0].name && nums[1] && nums[1].name) {
                           list.push(`Numeric bivariate relationships analyzed for pair "${nums[0].name}" vs "${nums[1].name}".`);
                         }
@@ -4106,7 +4106,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summary), "Executive Summary");
 
       const statsRows = safeStats.map(s => {
-        const colType = s.type || (s.dtype && (s.dtype.includes("int") || s.dtype.includes("float") || s.dtype.includes("num")) ? "numeric" : "categorical");
+        const colType = s.type || (s.dtype && (String(s.dtype).includes("int") || String(s.dtype).includes("float") || String(s.dtype).includes("num")) ? "numeric" : "categorical");
         return {
           column: s.name, 
           type: colType, 
