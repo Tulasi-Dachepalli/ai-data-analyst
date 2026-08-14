@@ -26,6 +26,7 @@ function anyIdKeywords(colName) {
   if (!colName || typeof colName !== "string") return false;
   return /_?id$|^id$|uuid|guid|index|row_num|hash|token/i.test(colName);
 }
+if (typeof window !== "undefined") window.anyIdKeywords = anyIdKeywords;
 
 function computeColumnStats(rows, col) {
   const values = rows.map(r => r[col]);
