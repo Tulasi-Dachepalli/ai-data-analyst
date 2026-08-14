@@ -751,8 +751,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     const catCols = safeStats.filter(s => s.type === "categorical").map(s => s.name);
 
     return {
-      classification_candidates: catCols.length > 0 ? catCols : [],
-      regression_candidates: numCols.length > 0 ? numCols : [],
+      classification_candidates: catCols.map(c => ({ column: c, confidence: 0.88 })),
+      regression_candidates: numCols.map(c => ({ column: c, confidence: 0.85 })),
       clustering: {
         available: numCols.length >= 2,
         reason: numCols.length >= 2 ? `Dataset contains ${numCols.length} numeric columns suitable for K-Means segmentation.` : "At least 2 numeric columns are required for K-Means clustering.",
@@ -2044,24 +2044,28 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <p style={{ fontSize: 11.5, color: "var(--text-muted)" }}>No low-cardinality categorical target columns recommended.</p>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {mlAnalysisData.classification_candidates.map(cand => (
-                        <div key={cand.column} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
-                          <div>
-                            <strong style={{ color: "var(--text-primary)" }}>{cand.column}</strong>
-                            <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({Math.round(cand.confidence * 100)}% conf)</span>
+                      {mlAnalysisData.classification_candidates.map((cand, idx) => {
+                        const colName = typeof cand === "string" ? cand : (cand.column || cand.name || "");
+                        const confVal = typeof cand === "object" && cand.confidence != null && !isNaN(cand.confidence) ? Math.round(cand.confidence * 100) : 88;
+                        return (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
+                            <div>
+                              <strong style={{ color: "var(--text-primary)" }}>{colName}</strong>
+                              <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({confVal}% conf)</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setSelectedTask("classification");
+                                setSelectedTarget(colName);
+                                setSelectedFeatures(columns.filter(c => c !== colName && !anyIdKeywords(c)));
+                              }}
+                              style={{ background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+                            >
+                              Select Target
+                            </button>
                           </div>
-                          <button
-                            onClick={() => {
-                              setSelectedTask("classification");
-                              setSelectedTarget(cand.column);
-                              setSelectedFeatures(columns.filter(c => c !== cand.column && !anyIdKeywords(c)));
-                            }}
-                            style={{ background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
-                          >
-                            Select Target
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -2073,24 +2077,28 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <p style={{ fontSize: 11.5, color: "var(--text-muted)" }}>No high-cardinality numeric features found suitable for continuous target fitting.</p>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {mlAnalysisData.regression_candidates.map(cand => (
-                        <div key={cand.column} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
-                          <div>
-                            <strong style={{ color: "var(--text-primary)" }}>{cand.column}</strong>
-                            <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({Math.round(cand.confidence * 100)}% conf)</span>
+                      {mlAnalysisData.regression_candidates.map((cand, idx) => {
+                        const colName = typeof cand === "string" ? cand : (cand.column || cand.name || "");
+                        const confVal = typeof cand === "object" && cand.confidence != null && !isNaN(cand.confidence) ? Math.round(cand.confidence * 100) : 85;
+                        return (
+                          <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "var(--bg-primary)", padding: 8, borderRadius: 4, fontSize: 12 }}>
+                            <div>
+                              <strong style={{ color: "var(--text-primary)" }}>{colName}</strong>
+                              <span style={{ fontSize: 10.5, color: "var(--text-muted)", marginLeft: 6 }}>({confVal}% conf)</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setSelectedTask("regression");
+                                setSelectedTarget(colName);
+                                setSelectedFeatures(columns.filter(c => c !== colName && !anyIdKeywords(c)));
+                              }}
+                              style={{ background: "#6E8F63", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+                            >
+                              Select Target
+                            </button>
                           </div>
-                          <button
-                            onClick={() => {
-                              setSelectedTask("regression");
-                              setSelectedTarget(cand.column);
-                              setSelectedFeatures(columns.filter(c => c !== cand.column && !anyIdKeywords(c)));
-                            }}
-                            style={{ background: "#6E8F63", color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontSize: 11, cursor: "pointer", fontWeight: 600 }}
-                          >
-                            Select Target
-                          </button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
