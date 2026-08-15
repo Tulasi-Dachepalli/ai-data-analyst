@@ -4168,17 +4168,30 @@ export default function DataAnalystDashboardBot({ currentView }) {
     const isAggOrListQuery = /highest|most|longest|lowest|least|max|min|average|sum|list|all|count|distribution/i.test(q);
     
     if (!isAggOrListQuery) {
-      const stopWords = new Set(["where", "is", "the", "located", "what", "who", "which", "find", "show", "tell", "about", "city", "area", "location", "address", "state", "details", "info", "for", "record", "value"]);
-      const tokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+      const stopWords = new Set([
+        "where", "is", "the", "located", "what", "who", "which", "find", "show", "tell", "about", "city", "area", "location",
+        "address", "state", "details", "info", "for", "record", "value", "you", "get", "professional", "visual", "power", "of",
+        "but", "created", "instantly", "seconds", "with", "an", "ai", "assistant", "answers", "your", "questions", "in", "plain",
+        "english", "can", "we", "do", "it", "this", "or", "and", "to", "by", "on", "from", "that", "how", "why", "are", "there"
+      ]);
+      const tokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 2 && !stopWords.has(w.toLowerCase()));
       
       // Try multi-word and single-word token matching against actual cell values
       for (let len = tokens.length; len >= 1; len--) {
         for (let i = 0; i <= tokens.length - len; i++) {
           const searchTerm = tokens.slice(i, i + len).join(" ");
-          if (searchTerm.length < 2) continue;
+          if (searchTerm.length < 3 || stopWords.has(searchTerm.toLowerCase())) continue;
           
+          const regex = new RegExp(`\\b${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
           const matchingRows = (rows || []).filter(r => {
-            return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm.toLowerCase()));
+            return Object.values(r).some(val => {
+              if (val === null || val === undefined) return false;
+              const sVal = String(val).toLowerCase();
+              if (searchTerm.length <= 3) {
+                return sVal === searchTerm.toLowerCase() || regex.test(sVal);
+              }
+              return sVal.includes(searchTerm.toLowerCase());
+            });
           });
 
           if (matchingRows.length > 0 && matchingRows[0] && typeof matchingRows[0] === "object") {
