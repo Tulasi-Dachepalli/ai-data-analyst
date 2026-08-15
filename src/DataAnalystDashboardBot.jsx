@@ -245,7 +245,19 @@ function pickDashboardPlan(stats) {
   }
 
   const numeric = validStats.filter(s => s.type === "numeric");
-  const categorical = validStats.filter(s => s.type === "categorical" && s.unique >= 1 && s.unique <= 50);
+
+  // Prioritize meaningful grouped category columns (Risk, Status, Region, Auditor) over unique IDs (Code, Name)
+  const groupedCategorical = validStats.filter(s => {
+    if (s.type !== "categorical") return false;
+    if (anyIdKeywords(s.name)) return false;
+    if (s.unique && s.count && s.unique >= s.count * 0.95 && s.count > 2) return false;
+    return s.unique >= 2 && s.unique <= 50;
+  });
+
+  const categorical = groupedCategorical.length > 0
+    ? groupedCategorical
+    : validStats.filter(s => s.type === "categorical" && s.unique >= 1 && s.unique <= 50);
+
   const dateCols = validStats.filter(s => s.type === "date");
   const kpiCols = numeric.length ? numeric.slice(0, 4) : validStats.slice(0, 4);
   const categoryCols = categorical.length ? categorical.slice(0, 4) : validStats.slice(0, 2);
