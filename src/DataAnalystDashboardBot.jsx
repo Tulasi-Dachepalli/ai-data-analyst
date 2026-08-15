@@ -221,10 +221,28 @@ function computeTrend(rows, dateCol, metricCol, agg) {
     .sort((a, b) => a.group.localeCompare(b.group));
 }
 
+function isMetaOrReportColumn(s) {
+  if (!s || !s.name) return true;
+  const name = String(s.name).trim().toLowerCase();
+  
+  // 1. Filter out column names matching report metadata words
+  if (/^__empty|report|executive|summary|metadata|overview|data analysis report/i.test(name)) return true;
+  
+  // 2. Filter out categorical columns whose top values are metadata strings ("Rows", "Columns", "Dataset", "Quality")
+  if (s.type === "categorical" && s.top && Array.isArray(s.top)) {
+    const topValues = s.top.map(t => String(t.value || "").toLowerCase().trim());
+    const metaWordMatches = topValues.filter(v => /^(rows|columns|dataset|quality score|missing|data quality|kpis|summary)$/i.test(v));
+    if (metaWordMatches.length >= 2) return true;
+  }
+  
+  return false;
+}
+
 function pickDashboardPlan(stats) {
-  const numeric = stats.filter(s => s.type === "numeric");
-  const categorical = stats.filter(s => s.type === "categorical" && s.unique > 1 && s.unique <= 30);
-  const dateCols = stats.filter(s => s.type === "date");
+  const validStats = (stats || []).filter(s => !isMetaOrReportColumn(s));
+  const numeric = validStats.filter(s => s.type === "numeric");
+  const categorical = validStats.filter(s => s.type === "categorical" && s.unique > 1 && s.unique <= 30);
+  const dateCols = validStats.filter(s => s.type === "date");
   const kpiCols = numeric.slice(0, 4);
   const categoryCols = categorical.slice(0, 2);
   const trendPlan = (dateCols.length && dateCols[0]?.name && numeric.length && numeric[0]?.name) ? { dateCol: dateCols[0].name, metricCol: numeric[0].name } : null;
