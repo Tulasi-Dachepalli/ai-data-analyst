@@ -1448,7 +1448,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     return { label: `Avg ${c.name}`, value: freshStats.mean ? freshStats.mean.toLocaleString() : "0" };
   }) : (dashboard ? dashboard.kpis : []);
 
-  const categoryCharts = plan ? plan.categoryCols.map(c => {
+  const categoryCharts = (plan ? plan.categoryCols.map(c => {
     const isRegion = String(c.name).toLowerCase() === "region";
     const defaultType = chooseChart(c.type, new Set(currentRows.map(r => String(r[c.name]))).size);
     const activeType = chartTypes[c.name] || defaultType;
@@ -1459,7 +1459,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       chartType: activeType,
       data: computeAggregate(currentRows, c.name, null, "count")
     };
-  }) : (dashboard ? dashboard.categoryCharts.map(c => ({ ...c, columnName: c.title.replace("Count by ", ""), chartType: chartTypes[c.title.replace("Count by ", "")] || c.chartType })) : []);
+  }) : (dashboard ? dashboard.categoryCharts.map(c => ({ ...c, columnName: c.title.replace("Count by ", ""), chartType: chartTypes[c.title.replace("Count by ", "")] || c.chartType })) : []))
+  .filter(c => c && c.title && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c.title));
 
   let trend = null;
   if (plan && plan.trendPlan) {
@@ -1488,7 +1489,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     .map(([colA, colB]) => ({ colA, colB, r: correlation(currentRows, colA, colB) }))
     .filter(c => c.r !== null && Math.abs(c.r) >= 0.5) : (dashboard ? dashboard.correlations : []);
 
-  const quality = plan ? calculateDataQuality(currentRows, columns) : (dashboard ? dashboard.quality : null);
+  const quality = calculateDataQuality(currentRows, columns.filter(c => c && !c.startsWith("__EMPTY")));
 
   const toggleChartType = (colName, currentType) => {
     const isRegion = String(colName).toLowerCase() === "region";
