@@ -4302,8 +4302,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
     return null;
   };
 
+  useEffect(() => {
+    if (!activeId && threads.length > 0) {
+      setActiveId(threads[0].id);
+    }
+  }, [threads, activeId]);
+
   const handleSend = async (overrideQuestion) => {
-    const question = typeof overrideQuestion === "string" ? overrideQuestion.trim() : input.trim();
+    const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : input;
+    const question = rawQuestion.replace(/^💡\s*/, "").trim();
     let currentActive = active || (threads && threads[0]);
 
     if (!currentActive || !currentActive.rows) {
@@ -4330,6 +4337,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
       };
 
       setThreads(prev => [currentActive, ...prev]);
+    }
+
+    if (!activeId || activeId !== currentActive.id) {
       setActiveId(currentActive.id);
     }
 
