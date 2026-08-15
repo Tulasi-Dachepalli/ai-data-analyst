@@ -1559,14 +1559,23 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
   return (
     <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Dynamic Tab Bar with Copilot Role Badges */}
+      {/* Dynamic Tab Bar with Copilot Role Badges & Ingested Sheet Indicator */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid var(--border-color)", paddingBottom: 6 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", background: "var(--bg-hover)", padding: "2px 8px", borderRadius: 4 }}>
-            🤖 AI Copilot Mode
-          </span>
-          <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-            {["dashboard", "cleaning", "eda", "stats", "insights_tab", "data"].includes(activeTab) ? "📊 Data Analyst Mode — Business KPIs, EDA & Reports" : "🧠 Data Scientist Mode — ML Predictive Models & Forecasting"}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", background: "var(--bg-hover)", padding: "2px 8px", borderRadius: 4 }}>
+              🤖 AI Copilot Mode
+            </span>
+            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+              {["dashboard", "cleaning", "eda", "stats", "insights_tab", "data"].includes(activeTab) ? "📊 Data Analyst Mode — Business KPIs, EDA & Reports" : "🧠 Data Scientist Mode — ML Predictive Models & Forecasting"}
+            </span>
+          </div>
+
+          {/* Explicit Ingested Sheet Indicator Badge */}
+          <span style={{ fontSize: 11, fontWeight: 600, color: "#3E6F8E", background: "rgba(62, 111, 142, 0.08)", padding: "3px 10px", borderRadius: 12, border: "1px solid rgba(62, 111, 142, 0.2)", display: "flex", alignItems: "center", gap: 5 }}>
+            <span>📄 Ingested Sheet:</span>
+            <strong style={{ color: "var(--text-primary)" }}>{dashboard?.sheetName || "Cleaned Data"}</strong>
+            <span>({validCols.length} cols × {currentRows.length} rows)</span>
           </span>
         </div>
 
@@ -1796,7 +1805,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 </div>
                 <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, textAlign: "center" }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)" }}>
-                    {columns.length}
+                    {validCols.length}
                   </div>
                   <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>Total Columns</div>
                 </div>
