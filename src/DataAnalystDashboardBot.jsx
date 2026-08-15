@@ -4421,22 +4421,46 @@ export default function DataAnalystDashboardBot({ currentView }) {
     try {
       const res = await api.getDataset(t.serverId);
       const d = res.dataset;
+      const safeRows = d.rows || [];
+      const safeCols = d.columns || (safeRows[0] ? Object.keys(safeRows[0]).filter(k => !k.startsWith("__")) : []);
+      const safeStats = d.stats || safeCols.map(c => computeColumnStats(safeRows, c));
+      const safeQuality = d.quality || calculateDataQuality(safeRows, safeCols);
+      let safeDashboard = d.dashboard;
+
+      if (!safeDashboard && safeRows.length > 0) {
+        const plan = pickDashboardPlan(safeStats);
+        const kpis = plan.kpiCols.map(c => ({ label: `Avg ${c.name}`, value: (c.mean != null) ? c.mean.toLocaleString() : "0" }));
+        const categoryCharts = plan.categoryCols.map(c => ({
+          title: `Count by ${c.name}`,
+          metricLabel: "count",
+          chartType: chooseChart(c.type, c.unique),
+          data: computeAggregate(safeRows, c.name, null, "count")
+        }));
+        safeDashboard = {
+          sheetName: d.name || t.name,
+          rawRows: safeRows,
+          plan: { kpis, categoryCharts, trendChart: null },
+          narrative: `Dataset loaded successfully with ${safeRows.length.toLocaleString()} rows and ${safeCols.length} columns.`
+        };
+      }
+
       updateThread(t.id, prev => {
         let finalMsgs = d.messages || [];
-        if (finalMsgs.length <= 1 && d.dashboard) {
+        if (!finalMsgs.some(m => m.kind === "dashboard")) {
           finalMsgs = [
-            { role: "user", kind: "file", fileName: prev.name || t.name, rowCount: d.rows ? d.rows.length : 0, colCount: d.columns ? d.columns.length : 0 },
-            { role: "assistant", kind: "text", content: d.dashboard.narrative || "Here is the summary of your data." },
-            { role: "assistant", kind: "dashboard" }
+            { role: "user", kind: "file", fileName: prev.name || t.name, rowCount: safeRows.length, colCount: safeCols.length },
+            { role: "assistant", kind: "text", content: safeDashboard?.narrative || "Here is the summary of your data." },
+            { role: "assistant", kind: "dashboard" },
+            ...finalMsgs.filter(m => m.kind !== "file")
           ];
         }
         return {
           ...prev,
-          rows: d.rows,
-          columns: d.columns,
-          stats: d.stats,
-          quality: d.quality,
-          dashboard: d.dashboard,
+          rows: safeRows,
+          columns: safeCols,
+          stats: safeStats,
+          quality: safeQuality,
+          dashboard: safeDashboard,
           isRawText: d.isRawText || false,
           rawText: d.rawText || "",
           messages: finalMsgs,
