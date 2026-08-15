@@ -3750,6 +3750,12 @@ export default function DataAnalystDashboardBot({ currentView }) {
     return suggestions.slice(0, 3);
   }, [active]);
 
+  const latestAssistantMsg = useMemo(() => {
+    if (!active || !Array.isArray(active.messages)) return null;
+    const assistantMsgs = active.messages.filter(m => (m.role === "assistant" || m.kind === "grounded_chat") && m.content);
+    return assistantMsgs.length > 0 ? assistantMsgs[assistantMsgs.length - 1] : null;
+  }, [active]);
+
   const handleDatasetCreated = (newThread) => {
     setThreads(prev => [newThread, ...prev]);
     setActiveId(newThread.id);
@@ -5210,6 +5216,26 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
+            {latestAssistantMsg && (
+              <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#8B5CF6", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>🤖</span> Latest AI Copilot Response:
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                    }}
+                    style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Scroll to Thread ↓
+                  </button>
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>
+                  {latestAssistantMsg.content}
+                </div>
+              </div>
+            )}
             {currentView === "ai-analyst" && (
               <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.25)", borderRadius: 10, padding: "8px 14px", marginBottom: 10, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: "#8B5CF6" }}>
                 💬 AI Copilot Chat Active — Ask any question about your data in plain English below:
