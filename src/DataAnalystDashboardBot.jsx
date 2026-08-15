@@ -1074,27 +1074,41 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     if (activeTab === "ml" && mlAnalyzeStage === "idle") {
       setMlAnalyzeStage("loading");
       setMlAnalyzeError("");
+
+      const applyAutoMlDefaults = (data) => {
+        setMlAnalysisData(data);
+        setMlAnalyzeStage("loaded");
+
+        const topClass = data?.classification_candidates?.[0]?.column;
+        const topReg = data?.regression_candidates?.[0]?.column;
+        const autoTarget = topClass || topReg || "";
+
+        if (autoTarget && !selectedTarget) {
+          const task = topClass ? "classification" : "regression";
+          setSelectedTask(task);
+          setSelectedTarget(autoTarget);
+          const autoFeatures = columns.filter(c => c !== autoTarget && !isUniqueIdentifierColumn(stats.find(s => s.name === c)));
+          setSelectedFeatures(autoFeatures);
+        }
+      };
+
       if (serverId) {
         api.analyzeMlTasks(serverId)
           .then(res => {
             if (res && (res.classification_candidates || res.regression_candidates)) {
-              setMlAnalysisData(res);
-              setMlAnalyzeStage("loaded");
+              applyAutoMlDefaults(res);
             } else {
-              setMlAnalysisData(buildLocalMlAnalysis(stats));
-              setMlAnalyzeStage("loaded");
+              applyAutoMlDefaults(buildLocalMlAnalysis(stats));
             }
           })
           .catch(() => {
-            setMlAnalysisData(buildLocalMlAnalysis(stats));
-            setMlAnalyzeStage("loaded");
+            applyAutoMlDefaults(buildLocalMlAnalysis(stats));
           });
       } else {
-        setMlAnalysisData(buildLocalMlAnalysis(stats));
-        setMlAnalyzeStage("loaded");
+        applyAutoMlDefaults(buildLocalMlAnalysis(stats));
       }
     }
-  }, [activeTab, serverId, mlAnalyzeStage, stats]);
+  }, [activeTab, serverId, mlAnalyzeStage, stats, columns, selectedTarget]);
 
   useEffect(() => {
     if (activeTab === "forecast" && forecastAnalyzeStage === "idle") {
