@@ -5167,12 +5167,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
-            {active && suggestedQuestions.length > 0 && (
+            {(active || threads.length > 0) && suggestedQuestions.length > 0 && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, justifyContent: "center" }}>
                 {suggestedQuestions.map((q, idx) => (
                   <button
                     key={idx}
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       handleSend(q);
                     }}
                     style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "5px 12px", fontSize: 11.5, color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s ease" }}
