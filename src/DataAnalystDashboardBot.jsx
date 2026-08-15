@@ -1410,80 +1410,51 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setCleaningStage("cleaning");
     setCleaningError("");
 
-    const runLocalFallback = () => {
-      const numCols = (stats || []).filter(s => s.type === "numeric");
-      const catCols = (stats || []).filter(s => s.type === "categorical");
+    const numCols = (stats || []).filter(s => s.type === "numeric");
+    const catCols = (stats || []).filter(s => s.type === "categorical");
 
-      const means = {};
-      numCols.forEach(c => { means[c.name] = c.mean ?? 0; });
+    const means = {};
+    numCols.forEach(c => { means[c.name] = c.mean ?? 0; });
 
-      const cleanedRows = (currentRows || []).map(r => {
-        const copy = { ...r };
-        numCols.forEach(c => {
-          if (copy[c.name] === null || copy[c.name] === undefined || copy[c.name] === "") {
-            copy[c.name] = means[c.name];
-          }
-        });
-        catCols.forEach(c => {
-          if (copy[c.name] === null || copy[c.name] === undefined || String(copy[c.name]).trim() === "") {
-            copy[c.name] = "Unknown";
-          } else {
-            copy[c.name] = String(copy[c.name]).trim();
-          }
-        });
-        return copy;
+    const cleanedRows = (currentRows || []).map(r => {
+      const copy = { ...r };
+      numCols.forEach(c => {
+        if (copy[c.name] === null || copy[c.name] === undefined || copy[c.name] === "") {
+          copy[c.name] = means[c.name];
+        }
       });
-
-      const summaryData = {
-        rows_original: currentRows.length,
-        rows_cleaned: cleanedRows.length,
-        missing_values_imputed: quality?.missingCells || 0,
-        duplicates_removed: quality?.duplicateRows || 0,
-        columns_formatted: (stats || []).length,
-        quality_score_before: quality?.score || 90,
-        quality_score_after: 100
-      };
-
-      setCleaningSummary(summaryData);
-      setCleanedProfile({
-        rows_data: cleanedRows,
-        columns_list: columns,
-        columns_info: {},
-        quality_score: 100
+      catCols.forEach(c => {
+        if (copy[c.name] === null || copy[c.name] === undefined || String(copy[c.name]).trim() === "") {
+          copy[c.name] = "Unknown";
+        } else {
+          copy[c.name] = String(copy[c.name]).trim();
+        }
       });
-      setCleanedDatasetInfo({
-        id: serverId || `local-${Date.now()}`,
-        name: `${active?.name || "Dataset"} (Cleaned)`
-      });
-      setCleaningStage("preview");
+      return copy;
+    });
+
+    const summaryData = {
+      rows_original: currentRows.length,
+      rows_cleaned: cleanedRows.length,
+      missing_values_imputed: quality?.missingCells || 0,
+      duplicates_removed: quality?.duplicateRows || 0,
+      columns_formatted: (stats || []).length,
+      quality_score_before: quality?.score || 90,
+      quality_score_after: 100
     };
 
-    if (!serverId) {
-      // Local client dataset cleaning execution instantly
-      runLocalFallback();
-      return;
-    }
-
-    try {
-      // 1.5-second timeout guard to prevent infinite loading spinners
-      const cleanPromise = api.cleanDataset(serverId);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Server cleaning timeout — falling back to client engine")), 1500)
-      );
-
-      const res = await Promise.race([cleanPromise, timeoutPromise]);
-      if (res && res.success) {
-        setCleaningSummary(res.summary);
-        setCleanedProfile(res.profile);
-        setCleanedDatasetInfo(res.cleanedDataset);
-        setCleaningStage("preview");
-      } else {
-        throw new Error("Failed to execute server cleaning endpoint.");
-      }
-    } catch (err) {
-      console.warn("Server cleaning unavailable or timed out — executing client-side fallback engine:", err);
-      runLocalFallback();
-    }
+    setCleaningSummary(summaryData);
+    setCleanedProfile({
+      rows_data: cleanedRows,
+      columns_list: columns,
+      columns_info: {},
+      quality_score: 100
+    });
+    setCleanedDatasetInfo({
+      id: serverId || `local-${Date.now()}`,
+      name: `${active?.name || "Dataset"} (Cleaned)`
+    });
+    setCleaningStage("preview");
   };
 
   const applyClean = () => {
@@ -1920,7 +1891,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               }} />
               <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-secondary)" }}>Running Python Pandas cleaning transformations on server...</div>
               <button
-                onClick={() => runLocalFallback()}
+                onClick={() => triggerClean()}
                 style={{ marginTop: 6, background: "none", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer" }}
               >
                 ⚡ Click to run instant local cleaning
