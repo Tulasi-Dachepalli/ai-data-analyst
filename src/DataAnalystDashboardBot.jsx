@@ -246,8 +246,10 @@ function isMetaOrReportColumn(s) {
 
 function isUniqueIdentifierColumn(s) {
   if (!s || !s.name) return false;
+  // 1. High cardinality ratio: unique values / row count >= 0.90 (e.g. 9 or 10 unique out of 10 rows)
+  if (s.unique && s.count && (s.unique / s.count) >= 0.90 && s.count > 2) return true;
+  // 2. Structural ID keyword pattern (id, code, uuid, sku, guid, ref, token, key, hash)
   if (anyIdKeywords(s.name)) return true;
-  if (s.unique && s.count && s.unique >= s.count * 0.95 && s.count > 2) return true;
   return false;
 }
 
