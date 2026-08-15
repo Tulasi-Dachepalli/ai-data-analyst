@@ -1434,10 +1434,19 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
     const summaryData = {
       rows_original: currentRows.length,
+      originalRows: currentRows.length,
       rows_cleaned: cleanedRows.length,
-      missing_values_imputed: quality?.missingCells || 0,
-      duplicates_removed: quality?.duplicateRows || 0,
+      cleanedRows: cleanedRows.length,
       columns_formatted: (stats || []).length,
+      originalColumns: (stats || []).length,
+      cleanedColumns: (stats || []).length,
+      missing_values_imputed: quality?.missingCells || 0,
+      missingValuesFilled: quality?.missingCells || 0,
+      duplicates_removed: quality?.duplicateRows || 0,
+      duplicatesRemoved: quality?.duplicateRows || 0,
+      whitespaceNormalized: 0,
+      emptyColumnsRemoved: 0,
+      constantColumnsRemoved: 0,
       quality_score_before: quality?.score || 90,
       quality_score_after: 100
     };
@@ -1909,12 +1918,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
               <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "var(--radius-md)", padding: 14 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--success, #10B981)", marginBottom: 8 }}>📋 Cleaning Summary Preview</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, fontSize: 13, color: "var(--text-secondary)" }}>
-                  <div>• Rows: <strong>{cleaningSummary.originalRows} ➔ {cleaningSummary.cleanedRows}</strong></div>
-                  <div>• Columns: <strong>{cleaningSummary.originalColumns} ➔ {cleaningSummary.cleanedColumns}</strong></div>
-                  <div>• Duplicates Dropped: <strong>{cleaningSummary.duplicatesRemoved}</strong></div>
-                  <div>• Missing Cells Imputed: <strong>{cleaningSummary.missingValuesFilled}</strong></div>
-                  <div>• Spaces Normalized: <strong>{cleaningSummary.whitespaceNormalized}</strong></div>
-                  <div>• Constant/Empty Columns: <strong>{cleaningSummary.emptyColumnsRemoved + cleaningSummary.constantColumnsRemoved}</strong></div>
+                  <div>• Rows: <strong>{(cleaningSummary?.originalRows ?? cleaningSummary?.rows_original ?? currentRows.length)} ➔ {(cleaningSummary?.cleanedRows ?? cleaningSummary?.rows_cleaned ?? currentRows.length)}</strong></div>
+                  <div>• Columns: <strong>{(cleaningSummary?.originalColumns ?? cleaningSummary?.columns_formatted ?? columns.length)} ➔ {(cleaningSummary?.cleanedColumns ?? cleaningSummary?.columns_formatted ?? columns.length)}</strong></div>
+                  <div>• Duplicates Dropped: <strong>{(cleaningSummary?.duplicatesRemoved ?? cleaningSummary?.duplicates_removed ?? 0)}</strong></div>
+                  <div>• Missing Cells Imputed: <strong>{(cleaningSummary?.missingValuesFilled ?? cleaningSummary?.missing_values_imputed ?? 0)}</strong></div>
+                  <div>• Spaces Normalized: <strong>{(cleaningSummary?.whitespaceNormalized ?? 0)}</strong></div>
+                  <div>• Constant/Empty Columns: <strong>{(cleaningSummary?.emptyColumnsRemoved ?? 0) + (cleaningSummary?.constantColumnsRemoved ?? 0)}</strong></div>
                 </div>
               </div>
 
