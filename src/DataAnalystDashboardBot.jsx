@@ -1452,7 +1452,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     return { label: `Avg ${c.name}`, value: freshStats.mean ? freshStats.mean.toLocaleString() : "0" };
   }) : (dashboard ? dashboard.kpis : []);
 
-  const categoryCharts = (plan ? plan.categoryCols.map(c => {
+  let categoryCharts = (plan ? plan.categoryCols.map(c => {
     const isRegion = String(c.name).toLowerCase() === "region";
     const defaultType = chooseChart(c.type, new Set(currentRows.map(r => String(r[c.name]))).size);
     const activeType = chartTypes[c.name] || defaultType;
@@ -1466,6 +1466,23 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }) : (dashboard ? dashboard.categoryCharts.map(c => ({ ...c, columnName: c.title.replace("Count by ", ""), chartType: chartTypes[c.title.replace("Count by ", "")] || c.chartType })) : []))
   .filter(c => c && c.title && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c.title));
 
+  // Dynamic Fallback: If categoryCharts is empty, build charts for all valid categorical columns in currentRows
+  if (categoryCharts.length === 0 && currentRows && currentRows.length > 0) {
+    const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c));
+    const catCols = validCols.filter(c => {
+      const unq = new Set(currentRows.map(r => String(r[c]))).size;
+      return unq >= 1 && unq <= 50;
+    }).slice(0, 4);
+
+    categoryCharts = catCols.map(c => ({
+      title: `Count by ${c}`,
+      columnName: c,
+      metricLabel: "count",
+      chartType: chartTypes[c] || (String(c).toLowerCase() === "region" ? "bar" : "pie"),
+      data: computeAggregate(currentRows, c, null, "count")
+    }));
+  }
+
   let trend = null;
   if (plan && plan.trendPlan) {
     const data = computeTrend(currentRows, plan.trendPlan.dateCol, plan.trendPlan.metricCol, "sum");
@@ -1476,11 +1493,22 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     trend = dashboard.trend;
   }
 
-  const distributions = plan ? plan.distributionCols.map(c => ({
+  let distributions = plan ? plan.distributionCols.map(c => ({
     title: `Distribution of ${c.name}`,
     metricLabel: c.name,
     data: buildHistogram(currentRows, c.name, 8)
   })) : (dashboard ? dashboard.distributions : []);
+
+  // Dynamic Fallback: If distributions is empty, build histogram charts for numeric columns
+  if (distributions.length === 0 && currentRows && currentRows.length > 0) {
+    const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY/i.test(c));
+    const numCols = validCols.filter(c => currentRows.some(r => r[c] !== null && r[c] !== undefined && r[c] !== "" && !isNaN(Number(r[c])))).slice(0, 2);
+    distributions = numCols.map(c => ({
+      title: `Distribution of ${c}`,
+      metricLabel: c,
+      data: buildHistogram(currentRows, c, 8)
+    }));
+  }
 
   const outliers = {};
   if (plan) {
