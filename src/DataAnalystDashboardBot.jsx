@@ -865,7 +865,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setCleaningSummary(null);
     setCleanedProfile(null);
     setCleanedDatasetInfo(null);
-  }, [serverId, columns]);
+  }, [serverId]);
 
   // Automated EDA state hooks
   const [edaStage, setEdaStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
