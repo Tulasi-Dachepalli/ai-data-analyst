@@ -1937,93 +1937,97 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           {edaStage === "loaded" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Dataset Overview and Insights Block */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
-                {/* Columns Metrics Overview */}
-                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>📊 Dataset Metrics</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                    <div>
-                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Total Rows</div>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{currentRows.length.toLocaleString()}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Columns</div>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{columns.length}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Numeric Cols</div>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
-                        {stats ? stats.filter(c => c && (c.type === "numeric" || (c.dtype && String(c.dtype).includes("int")))).length : 0}
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Categorical Cols</div>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
-                        {stats ? stats.filter(c => c && c.type === "categorical").length : 0}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              {/* Dataset Overview and Insights Block */}
+              {(() => {
+                const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c));
+                const freshStats = (currentRows && currentRows.length > 0)
+                  ? (validCols.length > 0 ? validCols : Object.keys(currentRows[0] || {}).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY/i.test(c)))
+                      .map(c => computeColumnStats(currentRows, c))
+                      .filter(s => !isMetaOrReportColumn(s))
+                  : (stats || []).filter(s => !isMetaOrReportColumn(s));
 
-                {/* Dynamic Insights Bullet List */}
-                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>💡 Potential Analysis Insights</div>
-                  <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: 4 }}>
-                    {(() => {
-                      const list = [];
-                      if (stats) {
-                        stats.forEach(c => {
-                          if (c.outlier_count > 0) {
-                            list.push(`Column "${c.name}" contains ${c.outlier_count} detected outliers (IQR check).`);
-                          }
-                          if (c.type === "categorical") {
-                            if (c.unique > 15) {
-                              list.push(`Column "${c.name}" contains high cardinality (${c.unique} unique tags). SKIPPED complex breakdowns.`);
-                            } else if (c.unique > 1) {
-                              list.push(`Column "${c.name}" contains ${c.unique} unique categories.`);
+                const numCount = freshStats.filter(c => c && c.type === "numeric").length;
+                const catCount = freshStats.filter(c => c && c.type === "categorical").length;
+                const finalEdaCharts = (edaCharts && edaCharts.length > 0 ? edaCharts : categoryCharts)
+                  .filter(c => c && c.title && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c.title));
+
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+                      {/* Columns Metrics Overview */}
+                      <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>📊 Dataset Metrics</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Total Rows</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{currentRows.length.toLocaleString()}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Columns</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{freshStats.length}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Numeric Cols</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{numCount}</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 10, textTransform: "uppercase", color: "var(--text-muted)" }}>Categorical Cols</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{catCount}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Dynamic Insights Bullet List */}
+                      <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>💡 Potential Analysis Insights</div>
+                        <ul style={{ margin: 0, paddingLeft: 16, fontSize: 12, color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: 4 }}>
+                          {(() => {
+                            const list = [];
+                            freshStats.forEach(c => {
+                              if (c.outlier_count > 0) {
+                                list.push(`Column "${c.name}" contains ${c.outlier_count} detected outliers (IQR check).`);
+                              }
+                              if (c.type === "categorical") {
+                                if (c.unique > 15) {
+                                  list.push(`Column "${c.name}" contains high cardinality (${c.unique} unique tags). SKIPPED complex breakdowns.`);
+                                } else if (c.unique > 1) {
+                                  list.push(`Column "${c.name}" contains ${c.unique} unique categories.`);
+                                }
+                              }
+                            });
+                            const dates = freshStats.filter(c => c && c.name && (String(c.name).toLowerCase().includes("date") || String(c.name).toLowerCase().includes("time")));
+                            if (dates.length > 0 && dates[0] && dates[0].name) {
+                              list.push(`Time-series chronological aggregations generated using "${dates[0].name}".`);
                             }
-                          }
-                        });
-                        const dates = stats.filter(c => c && c.name && (String(c.name).toLowerCase().includes("date") || String(c.name).toLowerCase().includes("time")));
-                        if (dates.length > 0 && dates[0] && dates[0].name) {
-                          list.push(`Time-series chronological aggregations generated using "${dates[0].name}".`);
-                        }
-                        const nums = stats.filter(c => c && (c.type === "numeric" || (c.dtype && String(c.dtype).includes("int"))));
-                        if (nums.length >= 2 && nums[0] && nums[0].name && nums[1] && nums[1].name) {
-                          list.push(`Numeric bivariate relationships analyzed for pair "${nums[0].name}" vs "${nums[1].name}".`);
-                        }
-                      }
-                      if (list.length === 0) return <li>No significant anomalies or categories detected in sample data.</li>;
-                      return list.map((item, idx) => <li key={idx}>{item}</li>);
-                    })()}
-                  </ul>
-                </div>
-              </div>
-
-              {/* Automatic Recharts Grid */}
-              {edaCharts.length === 0 ? (
-                <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 13, padding: "20px 0" }}>
-                  Not enough compatible columns to generate automated exploratory visualizations.
-                </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 16 }}>
-                  {edaCharts.map((chart, idx) => (
-                    <div key={idx} style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{chart.title}</div>
-                      <div style={{ width: "100%", height: 210 }}>
-                        <ChartBlock
-                          chartType={chart.chartType || chart.type || "bar"}
-                          data={chart.data}
-                          metricLabel={chart.metricLabel || chart.yAxis || "count"}
-                          xAxis={chart.xAxis || chart.xKey}
-                          yAxis={chart.yAxis || chart.yKey}
-                          height={210}
-                        />
+                            const nums = freshStats.filter(c => c && c.type === "numeric");
+                            if (nums.length >= 2 && nums[0] && nums[0].name && nums[1] && nums[1].name) {
+                              list.push(`Numeric bivariate relationships analyzed for pair "${nums[0].name}" vs "${nums[1].name}".`);
+                            }
+                            if (list.length === 0) return <li>No significant anomalies or categories detected in sample data.</li>;
+                            return list.map((item, idx) => <li key={idx}>{item}</li>);
+                          })()}
+                        </ul>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    {/* Automatic Recharts Grid */}
+                    {finalEdaCharts.length === 0 ? (
+                      <div style={{ textAlign: "center", color: "var(--text-muted)", fontSize: 13, padding: "20px 0" }}>
+                        Not enough compatible columns to generate automated exploratory visualizations.
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: 16 }}>
+                        {finalEdaCharts.map((chart, idx) => (
+                          <div key={idx} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 14 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>{chart.title}</div>
+                            <ChartBlock chartType={chart.chartType || "bar"} data={chart.data} metricLabel={chart.metricLabel || "count"} height={210} />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
