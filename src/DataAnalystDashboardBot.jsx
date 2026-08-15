@@ -5112,16 +5112,16 @@ export default function DataAnalystDashboardBot({ currentView }) {
         {usageStats && usageStats.tier === "free" && (
           <div style={{ background: "linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-primary) 100%)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>AI Credits</span>
-              <span style={{ fontSize: 11.5, fontWeight: 600, color: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--text-secondary)" }}>
-                {Math.round(usageStats.usedTokens).toLocaleString()} / {usageStats.limit.toLocaleString()}
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>Token Usage</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--text-secondary)" }}>
+                {Math.round(usageStats.usedTokens).toLocaleString()} / {usageStats.limit.toLocaleString()} Used
               </span>
             </div>
             
             <div style={{ background: "var(--border-color)", height: 8, borderRadius: 4, overflow: "hidden" }}>
               <div style={{ 
                 width: `${Math.min(100, (usageStats.usedTokens / usageStats.limit) * 100)}%`, 
-                background: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--warning)", 
+                background: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--success, #10B981)", 
                 height: "100%", 
                 borderRadius: 4,
                 transition: "width 0.3s ease"
