@@ -4343,7 +4343,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       setActiveId(currentActive.id);
     }
 
-    if (!question || loading || !currentActive || !currentActive.rows) return;
+    if (!question || !currentActive || !currentActive.rows) return;
     consumeCredit();
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
@@ -5202,8 +5202,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder={active ? "Ask about your data…" : "Upload a file to begin, then ask away…"} rows={1}
                 style={{ flex: 1, resize: "none", border: "none", outline: "none", background: "transparent", fontSize: 14, lineHeight: 1.5, padding: "6px 0", fontFamily: "inherit", maxHeight: 140 }} />
-              <button onClick={handleSend} disabled={loading || !input.trim()}
-                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: (loading || !input.trim()) ? "#EAE7E0" : "#3E6F8E", color: "#fff", cursor: (loading || !input.trim()) ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, marginBottom: 1, transition: "all 0.2s ease" }}>↑</button>
+              <button onClick={handleSend} disabled={!input.trim()}
+                style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: !input.trim() ? "#EAE7E0" : "#3E6F8E", color: "#fff", cursor: !input.trim() ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, marginBottom: 1, transition: "all 0.2s ease" }}>↑</button>
             </div>
           </div>
         </div>
