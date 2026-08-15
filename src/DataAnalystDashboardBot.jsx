@@ -4435,7 +4435,13 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
   const handleSend = async (overrideQuestion) => {
     const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : input;
-    const question = rawQuestion.replace(/^💡\s*/, "").trim();
+    const question = (rawQuestion || "").replace(/^💡\s*/, "").trim();
+    if (!question) return;
+
+    // Immediately clear input box in 0ms so user sees draft cleared instantly
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
     let currentActive = active || (threads && threads[0]);
 
     if (!currentActive || !currentActive.rows) {
@@ -4516,8 +4522,6 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
     if (!question || !currentActive || !currentActive.rows) return;
     consumeCredit();
-    setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "auto";
     const id = currentActive.id;
     const serverId = currentActive.serverId;
     
