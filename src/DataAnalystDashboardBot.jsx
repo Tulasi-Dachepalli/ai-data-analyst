@@ -930,7 +930,14 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const buildLocalMlAnalysis = (inputStats) => {
     const safeStats = getFreshCleanStats(inputStats, currentRows);
     const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
-    const catCols = safeStats.filter(s => s.type === "categorical").map(s => s.name);
+
+    // Exclude unique identifier columns (Code, Name) from ML classification targets
+    const catCols = safeStats.filter(s => {
+      if (s.type !== "categorical") return false;
+      if (anyIdKeywords(s.name)) return false;
+      if (s.unique && s.count && s.unique >= s.count * 0.95 && s.count > 2) return false;
+      return s.unique >= 2 && s.unique <= 50;
+    }).map(s => s.name);
 
     return {
       classification_candidates: catCols.map(c => {
