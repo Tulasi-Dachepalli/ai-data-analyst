@@ -875,6 +875,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const [predictionResult, setPredictionResult] = useState(null);
   const [predictionStage, setPredictionStage] = useState("idle"); // "idle" | "predicting" | "completed" | "error"
   const [predictionError, setPredictionError] = useState("");
+  const [sandboxInputs, setSandboxInputs] = useState({});
 
   // Forecasting state hooks
   const [forecastAnalyzeStage, setForecastAnalyzeStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
@@ -2527,6 +2528,10 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                         best_model: mockLeaderboard[0].model_name,
                         best_score: isClassification ? 0.94 : 0.92,
                         leaderboard: mockLeaderboard,
+                        feature_importances: (selectedFeatures || []).map((f, idx) => ({
+                          feature: f,
+                          importance: +((1 / (idx + 1.5)) * 0.8).toFixed(3)
+                        })),
                         feature_importance: (selectedFeatures || []).map((f, idx) => ({
                           feature: f,
                           importance: +((1 / (idx + 1.5)) * 0.8).toFixed(3)
@@ -2694,7 +2699,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: 20 }}>
                     <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12 }}>💡 Explainability: Feature Importances</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      {mlTrainResult.feature_importances.map(item => (
+                      {(mlTrainResult?.feature_importances || mlTrainResult?.feature_importance || []).map(item => (
                         <div key={item.feature} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--text-secondary)" }}>
                           <span style={{ width: 100, fontWeight: 600, textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{item.feature}:</span>
                           <div style={{ flex: 1, height: 8, background: "var(--bg-primary)", borderRadius: 4, overflow: "hidden" }}>
