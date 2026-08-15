@@ -5394,6 +5394,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      setInput("");
                       handleSend(q);
                     }}
                     style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "5px 12px", fontSize: 11.5, color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s ease" }}
@@ -5410,7 +5411,14 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder={active ? "Ask about your data…" : "Upload a file to begin, then ask away…"} rows={1}
                 style={{ flex: 1, resize: "none", border: "none", outline: "none", background: "transparent", fontSize: 14, lineHeight: 1.5, padding: "6px 0", fontFamily: "inherit", maxHeight: 140 }} />
-              <button onClick={handleSend} disabled={!input.trim()}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSend();
+                }}
+                disabled={!input.trim()}
                 style={{ width: 32, height: 32, borderRadius: "50%", border: "none", background: !input.trim() ? "#EAE7E0" : "#3E6F8E", color: "#fff", cursor: !input.trim() ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0, marginBottom: 1, transition: "all 0.2s ease" }}>↑</button>
             </div>
           </div>
