@@ -2412,8 +2412,16 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                       <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Target Variable (Column to Predict)</label>
                       <select value={selectedTarget} onChange={(e) => { setSelectedTarget(e.target.value); setSelectedFeatures(columns.filter(c => c !== e.target.value && !anyIdKeywords(c))); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
                         <option value="">-- Select target column --</option>
-                        {columns.map(col => (
-                          <option key={col} value={col}>{col}</option>
+                        {stats.filter(s => {
+                          if (selectedTask === "classification") {
+                            return s.type === "categorical" && !isUniqueIdentifierColumn(s);
+                          }
+                          if (selectedTask === "regression") {
+                            return s.type === "numeric";
+                          }
+                          return true;
+                        }).map(s => (
+                          <option key={s.name} value={s.name}>{s.name}</option>
                         ))}
                       </select>
                     </div>
