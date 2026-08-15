@@ -867,6 +867,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setCleanedDatasetInfo(null);
   }, [serverId]);
 
+  useEffect(() => {
+    if (activeTab === "cleaning" && (cleaningStage === "idle" || !cleaningSummary)) {
+      triggerClean();
+    }
+  }, [activeTab, cleaningStage]);
+
   // Automated EDA state hooks
   const [edaStage, setEdaStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
   const [edaCharts, setEdaCharts] = useState([]);
@@ -1434,7 +1440,6 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }, [cleaningSummary, currentRows, columns, cleanedProfile, stats]);
 
   const triggerClean = () => {
-    consumeCredit();
     setCleaningError("");
 
     try {
