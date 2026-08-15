@@ -33,23 +33,24 @@ export default class ErrorBoundary extends React.Component {
           <div style={{ display: "flex", gap: 10 }}>
             <button
               onClick={() => {
+                sessionStorage.clear();
                 this.setState({ hasError: false, error: null });
                 window.location.reload();
               }}
               style={{ background: "#0F172A", color: "#FFFFFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
-              🔄 Reload Workspace
+              🔄 Auto-Recover Workspace
             </button>
             <button
               onClick={() => {
-                localStorage.removeItem("aida_token");
-                localStorage.removeItem("aida_user");
+                localStorage.clear();
+                sessionStorage.clear();
                 this.setState({ hasError: false, error: null });
                 window.location.reload();
               }}
               style={{ background: "#E2E8F0", color: "#0F172A", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
             >
-              🧹 Reset Session & Login
+              🧹 Clear All & Re-Login
             </button>
           </div>
         </div>
