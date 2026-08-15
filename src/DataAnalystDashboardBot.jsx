@@ -1454,16 +1454,23 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setCleaningStage("completed");
   };
 
-  const slicerCols = stats ? stats.filter(s => {
-    return !isMetaOrReportColumn(s) && s.type === "categorical" && s.unique > 1 && s.unique <= 30;
-  }) : [];
+  const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c));
+  const freshStats = (currentRows && currentRows.length > 0)
+    ? (validCols.length > 0 ? validCols : Object.keys(currentRows[0] || {}).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY/i.test(c)))
+        .map(c => computeColumnStats(currentRows, c))
+        .filter(s => !isMetaOrReportColumn(s))
+    : (stats || []).filter(s => !isMetaOrReportColumn(s));
 
-  const kpis = plan ? plan.kpiCols.map(c => {
-    const freshStats = computeColumnStats(currentRows, c.name);
-    return { label: `Avg ${c.name}`, value: freshStats.mean ? freshStats.mean.toLocaleString() : "0" };
-  }) : (dashboard ? dashboard.kpis : []);
+  const activePlan = pickDashboardPlan(freshStats);
 
-  let categoryCharts = (plan ? plan.categoryCols.map(c => {
+  const slicerCols = freshStats.filter(s => s.type === "categorical" && s.unique > 1 && s.unique <= 35);
+
+  const kpis = activePlan.kpiCols.map(c => {
+    const colStat = computeColumnStats(currentRows, c.name);
+    return { label: `Avg ${c.name}`, value: colStat.mean !== undefined ? colStat.mean.toLocaleString() : "0" };
+  });
+
+  let categoryCharts = activePlan.categoryCols.map(c => {
     const isRegion = String(c.name).toLowerCase() === "region";
     const defaultType = chooseChart(c.type, new Set(currentRows.map(r => String(r[c.name]))).size);
     const activeType = chartTypes[c.name] || defaultType;
@@ -1474,65 +1481,30 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       chartType: activeType,
       data: computeAggregate(currentRows, c.name, null, "count")
     };
-  }) : (dashboard ? dashboard.categoryCharts.map(c => ({ ...c, columnName: c.title.replace("Count by ", ""), chartType: chartTypes[c.title.replace("Count by ", "")] || c.chartType })) : []))
-  .filter(c => c && c.title && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c.title));
-
-  // Dynamic Fallback: If categoryCharts is empty, build charts for all valid categorical columns in currentRows
-  if (categoryCharts.length === 0 && currentRows && currentRows.length > 0) {
-    const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c));
-    const catCols = validCols.filter(c => {
-      const unq = new Set(currentRows.map(r => String(r[c]))).size;
-      return unq >= 1 && unq <= 50;
-    }).slice(0, 4);
-
-    categoryCharts = catCols.map(c => ({
-      title: `Count by ${c}`,
-      columnName: c,
-      metricLabel: "count",
-      chartType: chartTypes[c] || (String(c).toLowerCase() === "region" ? "bar" : "pie"),
-      data: computeAggregate(currentRows, c, null, "count")
-    }));
-  }
+  }).filter(c => c && c.title && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c.title));
 
   let trend = null;
-  if (plan && plan.trendPlan) {
-    const data = computeTrend(currentRows, plan.trendPlan.dateCol, plan.trendPlan.metricCol, "sum");
+  if (activePlan.trendPlan) {
+    const data = computeTrend(currentRows, activePlan.trendPlan.dateCol, activePlan.trendPlan.metricCol, "sum");
     if (data.length > 1) {
-      trend = { title: `${plan.trendPlan.metricCol} over time`, metricLabel: plan.trendPlan.metricCol, data };
+      trend = { title: `${activePlan.trendPlan.metricCol} over time`, metricLabel: activePlan.trendPlan.metricCol, data };
     }
-  } else if (dashboard) {
-    trend = dashboard.trend;
   }
 
-  let distributions = plan ? plan.distributionCols.map(c => ({
+  let distributions = activePlan.distributionCols.map(c => ({
     title: `Distribution of ${c.name}`,
     metricLabel: c.name,
     data: buildHistogram(currentRows, c.name, 8)
-  })) : (dashboard ? dashboard.distributions : []);
-
-  // Dynamic Fallback: If distributions is empty, build histogram charts for numeric columns
-  if (distributions.length === 0 && currentRows && currentRows.length > 0) {
-    const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY/i.test(c));
-    const numCols = validCols.filter(c => currentRows.some(r => r[c] !== null && r[c] !== undefined && r[c] !== "" && !isNaN(Number(r[c])))).slice(0, 2);
-    distributions = numCols.map(c => ({
-      title: `Distribution of ${c}`,
-      metricLabel: c,
-      data: buildHistogram(currentRows, c, 8)
-    }));
-  }
+  }));
 
   const outliers = {};
-  if (plan) {
-    plan.outlierCols.forEach(c => { outliers[c.name] = detectOutliers(currentRows, c.name); });
-  } else if (dashboard) {
-    Object.assign(outliers, dashboard.outliers);
-  }
+  activePlan.outlierCols.forEach(c => { outliers[c.name] = detectOutliers(currentRows, c.name); });
 
-  const correlations = plan ? plan.correlationPairs
+  const correlations = activePlan.correlationPairs
     .map(([colA, colB]) => ({ colA, colB, r: correlation(currentRows, colA, colB) }))
-    .filter(c => c.r !== null && Math.abs(c.r) >= 0.5) : (dashboard ? dashboard.correlations : []);
+    .filter(c => c.r !== null && Math.abs(c.r) >= 0.5);
 
-  const quality = calculateDataQuality(currentRows, columns.filter(c => c && !c.startsWith("__EMPTY")));
+  const quality = calculateDataQuality(currentRows, (validCols.length > 0 ? validCols : columns || []).filter(c => c && !c.startsWith("__")));
 
   const toggleChartType = (colName, currentType) => {
     const isRegion = String(colName).toLowerCase() === "region";
