@@ -846,6 +846,13 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const [cleanedDatasetInfo, setCleanedDatasetInfo] = useState(null);
   const [cleaningError, setCleaningError] = useState("");
 
+  useEffect(() => {
+    setCleaningStage("idle");
+    setCleaningSummary(null);
+    setCleanedProfile(null);
+    setCleanedDatasetInfo(null);
+  }, [active?.id]);
+
   // Automated EDA state hooks
   const [edaStage, setEdaStage] = useState("idle"); // "idle" | "loading" | "loaded" | "error"
   const [edaCharts, setEdaCharts] = useState([]);
@@ -1826,20 +1833,22 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
         <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: "var(--radius-lg, 12px)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>🧹 Automated Data Cleaning Engine</div>
-            {cleaningStage === "preview" && (
+            {(cleaningStage === "preview" || cleaningStage === "completed") && (
               <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={() => setCleaningStage("idle")}
                   style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                 >
-                  Cancel
+                  🔄 Reset & Re-Analyze
                 </button>
-                <button
-                  onClick={applyClean}
-                  style={{ background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                >
-                  Apply & Load Dataset
-                </button>
+                {cleaningStage === "preview" && (
+                  <button
+                    onClick={applyClean}
+                    style={{ background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    Apply & Load Dataset
+                  </button>
+                )}
               </div>
             )}
           </div>
