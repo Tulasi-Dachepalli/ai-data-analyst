@@ -1,6 +1,29 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 export default function Topbar({ user, darkMode, setDarkMode, sidebarOpen, setSidebarOpen }) {
+  const [credits, setCredits] = useState(() => {
+    const saved = localStorage.getItem("aida_credits");
+    return saved !== null ? parseInt(saved, 10) : 50;
+  });
+
+  useEffect(() => {
+    const handleStorage = () => {
+      const saved = localStorage.getItem("aida_credits");
+      if (saved !== null) setCredits(parseInt(saved, 10));
+    };
+    window.addEventListener("storage", handleStorage);
+    const interval = setInterval(handleStorage, 1000);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleResetCredits = () => {
+    localStorage.setItem("aida_credits", "50");
+    setCredits(50);
+  };
+
   const toggleDarkMode = () => {
     setDarkMode(!darkMode);
   };
@@ -76,6 +99,40 @@ export default function Topbar({ user, darkMode, setDarkMode, sidebarOpen, setSi
       {/* Action Utilities */}
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
         
+        {/* Interactive AI Credits Badge */}
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          backgroundColor: "rgba(245, 158, 11, 0.1)",
+          border: "1px solid rgba(245, 158, 11, 0.3)",
+          borderRadius: "var(--radius-sm)",
+          padding: "4px 10px",
+          fontSize: "12px",
+          fontWeight: 600,
+          color: "#D97706"
+        }} title="AI Credits remaining for Q&A queries, ML Modeling & Data Cleaning">
+          <span>⚡ AI Credits:</span>
+          <strong>{credits} / 50</strong>
+          <button
+            onClick={handleResetCredits}
+            style={{
+              background: "#D97706",
+              color: "#FFF",
+              border: "none",
+              borderRadius: "4px",
+              padding: "2px 6px",
+              fontSize: "10px",
+              fontWeight: 700,
+              cursor: "pointer",
+              marginLeft: "4px"
+            }}
+            title="Reset credits back to 50"
+          >
+            + Reset
+          </button>
+        </div>
+
         {/* Dark Mode Switcher Toggle */}
         <button onClick={toggleDarkMode} style={{
           background: "none",

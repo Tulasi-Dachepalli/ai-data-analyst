@@ -830,6 +830,16 @@ function trainTestSplitAndFit(rows, columns, stats) {
       predicted: +(slope * Number(r[bestPredictor]) + intercept).toFixed(2)
     }))
   };
+function consumeCredit() {
+  try {
+    const current = parseInt(localStorage.getItem("aida_credits") || "50", 10);
+    const next = Math.max(0, current - 1);
+    localStorage.setItem("aida_credits", String(next));
+    window.dispatchEvent(new Event("storage"));
+  } catch (e) {
+    console.warn("Credit update warning:", e);
+  }
+}
 }
 
 function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete }) {
@@ -838,6 +848,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const [sandboxVal, setSandboxVal] = useState("");
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState("asc");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Data cleaning state hooks
   const [cleaningStage, setCleaningStage] = useState("idle"); // "idle" | "cleaning" | "preview" | "completed" | "error"
@@ -1421,6 +1432,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }, [cleaningSummary, currentRows, columns, cleanedProfile, stats]);
 
   const triggerClean = () => {
+    consumeCredit();
     setCleaningError("");
 
     const rows = currentRows || [];
@@ -1619,7 +1631,23 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   };
 
   return (
-    <div ref={innerRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div ref={innerRef} style={isExpanded ? {
+      position: "fixed",
+      top: 10,
+      bottom: 10,
+      left: 10,
+      right: 10,
+      zIndex: 99999,
+      backgroundColor: "var(--bg-secondary, #FFFFFF)",
+      border: "2px solid var(--accent-color, #0F172A)",
+      borderRadius: "var(--radius-lg, 12px)",
+      padding: "20px",
+      overflowY: "auto",
+      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      flexDirection: "column",
+      gap: 14
+    } : { display: "flex", flexDirection: "column", gap: 14 }}>
       {/* Dynamic Tab Bar with Copilot Role Badges & Ingested Sheet Indicator */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid var(--border-color)", paddingBottom: 6 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
@@ -1632,12 +1660,36 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
             </span>
           </div>
 
-          {/* Explicit Ingested Sheet Indicator Badge */}
-          <span style={{ fontSize: 11, fontWeight: 600, color: "#3E6F8E", background: "rgba(62, 111, 142, 0.08)", padding: "3px 10px", borderRadius: 12, border: "1px solid rgba(62, 111, 142, 0.2)", display: "flex", alignItems: "center", gap: 5 }}>
-            <span>📄 Ingested Sheet:</span>
-            <strong style={{ color: "var(--text-primary)" }}>{dashboard?.sheetName || "Cleaned Data"}</strong>
-            <span>({validCols.length} cols × {currentRows.length} rows)</span>
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Fullscreen Expand Toggle Button */}
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 600,
+                color: isExpanded ? "#FFF" : "var(--accent-color, #0F172A)",
+                background: isExpanded ? "var(--accent-color, #0F172A)" : "var(--bg-primary)",
+                border: "1px solid var(--border-color)",
+                borderRadius: 6,
+                padding: "4px 10px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "all 0.15s ease"
+              }}
+              title="Toggle spacious full-screen widescreen mode"
+            >
+              <span>{isExpanded ? "↙ Exit Fullscreen" : "⛶ Fullscreen View"}</span>
+            </button>
+
+            {/* Explicit Ingested Sheet Indicator Badge */}
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#3E6F8E", background: "rgba(62, 111, 142, 0.08)", padding: "3px 10px", borderRadius: 12, border: "1px solid rgba(62, 111, 142, 0.2)", display: "flex", alignItems: "center", gap: 5 }}>
+              <span>📄 Ingested Sheet:</span>
+              <strong style={{ color: "var(--text-primary)" }}>{dashboard?.sheetName || "Cleaned Data"}</strong>
+              <span>({validCols.length} cols × {currentRows.length} rows)</span>
+            </span>
+          </div>
         </div>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
@@ -4239,6 +4291,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const handleSend = async () => {
     const question = input.trim();
     if (!question || loading || !active || !active.rows) return;
+    consumeCredit();
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     const id = active.id;
@@ -4940,11 +4993,22 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 </div>
               );
               if (m.role === "user") return (
-                <div key={i} style={{ alignSelf: "flex-end", maxWidth: "80%", background: "var(--bg-hover)", color: "var(--text-primary)", borderRadius: "14px 14px 3px 14px", padding: "10px 15px", fontSize: 14, lineHeight: 1.55 }}>{m.content}</div>
+                <div key={i} style={{ alignSelf: "flex-end", display: "flex", gap: 8, alignItems: "flex-start", maxWidth: "80%" }}>
+                  <div style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", borderRadius: "14px 14px 3px 14px", padding: "10px 15px", fontSize: 14, lineHeight: 1.55 }}>
+                    {m.content}
+                  </div>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent-color, #0F172A)", color: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 2 }}>
+                    👤
+                  </div>
+                </div>
               );
-              if (m.kind === "grounded_chat") {
+              if (m.kind === "grounded_chat" || m.role === "assistant") {
                 return (
-                  <div key={i} style={{ alignSelf: "flex-start", maxWidth: "92%", fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)", display: "flex", flexDirection: "column", gap: 10, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "14px 14px 14px 3px", padding: 14 }}>
+                  <div key={i} style={{ alignSelf: "flex-start", display: "flex", gap: 10, maxWidth: "92%" }}>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#8B5CF6", color: "#FFF", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, flexShrink: 0, marginTop: 2 }}>
+                      🤖
+                    </div>
+                    <div style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)", display: "flex", flexDirection: "column", gap: 10, background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "3px 14px 14px 14px", padding: 14, boxShadow: "var(--shadow-sm)" }}>
                     {/* Grounding dataset context indicator badge */}
                     {m.dataset_context && (
                       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -5021,7 +5085,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
                       </div>
                     )}
                   </div>
-                );
+                </div>
+              );
               }
 
               return (

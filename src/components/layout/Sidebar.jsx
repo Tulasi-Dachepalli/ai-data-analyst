@@ -149,24 +149,53 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
 
       {/* Navigation Groups */}
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
-        <div style={sectionHeaderStyle}>Workspace</div>
-        <button onClick={() => setView("dashboard")} style={navItemStyle(currentView === "dashboard")}>
-          <Icons.Overview /> Overview
+        <div style={sectionHeaderStyle}>Analytics Workspace</div>
+        <button onClick={() => setView("dashboard")} style={navItemStyle(currentView === "dashboard")} title="Upload spreadsheets and view interactive BI analytics">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Workspace Threads</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Upload & Interactive Threads</span>
+          </div>
         </button>
-        <button onClick={() => setView("datasets")} style={navItemStyle(currentView === "datasets")}>
-          <Icons.Datasets /> Datasets
+
+        <button onClick={() => setView("datasets")} style={navItemStyle(currentView === "datasets")} title="View all ingested spreadsheet tables">
+          <Icons.Datasets />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>My Datasets</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Ingested Spreadsheet Files</span>
+          </div>
         </button>
-        <button onClick={() => setView("ai-analyst")} style={navItemStyle(currentView === "ai-analyst")}>
-          <Icons.AIAnalyst /> AI Analyst
+
+        <button onClick={() => setView("ai-analyst")} style={navItemStyle(currentView === "ai-analyst")} title="Conversational AI Chatbot to query your data in plain English">
+          <Icons.AIAnalyst />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>AI Copilot Chat</span>
+            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>💬 Conversational Q&A Bot</span>
+          </div>
         </button>
-        <button onClick={() => setView("dashboards")} style={navItemStyle(currentView === "dashboards")}>
-          <Icons.Dashboards /> Dashboards
+
+        <button onClick={() => setView("dashboards")} style={navItemStyle(currentView === "dashboards")} title="Executive BI Dashboards, Pie Charts & Heatmaps">
+          <Icons.Dashboards />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>BI Dashboards</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>KPIs, Charts & Heatmaps</span>
+          </div>
         </button>
-        <button onClick={() => setView("insights")} style={navItemStyle(currentView === "insights")}>
-          <Icons.Insights /> Insights
+
+        <button onClick={() => setView("insights")} style={navItemStyle(currentView === "insights")} title="Automated Exploratory Data Analysis & Statistics">
+          <Icons.Insights />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>EDA & Statistics</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Exploratory Shape Profiling</span>
+          </div>
         </button>
-        <button onClick={() => setView("reports")} style={navItemStyle(currentView === "reports")}>
-          <Icons.Reports /> Reports
+
+        <button onClick={() => setView("reports")} style={navItemStyle(currentView === "reports")} title="Machine Learning Predictions & Time-Series Trend Forecasting">
+          <Icons.Reports />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>ML & Forecasting</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Predictive Models & Trends</span>
+          </div>
         </button>
 
         <div style={sectionHeaderStyle}>Manage</div>
