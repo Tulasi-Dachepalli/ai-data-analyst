@@ -843,6 +843,7 @@ function consumeCredit() {
 }
 
 function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete }) {
+  const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dataPage, setDataPage] = useState(0);
   const [sandboxVal, setSandboxVal] = useState("");
@@ -1353,7 +1354,6 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
   // Calculate stats dynamically on filtered rows
   const plan = dashboard ? dashboard.plan : null;
-  const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
 
   // Sort dataset globally prior to viewport page slicing
   const sortedRows = useMemo(() => {
