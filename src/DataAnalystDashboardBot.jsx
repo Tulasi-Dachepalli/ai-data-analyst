@@ -4176,6 +4176,38 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
     }
 
+    // 5c. Group By / Breakdown queries (e.g. "average Findings by Code", "Sales by Region")
+    if (q.includes(" by ")) {
+      const parts = q.split(" by ");
+      const metricQuery = parts[0].trim();
+      const groupQuery = parts[1].trim();
+
+      const matchedNum = (numCols || []).find(n => metricQuery.toLowerCase().includes(n.name.toLowerCase()));
+      const matchedGroup = (stats || []).find(s => groupQuery.toLowerCase().includes(s.name.toLowerCase()));
+
+      if (matchedNum && matchedGroup) {
+        const aggregates = {};
+        const counts = {};
+        
+        (rows || []).forEach(r => {
+          const groupVal = r[matchedGroup.name] !== undefined && r[matchedGroup.name] !== null ? String(r[matchedGroup.name]) : "Unknown";
+          const numVal = Number(r[matchedNum.name]) || 0;
+          
+          if (!aggregates[groupVal]) { aggregates[groupVal] = 0; counts[groupVal] = 0; }
+          aggregates[groupVal] += numVal;
+          counts[groupVal] += 1;
+        });
+
+        const isAvg = /avg|average|mean/i.test(q);
+        const rowsOutput = Object.entries(aggregates).map(([gVal, total]) => {
+          const val = isAvg ? (total / (counts[gVal] || 1)).toFixed(2) : total.toLocaleString();
+          return `• **${gVal}**: ${val}`;
+        });
+
+        return `**Breakdown of ${isAvg ? "Average" : "Total"} ${matchedNum.name} by ${matchedGroup.name}:**\n\n${rowsOutput.join("\n")}`;
+      }
+    }
+
     // 6. Specific column metrics queries (typo-tolerant)
     for (const col of numCols) {
       const cName = col.name.toLowerCase();
@@ -4270,8 +4302,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
     return null;
   };
 
-  const handleSend = async () => {
-    const question = input.trim();
+  const handleSend = async (overrideQuestion) => {
+    const question = typeof overrideQuestion === "string" ? overrideQuestion.trim() : input.trim();
     if (!question || loading || !active || !active.rows) return;
     consumeCredit();
     setInput("");
@@ -5112,8 +5144,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   <button
                     key={idx}
                     onClick={() => {
-                      setInput(q);
-                      textareaRef.current?.focus();
+                      handleSend(q);
                     }}
                     style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "5px 12px", fontSize: 11.5, color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s ease" }}
                   >
