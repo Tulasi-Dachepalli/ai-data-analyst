@@ -3727,7 +3727,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const [chartTypes, setChartTypes] = useState({});
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
-  const active = threads.find(t => t.id === activeId);
+  const active = threads.find(t => t.id === activeId) || threads[0] || null;
 
   const suggestedQuestions = useMemo(() => {
     if (!active || !Array.isArray(active.columns) || !Array.isArray(active.stats)) return [];
@@ -4304,12 +4304,41 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
   const handleSend = async (overrideQuestion) => {
     const question = typeof overrideQuestion === "string" ? overrideQuestion.trim() : input.trim();
-    if (!question || loading || !active || !active.rows) return;
+    let currentActive = active || (threads && threads[0]);
+
+    if (!currentActive || !currentActive.rows) {
+      // Auto-load sample dataset if no active dataset thread is loaded
+      const defaultSample = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
+      const stubStats = defaultSample.columns.map(c => computeColumnStats(defaultSample.rows, c));
+      const stubQuality = calculateDataQuality(defaultSample.rows, defaultSample.columns);
+      const stubPlan = pickDashboardPlan(stubStats);
+
+      currentActive = {
+        id: `sample-${Date.now()}`,
+        name: defaultSample.name,
+        rows: defaultSample.rows,
+        columns: defaultSample.columns,
+        stats: stubStats,
+        quality: stubQuality,
+        dashboard: {
+          sheetName: defaultSample.name,
+          rawRows: defaultSample.rows,
+          plan: stubPlan,
+          narrative: `Sample dataset loaded automatically.`
+        },
+        messages: []
+      };
+
+      setThreads(prev => [currentActive, ...prev]);
+      setActiveId(currentActive.id);
+    }
+
+    if (!question || loading || !currentActive || !currentActive.rows) return;
     consumeCredit();
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
-    const id = active.id;
-    const serverId = active.serverId;
+    const id = currentActive.id;
+    const serverId = currentActive.serverId;
     
     // Add user message to local state
     updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "user", kind: "text", content: question }] }));
