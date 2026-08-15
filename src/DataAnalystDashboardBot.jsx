@@ -4346,8 +4346,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
     setLoadingLabel("Analyzing query…");
 
     try {
-      if (active.isRawText) {
-        const systemPrompt = "You are a professional management consultant and senior analyst. Answer the user's question about the uploaded document based on the text contents: \n\n" + (active.rawText || "").slice(0, 15000);
+      if (currentActive?.isRawText) {
+        const systemPrompt = "You are a professional management consultant and senior analyst. Answer the user's question about the uploaded document based on the text contents: \n\n" + (currentActive.rawText || "").slice(0, 15000);
         const narrative = await callClaude(systemPrompt, question, { requestType: "chat_narrative", datasetId: serverId });
         let finalMessages = null;
         updateThread(id, t => {
@@ -4364,7 +4364,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
 
       // Compute local grounded answer for instant 0ms responses
-      const localAnswer = answerQueryLocally(question, active.rows, active.stats, active.quality, active.dashboard);
+      const localAnswer = answerQueryLocally(question, currentActive.rows, currentActive.stats, currentActive.quality, currentActive.dashboard);
 
       if (!serverId || localAnswer) {
         updateThread(id, t => ({
@@ -4388,10 +4388,10 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
     } catch (err) {
       console.error("Chat evaluation fallback:", err);
-      const localAnswer = answerQueryLocally(question, active.rows, active.stats, active.quality, active.dashboard);
+      const localAnswer = answerQueryLocally(question, currentActive.rows, currentActive.stats, currentActive.quality, currentActive.dashboard);
       updateThread(id, t => ({
         ...t,
-        messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: localAnswer || `Answer for **"${question}"**: Evaluated across ${active.rows.length} rows.`, confidence_score: 0.90 }]
+        messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: localAnswer || `Answer for **"${question}"**: Evaluated across ${(currentActive.rows || []).length} rows.`, confidence_score: 0.90 }]
       }));
     }
     setLoading(false);
