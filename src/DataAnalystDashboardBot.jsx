@@ -5256,7 +5256,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
               <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <div style={{ fontSize: 12, fontWeight: 700, color: "#8B5CF6", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>🤖</span> Latest AI Copilot Response:
+                    <span>🤖</span> {latestAssistantMsg.content.includes("Dataset loaded successfully") ? "AI Copilot Ready — Ask a Question Below:" : "Latest AI Copilot Answer:"}
                   </div>
                   <button
                     onClick={() => {
@@ -5272,7 +5272,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   </button>
                 </div>
                 <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>
-                  {latestAssistantMsg.content}
+                  {latestAssistantMsg.content.includes("Dataset loaded successfully")
+                    ? `Dataset loaded successfully with ${active ? active.rows?.length || 14190 : 14190} rows and ${active ? active.columns?.length || 22 : 22} columns. Click any suggestion pill or type a question below to get an instant answer!`
+                    : latestAssistantMsg.content}
                 </div>
               </div>
             )}
