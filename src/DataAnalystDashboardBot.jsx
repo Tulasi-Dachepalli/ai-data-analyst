@@ -1451,10 +1451,10 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     }
 
     try {
-      // 8-second timeout guard to prevent infinite loading spinners
+      // 3-second timeout guard to prevent infinite loading spinners
       const cleanPromise = api.cleanDataset(serverId);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Server cleaning timeout — falling back to client engine")), 8000)
+        setTimeout(() => reject(new Error("Server cleaning timeout — falling back to client engine")), 3000)
       );
 
       const res = await Promise.race([cleanPromise, timeoutPromise]);
@@ -1905,6 +1905,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 animation: "spin 1s linear infinite"
               }} />
               <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-secondary)" }}>Running Python Pandas cleaning transformations on server...</div>
+              <button
+                onClick={() => runLocalFallback()}
+                style={{ marginTop: 6, background: "none", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer" }}
+              >
+                ⚡ Click to run instant local cleaning
+              </button>
             </div>
           )}
 
