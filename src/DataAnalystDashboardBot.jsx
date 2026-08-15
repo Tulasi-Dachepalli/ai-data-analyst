@@ -904,8 +904,19 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setInsightsError("");
   }, [serverId]);
 
-  const buildLocalMlAnalysis = (stats) => {
-    const safeStats = stats || [];
+  const getFreshCleanStats = (inputStats, rows) => {
+    const safeRows = rows || currentRows || [];
+    const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c));
+    
+    if (safeRows && safeRows.length > 0) {
+      const colKeys = validCols.length > 0 ? validCols : Object.keys(safeRows[0] || {}).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY/i.test(c));
+      return colKeys.map(c => computeColumnStats(safeRows, c)).filter(s => !isMetaOrReportColumn(s));
+    }
+    return (inputStats || []).filter(s => !isMetaOrReportColumn(s));
+  };
+
+  const buildLocalMlAnalysis = (inputStats) => {
+    const safeStats = getFreshCleanStats(inputStats, currentRows);
     const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
     const catCols = safeStats.filter(s => s.type === "categorical").map(s => s.name);
 
@@ -937,13 +948,13 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     };
   };
 
-  const buildLocalForecastAnalysis = (stats) => {
-    const safeStats = stats || [];
+  const buildLocalForecastAnalysis = (inputStats) => {
+    const safeStats = getFreshCleanStats(inputStats, currentRows);
     const dateCols = safeStats.filter(s => s.type === "date" || /date|time|year|day|month/i.test(s.name)).map(s => s.name);
     const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
 
     return {
-      forecastable: true,
+      forecastable: numCols.length > 0,
       date_column: dateCols[0] || (safeStats[0] ? safeStats[0].name : ""),
       target_column: numCols[0] || "",
       frequency: "D",
@@ -1113,9 +1124,9 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setStatsError("");
   }, [serverId]);
 
-  const buildLocalStatistics = (stats, rows) => {
-    const safeStats = stats || [];
-    const safeRows = rows || [];
+  const buildLocalStatistics = (inputStats, rows) => {
+    const safeRows = rows || currentRows || [];
+    const safeStats = getFreshCleanStats(inputStats, safeRows);
     const numCols = safeStats.filter(s => s.type === "numeric");
     const catCols = safeStats.filter(s => s.type === "categorical");
     const dateCols = safeStats.filter(s => s.type === "date");
