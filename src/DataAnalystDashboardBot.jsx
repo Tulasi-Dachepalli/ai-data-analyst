@@ -4261,7 +4261,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
     }
     // 7. Entity / Specific Row Cell Value search (e.g., "what is IT Security auditor?", "details for AUD-103")
-    const isAggOrListQuery = /highest|most|longest|lowest|least|max|min|average|sum|list|all|count|distribution/i.test(q);
+    const isAggOrListQuery = /highest|most|longest|lowest|least|max|min|average|vaerage|avarage|averge|avrg|vage|mean|sum|list|all|count|distribution/i.test(q);
     
     if (!isAggOrListQuery) {
       const stopWords = new Set([
