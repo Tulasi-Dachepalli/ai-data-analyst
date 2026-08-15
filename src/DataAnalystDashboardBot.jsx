@@ -1465,10 +1465,10 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     }
 
     try {
-      // 3-second timeout guard to prevent infinite loading spinners
+      // 1.5-second timeout guard to prevent infinite loading spinners
       const cleanPromise = api.cleanDataset(serverId);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Server cleaning timeout — falling back to client engine")), 3000)
+        setTimeout(() => reject(new Error("Server cleaning timeout — falling back to client engine")), 1500)
       );
 
       const res = await Promise.race([cleanPromise, timeoutPromise]);
