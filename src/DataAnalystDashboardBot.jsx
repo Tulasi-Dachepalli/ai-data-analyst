@@ -2656,7 +2656,11 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                         "RidgeRegression": { r2: 0.82, mae: 19.3, rmse: 26.8, cv_r2: 0.80 }
                       };
 
-                      const validFeatures = (selectedFeatures || []).filter(f => !isUniqueIdentifierColumn(stats.find(s => s.name === f)));
+                      const validFeatures = (selectedFeatures || []).filter(f => {
+                        const st = (stats || []).find(s => s.name === f);
+                        if (!st) return true;
+                        return !isUniqueIdentifierColumn(st);
+                      });
 
                       const localMlResult = {
                         success: true,
@@ -2997,7 +3001,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, background: "var(--bg-primary)" }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Observations</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
-                    {forecastAnalysisData.observations ?? 0}
+                    {(forecastAnalysisData.observations && forecastAnalysisData.observations > 0) ? forecastAnalysisData.observations : (currentRows || []).length} rows
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
                     Min observations: 5 rows
