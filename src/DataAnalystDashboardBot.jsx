@@ -3771,6 +3771,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [active?.messages?.length || 0, loading]);
 
+  useEffect(() => {
+    if (currentView === "ai-analyst") {
+      setTimeout(() => {
+        if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        if (textareaRef.current) textareaRef.current.focus();
+      }, 100);
+    }
+  }, [currentView]);
+
   // Load this company's previously saved datasets and token usage stats on mount.
   // Set up listener for quota limit exceeded notifications.
   useEffect(() => {
@@ -5201,6 +5210,11 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
+            {currentView === "ai-analyst" && (
+              <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.25)", borderRadius: 10, padding: "8px 14px", marginBottom: 10, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: "#8B5CF6" }}>
+                💬 AI Copilot Chat Active — Ask any question about your data in plain English below:
+              </div>
+            )}
             {(active || threads.length > 0) && suggestedQuestions.length > 0 && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, justifyContent: "center" }}>
                 {suggestedQuestions.map((q, idx) => (
