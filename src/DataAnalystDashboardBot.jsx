@@ -3988,8 +3988,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
     }
     const files = Array.from(fileList);
     for (const file of files) {
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`File "${file.name}" exceeds the maximum allowed 10MB size limit.`);
+      if (file.size > 50 * 1024 * 1024) {
+        alert(`File "${file.name}" exceeds the maximum allowed 50MB size limit.`);
         continue;
       }
       if (file.size === 0) {
