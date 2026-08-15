@@ -1416,13 +1416,16 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const triggerClean = () => {
     setCleaningError("");
 
+    const rows = currentRows || active?.profile?.rows_data || active?.rows || [];
+    const cols = columns || active?.profile?.columns_list || [];
+
     const numCols = (stats || []).filter(s => s.type === "numeric");
     const catCols = (stats || []).filter(s => s.type === "categorical");
 
     const means = {};
     numCols.forEach(c => { means[c.name] = c.mean ?? 0; });
 
-    const cleanedRows = (currentRows || []).map(r => {
+    const cleanedRows = (rows || []).map(r => {
       const copy = { ...r };
       numCols.forEach(c => {
         if (copy[c.name] === null || copy[c.name] === undefined || copy[c.name] === "") {
@@ -1440,13 +1443,13 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     });
 
     const summaryData = {
-      rows_original: currentRows.length,
-      originalRows: currentRows.length,
+      rows_original: rows.length,
+      originalRows: rows.length,
       rows_cleaned: cleanedRows.length,
       cleanedRows: cleanedRows.length,
-      columns_formatted: (stats || []).length,
-      originalColumns: (stats || []).length,
-      cleanedColumns: (stats || []).length,
+      columns_formatted: cols.length,
+      originalColumns: cols.length,
+      cleanedColumns: cols.length,
       missing_values_imputed: quality?.missingCells || 0,
       missingValuesFilled: quality?.missingCells || 0,
       duplicates_removed: quality?.duplicateRows || 0,
@@ -1461,7 +1464,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setCleaningSummary(summaryData);
     setCleanedProfile({
       rows_data: cleanedRows,
-      columns_list: columns,
+      columns_list: cols,
       columns_info: {},
       quality_score: 100
     });
