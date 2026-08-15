@@ -238,6 +238,13 @@ function isMetaOrReportColumn(s) {
   return false;
 }
 
+function isUniqueIdentifierColumn(s) {
+  if (!s || !s.name) return false;
+  if (anyIdKeywords(s.name)) return true;
+  if (s.unique && s.count && s.unique >= s.count * 0.95 && s.count > 2) return true;
+  return false;
+}
+
 function pickDashboardPlan(stats) {
   let validStats = (stats || []).filter(s => !isMetaOrReportColumn(s));
   if (validStats.length === 0) {
@@ -249,8 +256,7 @@ function pickDashboardPlan(stats) {
   // Prioritize meaningful grouped category columns (Risk, Status, Region, Auditor) over unique IDs (Code, Name)
   const groupedCategorical = validStats.filter(s => {
     if (s.type !== "categorical") return false;
-    if (anyIdKeywords(s.name)) return false;
-    if (s.unique && s.count && s.unique >= s.count * 0.95 && s.count > 2) return false;
+    if (isUniqueIdentifierColumn(s)) return false;
     return s.unique >= 2 && s.unique <= 50;
   });
 
@@ -931,11 +937,10 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     const safeStats = getFreshCleanStats(inputStats, currentRows);
     const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
 
-    // Exclude unique identifier columns (Code, Name) from ML classification targets
+    // Exclude unique identifier columns (Code, Name) from ML classification targets using shared helper
     const catCols = safeStats.filter(s => {
       if (s.type !== "categorical") return false;
-      if (anyIdKeywords(s.name)) return false;
-      if (s.unique && s.count && s.unique >= s.count * 0.95 && s.count > 2) return false;
+      if (isUniqueIdentifierColumn(s)) return false;
       return s.unique >= 2 && s.unique <= 50;
     }).map(s => s.name);
 
