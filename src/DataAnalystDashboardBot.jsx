@@ -4313,15 +4313,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
     // 8. Explicit fallback if question cannot be structured
     const colList = (stats || []).map(s => s.name).filter(n => n && !n.startsWith("__")).join(", ");
     return `I couldn't determine a calculation for **"${question}"** from the structured columns in this dataset.\n\n**Available dataset fields:** ${colList || "All fields"}.`;
-
-    return null;
   };
 
-  useEffect(() => {
-    if (!activeId && threads.length > 0) {
-      setActiveId(threads[0].id);
-    }
-  }, [threads, activeId]);
+  const [answerToast, setAnswerToast] = useState(null);
 
   const handleSend = async (overrideQuestion) => {
     const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : input;
@@ -4379,6 +4373,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
           finalMessages = [...t.messages, { role: "assistant", kind: "text", content: narrative || "I couldn't find an answer in the document." }];
           return { ...t, messages: finalMessages };
         });
+        setAnswerToast({ question, answer: narrative || "No narrative found." });
         setLoading(false);
         fetchUsage();
         persistThread(serverId, { messages: finalMessages });
@@ -4392,10 +4387,12 @@ export default function DataAnalystDashboardBot({ currentView }) {
       const localAnswer = answerQueryLocally(question, currentActive.rows, currentActive.stats, currentActive.quality, currentActive.dashboard);
 
       if (!serverId || localAnswer) {
+        const finalAns = localAnswer || `Analyzed dataset for **"${question}"**.`;
         updateThread(id, t => ({
           ...t,
-          messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: localAnswer || `Analyzed dataset for **"${question}"**.`, confidence_score: 0.95 }]
+          messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: finalAns, confidence_score: 0.95 }]
         }));
+        setAnswerToast({ question, answer: finalAns });
         setLoading(false);
         setTimeout(() => {
           if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -5237,6 +5234,24 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
+            {answerToast && (
+              <div style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", borderRadius: 12, padding: "12px 16px", marginBottom: 12, boxShadow: "0 8px 24px rgba(15,23,42,0.25)", position: "relative" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--success, #10B981)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>✨</span> Instant AI Copilot Answer for "{answerToast.question}":
+                  </div>
+                  <button
+                    onClick={() => setAnswerToast(null)}
+                    style={{ background: "none", border: "none", color: "#94A3B8", fontSize: 16, cursor: "pointer", padding: "0 4px" }}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#F8FAFC", whiteSpace: "pre-wrap" }}>
+                  {answerToast.answer}
+                </div>
+              </div>
+            )}
             {latestAssistantMsg && (
               <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
