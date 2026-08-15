@@ -1406,8 +1406,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     return previewList;
   }, [cleaningSummary, currentRows, columns, cleanedProfile, stats]);
 
-  const triggerClean = async () => {
-    setCleaningStage("cleaning");
+  const triggerClean = () => {
     setCleaningError("");
 
     const numCols = (stats || []).filter(s => s.type === "numeric");
@@ -1456,6 +1455,12 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     });
     setCleaningStage("preview");
   };
+
+  useEffect(() => {
+    if (cleaningStage === "cleaning") {
+      triggerClean();
+    }
+  }, [cleaningStage]);
 
   const applyClean = () => {
     if (!cleanedProfile || !cleanedDatasetInfo) return;
