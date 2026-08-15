@@ -996,7 +996,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       target_column: hasNumCol ? numCols[0] : "",
       confidence: isForecastable ? 0.88 : 0,
       frequency: hasDateCol ? "Daily" : "N/A",
-      observations: hasDateCol ? currentRows.length : 0,
+      observations: currentRows.length,
       reason: isForecastable
         ? `Chronological date column (${dateCols[0]}) and target variable (${numCols[0]}) detected.`
         : (!hasDateCol
