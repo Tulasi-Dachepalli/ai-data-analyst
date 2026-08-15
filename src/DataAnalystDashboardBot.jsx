@@ -50,16 +50,22 @@ function computeColumnStats(rows, col) {
   const values = rows.map(r => r[col]);
   const nonMissing = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
   const missing = values.length - nonMissing.length;
+  const missingRate = values.length ? +((missing / values.length) * 100).toFixed(1) : 0;
+  const isHighMissing = missingRate > 50.0;
   const type = detectType(values, col);
   const unique = new Set(nonMissing.map(String)).size;
-  const base = { name: col, type, count: rows.length, missing, unique };
+  const base = { name: col, type, count: rows.length, missing, missingRate, isHighMissing, unique };
   if (type === "numeric") {
     const nums = nonMissing.map(Number).filter(n => !isNaN(n));
     const sorted = [...nums].sort((a, b) => a - b);
     const sum = nums.reduce((a, b) => a + b, 0);
-    const mean = nums.length ? sum / nums.length : 0;
+    const rawMean = nums.length ? sum / nums.length : 0;
+    const min = sorted.length ? sorted[0] : 0;
+    const max = sorted.length ? sorted[sorted.length - 1] : 0;
+    // Sanity-check: Guarantee computed mean falls strictly within [min, max]
+    const mean = Math.max(min, Math.min(max, rawMean));
     const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
-    return { ...base, sum: +sum.toFixed(2), min: sorted.length ? sorted[0] : 0, max: sorted.length ? sorted[sorted.length - 1] : 0, mean: +mean.toFixed(2), median: +median.toFixed(2) };
+    return { ...base, sum: +sum.toFixed(2), min, max, mean: +mean.toFixed(2), median: +median.toFixed(2) };
   }
   if (type === "categorical") {
     const counts = {};
@@ -246,7 +252,7 @@ function isUniqueIdentifierColumn(s) {
 }
 
 function pickDashboardPlan(stats) {
-  let validStats = (stats || []).filter(s => !isMetaOrReportColumn(s));
+  let validStats = (stats || []).filter(s => !isMetaOrReportColumn(s) && !s.isHighMissing);
   if (validStats.length === 0) {
     validStats = (stats || []).filter(s => s && s.name && !s.name.startsWith("__"));
   }
