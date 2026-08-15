@@ -1674,7 +1674,17 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
       {activeTab === "dashboard" && (
         <>
-          {/* Slicers Section */}
+          {(!currentRows || currentRows.length === 0) ? (
+            <div style={{ background: "rgba(239, 68, 68, 0.05)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: "var(--radius-lg)", padding: 24, textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: 24 }}>⚠️</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--danger, #EF4444)" }}>No Usable Tabular Rows Detected</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", maxWidth: 500 }}>
+                This file contains headers or structural metadata, but no data rows were found to run statistical analysis. Please upload a file containing at least 1 data row.
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Slicers Section */}
           {slicerCols.length > 0 && (
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap", background: "#FDFCFA", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-color)" }}>
               <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", alignSelf: "center" }}>🔍 Slicers:</div>
@@ -1784,6 +1794,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 </table>
               </div>
             </div>
+          )}
+            </>
           )}
         </>
       )}
