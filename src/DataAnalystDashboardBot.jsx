@@ -4495,18 +4495,24 @@ export default function DataAnalystDashboardBot({ currentView }) {
       // Fallback query to secured Express Gateway endpoint
       const response = await api.chatDataset(serverId, question);
       
-      if (response && response.success) {
+      if (response && response.success && Array.isArray(response.messages) && response.messages.length > 0) {
+        const lastMsg = response.messages[response.messages.length - 1];
         updateThread(id, t => ({ ...t, messages: response.messages }));
+        if (lastMsg && lastMsg.content) {
+          setAnswerToast({ question, answer: lastMsg.content });
+        }
       } else {
         throw new Error("Failed to receive response.");
       }
     } catch (err) {
       console.error("Chat evaluation fallback:", err);
       const localAnswer = answerQueryLocally(question, currentActive.rows, currentActive.stats, currentActive.quality, currentActive.dashboard);
+      const finalAns = localAnswer || `Answer for **"${question}"**: Evaluated across ${(currentActive.rows || []).length} rows.`;
       updateThread(id, t => ({
         ...t,
-        messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: localAnswer || `Answer for **"${question}"**: Evaluated across ${(currentActive.rows || []).length} rows.`, confidence_score: 0.90 }]
+        messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: finalAns, confidence_score: 0.90 }]
       }));
+      setAnswerToast({ question, answer: finalAns });
     }
     setLoading(false);
     fetchUsage();
