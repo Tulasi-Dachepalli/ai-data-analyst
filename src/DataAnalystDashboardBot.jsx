@@ -4164,35 +4164,40 @@ export default function DataAnalystDashboardBot({ currentView }) {
         return `The average of **${col.name}** is **${col.mean !== undefined ? col.mean.toLocaleString() : "N/A"}** across ${rows.length.toLocaleString()} rows (range: ${col.min} to ${col.max}).`;
       }
     }
+    // 7. Entity / Specific Row Cell Value search (e.g., "what is IT Security auditor?", "details for AUD-103")
+    const isAggOrListQuery = /highest|most|longest|lowest|least|max|min|average|sum|list|all|count|distribution/i.test(q);
+    
+    if (!isAggOrListQuery) {
+      const stopWords = new Set(["where", "is", "the", "located", "what", "who", "which", "find", "show", "tell", "about", "city", "area", "location", "address", "state", "details", "info", "for", "record", "value"]);
+      const tokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
+      
+      // Try multi-word and single-word token matching against actual cell values
+      for (let len = tokens.length; len >= 1; len--) {
+        for (let i = 0; i <= tokens.length - len; i++) {
+          const searchTerm = tokens.slice(i, i + len).join(" ");
+          if (searchTerm.length < 2) continue;
+          
+          const matchingRows = (rows || []).filter(r => {
+            return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm.toLowerCase()));
+          });
+
+          if (matchingRows.length > 0 && matchingRows[0] && typeof matchingRows[0] === "object") {
+            const sample = matchingRows[0];
+            const details = Object.entries(sample)
+              .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
+              .map(([k, v]) => `• **${k}**: ${v}`);
+            
+            return `Found **${matchingRows.length}** record(s) matching **"${searchTerm}"**:\n\n${details.join("\n")}`;
+          }
+        }
+      }
+    }
+
     for (const col of catCols) {
       const cName = col.name.toLowerCase();
       if (q.includes(cName) && col.top && col.top.length > 0 && col.top[0]) {
         const topItem = col.top[0];
         return `For **${col.name}**, there are **${col.unique}** unique categories. Most frequent: **${topItem.value}** (${topItem.count} rows).`;
-      }
-    }
-
-    // 7. Entity / Cell Value search (e.g., "where is sangam mart located?", "tell me about store1")
-    const isAggOrListQuery = /highest|most|longest|lowest|least|max|min|average|sum|list|all|count/i.test(q);
-    
-    if (!isAggOrListQuery) {
-      const stopWords = new Set(["where", "is", "the", "located", "what", "who", "which", "find", "show", "tell", "about", "city", "area", "location", "address", "state", "details", "info", "for"]);
-      const tokens = q.replace(/[^\w\s]/g, "").split(/\s+/).filter(w => w.length > 1 && !stopWords.has(w));
-      
-      if (tokens.length > 0) {
-        const searchTerm = tokens.join(" ");
-        const matchingRows = (rows || []).filter(r => {
-          return Object.values(r).some(val => val !== null && val !== undefined && String(val).toLowerCase().includes(searchTerm));
-        });
-
-        if (matchingRows.length > 0 && matchingRows[0] && typeof matchingRows[0] === "object") {
-          const sample = matchingRows[0];
-          const details = Object.entries(sample)
-            .filter(([k, v]) => v !== null && v !== undefined && String(v).trim() !== "" && !k.startsWith("__"))
-            .map(([k, v]) => `• **${k}**: ${v}`);
-          
-          return `Found **${matchingRows.length}** record(s) matching **"${searchTerm}"**:\n\n${details.join("\n")}`;
-        }
       }
     }
 
