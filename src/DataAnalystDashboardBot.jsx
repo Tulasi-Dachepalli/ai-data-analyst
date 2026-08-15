@@ -983,15 +983,27 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
   const buildLocalForecastAnalysis = (inputStats) => {
     const safeStats = getFreshCleanStats(inputStats, currentRows);
-    const dateCols = safeStats.filter(s => s.type === "date" || /date|time|year|day|month/i.test(s.name)).map(s => s.name);
+    const dateCols = safeStats.filter(s => s.type === "date" || /\b(date|time|timestamp|datetime)\b/i.test(s.name)).map(s => s.name);
     const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
+    const hasDateCol = dateCols.length > 0;
+    const hasNumCol = numCols.length > 0;
+    const isForecastable = hasDateCol && hasNumCol;
 
     return {
-      forecastable: numCols.length > 0,
-      date_column: dateCols[0] || (safeStats[0] ? safeStats[0].name : ""),
-      target_column: numCols[0] || "",
-      frequency: "D",
-      frequency_details: { recommended_horizon: 12, detected_frequency: "Daily" }
+      forecastable: isForecastable,
+      has_date_col: hasDateCol,
+      date_column: hasDateCol ? dateCols[0] : "",
+      target_column: hasNumCol ? numCols[0] : "",
+      confidence: isForecastable ? 0.88 : 0,
+      frequency: hasDateCol ? "Daily" : "N/A",
+      observations: hasDateCol ? currentRows.length : 0,
+      reason: isForecastable
+        ? `Chronological date column (${dateCols[0]}) and target variable (${numCols[0]}) detected.`
+        : (!hasDateCol
+            ? "No date or timestamp column detected in this dataset. Forecasting requires a chronological date column (e.g. OrderDate, Timestamp)."
+            : "No continuous numeric variable found suitable for time-series forecasting."),
+      frequency_details: { recommended_horizon: 12, detected_frequency: hasDateCol ? "Daily" : "None", confidence: hasDateCol ? 0.88 : 0 },
+      seasonality_details: { seasonality_detected: false }
     };
   };
 
@@ -2896,7 +2908,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>Date / Timestamp Column</label>
                     <select value={selectedDateCol} onChange={(e) => setSelectedDateCol(e.target.value)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
                       <option value="">-- Select date column --</option>
-                      {columns.map(col => <option key={col} value={col}>{col}</option>)}
+                      {stats.filter(s => s.type === "date" || /\b(date|time|timestamp|datetime)\b/i.test(s.name)).map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                     </select>
                   </div>
 
@@ -2904,7 +2916,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                     <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)" }}>Target Numeric Variable</label>
                     <select value={selectedTargetCol} onChange={(e) => setSelectedTargetCol(e.target.value)} style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color)", fontSize: 12.5 }}>
                       <option value="">-- Select numeric target --</option>
-                      {columns.map(col => <option key={col} value={col}>{col}</option>)}
+                      {stats.filter(s => s.type === "numeric").map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
                     </select>
                   </div>
                 </div>
