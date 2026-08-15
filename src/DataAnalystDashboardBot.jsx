@@ -268,6 +268,45 @@ function parseJSONSafe(text) {
   } catch (e) { return null; }
 }
 
+function extractBestSheetData(sheet) {
+  if (!sheet) return { rows: [], columns: [] };
+  
+  // 1. Get 2D matrix of first 15 rows to locate true tabular header row
+  const matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+  if (!matrix || matrix.length === 0) return { rows: [], columns: [] };
+
+  // 2. Find row with maximum non-empty header columns
+  let bestHeaderIdx = 0;
+  let maxCols = 0;
+  const maxScanRows = Math.min(matrix.length, 15);
+
+  for (let r = 0; r < maxScanRows; r++) {
+    const row = matrix[r];
+    if (!Array.isArray(row)) continue;
+    const validCols = row.filter(cell => cell !== null && cell !== undefined && String(cell).trim() !== "" && !String(cell).startsWith("__EMPTY") && !String(cell).includes("REPORT"));
+    if (validCols.length > maxCols) {
+      maxCols = validCols.length;
+      bestHeaderIdx = r;
+    }
+  }
+
+  // 3. Parse json starting from bestHeaderIdx
+  const rawRows = XLSX.utils.sheet_to_json(sheet, { range: bestHeaderIdx, defval: "" });
+  if (!rawRows || rawRows.length === 0) return { rows: [], columns: [] };
+
+  const rawCols = Object.keys(rawRows[0] || {}).filter(c => c && !c.startsWith("__EMPTY") && c.trim() !== "");
+  
+  const cleanRows = rawRows.map(r => {
+    const cleanObj = {};
+    rawCols.forEach(col => {
+      cleanObj[col] = r[col];
+    });
+    return cleanObj;
+  }).filter(r => Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ""));
+
+  return { rows: cleanRows, columns: rawCols };
+}
+
 function selectBestExcelSheet(wb) {
   if (!wb || !wb.SheetNames || !wb.SheetNames.length) return null;
   
@@ -283,14 +322,12 @@ function selectBestExcelSheet(wb) {
     try {
       const sheet = wb.Sheets[name];
       if (!sheet) return;
-      const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-      if (!rawRows || rawRows.length === 0) return;
+      
+      const { rows, columns } = extractBestSheetData(sheet);
+      if (!rows || rows.length === 0 || columns.length === 0) return;
 
-      const rawCols = Object.keys(rawRows[0] || {}).filter(c => c && !c.startsWith("__EMPTY") && c.trim() !== "");
-      const rowCount = rawRows.length;
-      const colCount = rawCols.length;
-
-      if (colCount === 0 || rowCount === 0) return;
+      const rowCount = rows.length;
+      const colCount = columns.length;
 
       let score = (colCount * 10) + (rowCount * 2);
 
@@ -302,20 +339,11 @@ function selectBestExcelSheet(wb) {
         score += 50;
       }
 
-      // Clean rows to remove empty columns (__EMPTY)
-      const cleanRows = rawRows.map(r => {
-        const cleanObj = {};
-        rawCols.forEach(col => {
-          cleanObj[col] = r[col];
-        });
-        return cleanObj;
-      });
-
       if (score > maxScore) {
         maxScore = score;
         bestSheetName = name;
-        bestRows = cleanRows;
-        bestCols = rawCols;
+        bestRows = rows;
+        bestCols = columns;
       }
     } catch (e) {
       // skip errored sheets
@@ -325,9 +353,8 @@ function selectBestExcelSheet(wb) {
   if (bestRows.length === 0) {
     const firstSheet = wb.SheetNames[0];
     const sheet = wb.Sheets[firstSheet];
-    const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-    const rawCols = (rawRows.length && rawRows[0]) ? Object.keys(rawRows[0]).filter(c => c && !c.startsWith("__EMPTY")) : [];
-    return { sheetName: firstSheet, rows: rawRows, columns: rawCols };
+    const { rows, columns } = extractBestSheetData(sheet);
+    return { sheetName: firstSheet, rows, columns };
   }
 
   return { sheetName: bestSheetName, rows: bestRows, columns: bestCols };
