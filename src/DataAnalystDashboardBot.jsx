@@ -1423,8 +1423,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const triggerClean = () => {
     setCleaningError("");
 
-    const rows = currentRows || active?.profile?.rows_data || active?.rows || [];
-    const cols = columns || active?.profile?.columns_list || [];
+    const rows = currentRows || [];
+    const cols = columns || [];
 
     const numCols = (stats || []).filter(s => s.type === "numeric");
     const catCols = (stats || []).filter(s => s.type === "categorical");
@@ -1477,7 +1477,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     });
     setCleanedDatasetInfo({
       id: serverId || `local-${Date.now()}`,
-      name: `${active?.name || "Dataset"} (Cleaned)`
+      name: "Dataset (Cleaned)"
     });
     setCleaningStage("preview");
   };
