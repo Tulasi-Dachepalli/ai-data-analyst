@@ -5425,10 +5425,10 @@ export default function DataAnalystDashboardBot({ currentView }) {
               </div>
             )}
             {latestAssistantMsg && (
-              <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: "12px 16px", marginBottom: 12, boxShadow: "0 4px 16px rgba(0,0,0,0.06)" }}>
+              <div style={{ background: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "var(--bg-secondary, #FFFFFF)" : "#0F172A", border: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "1px solid var(--border-color, #E2E8F0)" : "1px solid #1E293B", borderRadius: 12, padding: "14px 16px", marginBottom: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.12)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "#8B5CF6", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>🤖</span> {latestAssistantMsg.content.includes("Dataset loaded successfully") ? "AI Copilot Ready — Ask a Question Below:" : "Latest AI Copilot Answer:"}
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "#8B5CF6" : "#10B981", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>{latestAssistantMsg.content.includes("Dataset loaded successfully") ? "🤖" : "✨"}</span> {latestAssistantMsg.content.includes("Dataset loaded successfully") ? "AI Copilot Ready — Ask a Question Below:" : "Latest AI Copilot Answer:"}
                   </div>
                   <button
                     onClick={() => {
@@ -5438,15 +5438,13 @@ export default function DataAnalystDashboardBot({ currentView }) {
                       }
                       window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
                     }}
-                    style={{ background: "none", border: "none", color: "#8B5CF6", fontSize: 11.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
+                    style={{ background: "none", border: "none", color: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "#8B5CF6" : "#38BDF8", fontSize: 11.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
                   >
                     📜 Jump to Full Chat History ↓
                   </button>
                 </div>
-                <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>
-                  {latestAssistantMsg.content.includes("Dataset loaded successfully")
-                    ? `Dataset loaded successfully with ${active ? active.rows?.length || 14190 : 14190} rows and ${active ? active.columns?.length || 22 : 22} columns. Click any suggestion pill or type a question below to get an instant answer!`
-                    : latestAssistantMsg.content}
+                <div style={{ fontSize: 13.5, lineHeight: 1.6, color: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "var(--text-primary)" : "#F8FAFC", whiteSpace: "pre-wrap" }}>
+                  {latestAssistantMsg.content}
                 </div>
               </div>
             )}
