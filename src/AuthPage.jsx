@@ -21,6 +21,7 @@ const TITLES = {
 
 export default function AuthPage({ onAuthenticated }) {
   const [mode, setMode] = useState("login"); // "login" | "signup" | "forgot" | "reset"
+  const [fullName, setFullName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,7 +60,7 @@ export default function AuthPage({ onAuthenticated }) {
     try {
       const base = import.meta.env.VITE_API_BASE_URL || "";
       const path = mode === "login" ? "/api/auth/login" : "/api/auth/signup";
-      const body = mode === "login" ? { email, password } : { companyName, email, password };
+      const body = mode === "login" ? { email, password } : { fullName, companyName, email, password };
       const res = await fetch(`${base}${path}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -157,13 +158,19 @@ export default function AuthPage({ onAuthenticated }) {
         {(mode === "login" || mode === "signup") && (
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             {mode === "signup" && (
-              <div>
-                <label style={labelStyle}>Company name</label>
-                <input style={inputStyle} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." required />
-                <div style={{ fontSize: 11, color: "#A6A196", marginTop: 4 }}>
-                  First person from a company becomes its admin. Teammates can join later using the same company name.
+              <>
+                <div>
+                  <label style={labelStyle}>Full Name</label>
+                  <input style={inputStyle} value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Doe" required />
                 </div>
-              </div>
+                <div>
+                  <label style={labelStyle}>Company name</label>
+                  <input style={inputStyle} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." required />
+                  <div style={{ fontSize: 11, color: "#A6A196", marginTop: 4 }}>
+                    First person from a company becomes its admin. Teammates can join later using the same company name.
+                  </div>
+                </div>
+              </>
             )}
             <div>
               <label style={labelStyle}>Email</label>

@@ -53,7 +53,8 @@ function computeColumnStats(rows, col) {
   const missingRate = values.length ? +((missing / values.length) * 100).toFixed(1) : 0;
   const isHighMissing = missingRate > 50.0;
   const type = detectType(values, col);
-  const unique = new Set(nonMissing.map(String)).size;
+  const trimmedStrings = nonMissing.map(v => String(v).trim());
+  const unique = new Set(trimmedStrings).size;
   const base = { name: col, type, count: rows.length, missing, missingRate, isHighMissing, unique };
   if (type === "numeric") {
     const nums = nonMissing.map(Number).filter(n => !isNaN(n));
@@ -65,13 +66,15 @@ function computeColumnStats(rows, col) {
     // Sanity-check: Guarantee computed mean falls strictly within [min, max]
     const mean = Math.max(min, Math.min(max, rawMean));
     const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
-    return { ...base, sum: +sum.toFixed(2), min, max, mean: +mean.toFixed(2), median: +median.toFixed(2) };
+    const variance = nums.length > 1 ? nums.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / (nums.length - 1) : 0;
+    const stdDev = Math.sqrt(variance);
+    return { ...base, sum: +sum.toFixed(2), min, max, mean: +mean.toFixed(2), median: +median.toFixed(2), stdDev: +stdDev.toFixed(2), std: +stdDev.toFixed(2) };
   }
   if (type === "categorical") {
     const counts = {};
-    nonMissing.forEach(v => { const k = String(v); counts[k] = (counts[k] || 0) + 1; });
+    trimmedStrings.forEach(v => { counts[v] = (counts[v] || 0) + 1; });
     const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([value, count]) => ({ value, count }));
-    return { ...base, top };
+    return { ...base, top, unique: Object.keys(counts).length };
   }
   if (type === "date") {
     const times = nonMissing.map(v => new Date(v).getTime()).filter(t => !isNaN(t));
@@ -100,6 +103,8 @@ function mapBackendStats(backendStats) {
       median: s.median,
       min: s.min,
       max: s.max,
+      stdDev: s.stdDev ?? s.std,
+      std: s.std ?? s.stdDev,
       outlier_count: s.outlier_count ?? 0
     };
   });
@@ -114,9 +119,21 @@ function calculateDataQuality(rows, columns) {
       if (v === null || v === undefined || String(v).trim() === "") missingCells++;
     });
   });
+
+  const seenHashes = new Set();
+  let duplicateRows = 0;
+  (rows || []).forEach(row => {
+    const rowHash = JSON.stringify((columns || []).map(c => String(row[c] ?? "").trim()));
+    if (seenHashes.has(rowHash)) {
+      duplicateRows++;
+    } else {
+      seenHashes.add(rowHash);
+    }
+  });
+
   const missingRate = totalCells ? missingCells / totalCells : 0;
   const score = Math.max(0, Math.round((1 - missingRate) * 100));
-  return { score, missingCells, missingRate: +(missingRate * 100).toFixed(2) };
+  return { score, missingCells, missingRate: +(missingRate * 100).toFixed(2), duplicateRows };
 }
 
 function detectOutliers(rows, column) {
@@ -1514,28 +1531,60 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   }, [cleaningStage]);
 
   const applyClean = () => {
-    if (!cleanedProfile || !cleanedDatasetInfo) return;
+    let cleanRows = [...(currentRows || [])];
+    const cleanCols = validCols.length > 0 ? validCols : (cleanRows[0] ? Object.keys(cleanRows[0]).filter(k => !k.startsWith("__")) : []);
     
-    const stub = {
-      id: `srv-${cleanedDatasetInfo.id}`,
-      serverId: cleanedDatasetInfo.id,
-      name: cleanedDatasetInfo.name,
-      rows: cleanedProfile.rows_data,
-      columns: cleanedProfile.columns_list,
-      stats: mapBackendStats(cleanedProfile.columns_info),
-      quality: {
-        score: cleanedProfile.quality_score,
-        missingCells: cleanedProfile.missing_cells,
-        missingRate: cleanedProfile.missing_percentage,
-        duplicateRows: cleanedProfile.duplicate_rows
-      },
-      dashboard: null,
-      messages: [],
+    // 1. Trim strings & normalize whitespace
+    cleanRows = cleanRows.map(r => {
+      const newRow = {};
+      cleanCols.forEach(c => {
+        const v = r[c];
+        newRow[c] = (typeof v === "string") ? v.trim() : v;
+      });
+      return newRow;
+    });
+
+    // 2. Remove duplicate rows
+    const seenHashes = new Set();
+    cleanRows = cleanRows.filter(r => {
+      const hash = JSON.stringify(cleanCols.map(c => String(r[c] ?? "")));
+      if (seenHashes.has(hash)) return false;
+      seenHashes.add(hash);
+      return true;
+    });
+
+    const cleanStats = cleanCols.map(c => computeColumnStats(cleanRows, c));
+    const cleanQuality = calculateDataQuality(cleanRows, cleanCols);
+    const cleanPlan = pickDashboardPlan(cleanStats);
+    const kpisList = cleanPlan.kpiCols.map(c => ({ label: `Avg ${c.name}`, value: (c.mean != null) ? c.mean.toLocaleString() : "0" }));
+    const categoryCharts = cleanPlan.categoryCols.map(c => ({
+      title: `Count by ${c.name}`,
+      metricLabel: "count",
+      chartType: chooseChart(c.type, c.unique),
+      data: computeAggregate(cleanRows, c.name, null, "count")
+    }));
+    
+    const cleanDashboard = {
+      sheetName: `${active?.name || "Dataset"} (Cleaned)`,
+      rawRows: cleanRows,
+      plan: { kpis: kpisList, categoryCharts, trendChart: null },
+      narrative: `Cleaned dataset created with ${cleanRows.length.toLocaleString()} rows and ${cleanCols.length} columns (duplicates removed, whitespace normalized).`
+    };
+
+    const newCleanStub = {
+      id: `cleaned-${Date.now()}`,
+      name: `${active?.name || "Dataset"} (Cleaned)`,
+      rows: cleanRows,
+      columns: cleanCols,
+      stats: cleanStats,
+      quality: cleanQuality,
+      dashboard: cleanDashboard,
+      messages: [{ role: "assistant", kind: "text", content: `Cleaned dataset created with ${cleanRows.length.toLocaleString()} rows and ${cleanCols.length} columns.` }],
       loaded: true
     };
-    
+
     if (onDatasetCreated) {
-      onDatasetCreated(stub);
+      onDatasetCreated(newCleanStub);
     }
     setCleaningStage("completed");
   };
@@ -3935,6 +3984,14 @@ export default function DataAnalystDashboardBot({ currentView }) {
     }
     const files = Array.from(fileList);
     for (const file of files) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File "${file.name}" exceeds the maximum allowed 10MB size limit.`);
+        continue;
+      }
+      if (file.size === 0) {
+        alert(`File "${file.name}" is empty (0 bytes). Please upload a valid CSV or Excel spreadsheet.`);
+        continue;
+      }
       setLoading(true);
       setLoadingLabel("Uploading and profiling dataset…");
       try {
@@ -4168,12 +4225,47 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
     // 4. Correlation / Relationship queries
     if (q.includes("correlation") || q.includes("relationship") || q.includes("related") || q.includes("correlate")) {
-      const corrs = dashboard?.correlations || [];
-      if (corrs.length > 0) {
-        const list = corrs.map(c => `• **${c.colA}** vs **${c.colB}**: ${c.r != null ? c.r.toFixed(2) : "0.00"} (${correlationLabel(c.r ?? 0)})`);
-        return `**Key Numeric Correlations:**\n${list.join("\n")}`;
+      const numCols = (stats || []).filter(s => s.type === "numeric");
+      const computedCorrs = [];
+      for (let i = 0; i < numCols.length; i++) {
+        for (let j = i + 1; j < numCols.length; j++) {
+          const rVal = correlation(rows, numCols[i].name, numCols[j].name);
+          if (rVal !== null && rVal !== undefined) {
+            computedCorrs.push({ colA: numCols[i].name, colB: numCols[j].name, r: rVal });
+          }
+        }
       }
-      return `No strong correlations (r ≥ 0.5) were detected between numeric variables in this dataset.`;
+      computedCorrs.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
+
+      if (computedCorrs.length > 0) {
+        const list = computedCorrs.slice(0, 5).map(c => `• **${c.colA}** vs **${c.colB}**: **${c.r >= 0 ? "+" : ""}${c.r.toFixed(2)}** (${correlationLabel(c.r)})`);
+        return `**Key Numeric Correlations:**\n\n${list.join("\n")}`;
+      }
+      return `No numeric variables available to compute correlations in this dataset.`;
+    }
+
+    // 4b. Highest Sales / Category Revenue queries
+    if (q.includes("highest sales") || q.includes("top category by sales") || q.includes("most sales") || q.includes("sales by category")) {
+      const salesCol = (numCols || []).find(n => /sales|revenue|amount|total/i.test(n.name)) || (numCols && numCols[0]);
+      const catCol = (catCols || []).find(c => /category|group|region|type|product/i.test(c.name)) || (catCols && catCols[0]);
+
+      if (salesCol && catCol) {
+        const aggregates = {};
+        const counts = {};
+        (rows || []).forEach(r => {
+          const gVal = String(r[catCol.name] ?? "Unknown").trim();
+          const nVal = Number(r[salesCol.name]) || 0;
+          aggregates[gVal] = (aggregates[gVal] || 0) + nVal;
+          counts[gVal] = (counts[gVal] || 0) + 1;
+        });
+
+        const sorted = Object.entries(aggregates).sort((a, b) => b[1] - a[1]);
+        if (sorted.length > 0) {
+          const [topCat, topVal] = sorted[0];
+          const orderCnt = counts[topCat] || 0;
+          return `**${topCat}** generated the highest total **${salesCol.name}** with **$${topVal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}** across **${orderCnt}** orders.\n\n**Category Sales Breakdown:**\n` + sorted.slice(0, 5).map(([cat, val]) => `• **${cat}**: $${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${counts[cat]} orders)`).join("\n");
+        }
+      }
     }
 
     // 5. Summary / Overview / Tell me about queries
