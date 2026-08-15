@@ -4520,7 +4520,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
     }
 
-    if (!question || !currentActive || !currentActive.rows) return;
+    if (!question || !currentActive) return;
     consumeCredit();
     const id = currentActive.id;
     const serverId = currentActive.serverId;
@@ -4550,7 +4550,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
 
       // Compute local grounded answer for instant 0ms responses
-      const localAnswer = answerQueryLocally(question, currentActive.rows, currentActive.stats, currentActive.quality, currentActive.dashboard);
+      const effectiveRows = currentActive.rows || [];
+      const effectiveStats = currentActive.stats || [];
+      const localAnswer = answerQueryLocally(question, effectiveRows, effectiveStats, currentActive.quality, currentActive.dashboard);
 
       if (!serverId || localAnswer) {
         const finalAns = localAnswer || `Analyzed dataset for **"${question}"**.`;
