@@ -1893,34 +1893,44 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
       {activeTab === "cleaning" && (
         <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: "var(--radius-lg, 12px)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>🧹 Automated Data Cleaning Engine</div>
-            {(cleaningStage === "preview" || cleaningStage === "completed") && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>🧹 Automated Data Cleaning Engine</div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Identify structural anomalies, duplicate rows, missing entries, and whitespace discrepancies:</div>
+            </div>
+            {cleaningStage !== "completed" && (
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                  onClick={() => setCleaningStage("idle")}
+                  onClick={triggerClean}
                   style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                 >
-                  🔄 Reset & Re-Analyze
+                  🔄 Refresh Analysis
                 </button>
-                {cleaningStage === "preview" && (
-                  <button
-                    onClick={applyClean}
-                    style={{ background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                  >
-                    Apply & Load Dataset
-                  </button>
-                )}
+                <button
+                  onClick={applyClean}
+                  style={{ background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                >
+                  ✓ Apply & Load Cleaned Dataset
+                </button>
               </div>
             )}
           </div>
 
-          {cleaningStage === "idle" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>
-                Identify structural anomalies, duplicate rows, missing entries, and whitespace discrepancies before analysis:
-              </p>
-              
+          {cleaningStage === "completed" ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 10px", gap: 10 }}>
+              <div style={{ fontSize: 32 }}>✨</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--success, #10B981)" }}>Cleaned Dataset Successfully Cloned!</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center" }}>The new lineage dataset has been loaded into your active workspace thread.</div>
+              <button
+                onClick={() => setCleaningStage("idle")}
+                style={{ marginTop: 10, background: "var(--bg-secondary)", color: "var(--text-primary)", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                🔄 Re-Open Cleaning Analysis
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Quality KPI Cards */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 12 }}>
                 <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, textAlign: "center" }}>
                   <div style={{ fontSize: 20, fontWeight: 700, color: (quality?.duplicateRows > 0) ? "var(--warning, #F59E0B)" : "var(--success, #10B981)" }}>
@@ -1954,60 +1964,20 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 </div>
               )}
 
-              <button
-                onClick={triggerClean}
-                style={{
-                  alignSelf: "flex-start",
-                  background: "var(--accent-color, #0F172A)",
-                  color: "var(--accent-text, #fff)",
-                  border: "none",
-                  borderRadius: "var(--radius-sm)",
-                  padding: "8px 16px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "opacity 0.15s ease"
-                }}
-              >
-                🔍 Analyze & Preview Cleaning
-              </button>
-            </div>
-          )}
-
-          {cleaningStage === "cleaning" && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 10px", gap: 12 }}>
-              <div style={{
-                width: 28,
-                height: 28,
-                border: "3px solid var(--border-color)",
-                borderTopColor: "var(--text-primary)",
-                borderRadius: "50%",
-                animation: "spin 1s linear infinite"
-              }} />
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text-secondary)" }}>Running Python Pandas cleaning transformations on server...</div>
-              <button
-                onClick={() => triggerClean()}
-                style={{ marginTop: 6, background: "none", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 14px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", cursor: "pointer" }}
-              >
-                ⚡ Click to run instant local cleaning
-              </button>
-            </div>
-          )}
-
-          {cleaningStage === "preview" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* Cleaning Summary Box */}
               <div style={{ background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "var(--radius-md)", padding: 14 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: "var(--success, #10B981)", marginBottom: 8 }}>📋 Cleaning Summary Preview</div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, fontSize: 13, color: "var(--text-secondary)" }}>
                   <div>• Rows: <strong>{(cleaningSummary?.originalRows ?? cleaningSummary?.rows_original ?? currentRows.length)} ➔ {(cleaningSummary?.cleanedRows ?? cleaningSummary?.rows_cleaned ?? currentRows.length)}</strong></div>
                   <div>• Columns: <strong>{(cleaningSummary?.originalColumns ?? cleaningSummary?.columns_formatted ?? columns.length)} ➔ {(cleaningSummary?.cleanedColumns ?? cleaningSummary?.columns_formatted ?? columns.length)}</strong></div>
-                  <div>• Duplicates Dropped: <strong>{(cleaningSummary?.duplicatesRemoved ?? cleaningSummary?.duplicates_removed ?? 0)}</strong></div>
-                  <div>• Missing Cells Imputed: <strong>{(cleaningSummary?.missingValuesFilled ?? cleaningSummary?.missing_values_imputed ?? 0)}</strong></div>
+                  <div>• Duplicates Dropped: <strong>{(cleaningSummary?.duplicatesRemoved ?? cleaningSummary?.duplicates_removed ?? quality?.duplicateRows ?? 0)}</strong></div>
+                  <div>• Missing Cells Imputed: <strong>{(cleaningSummary?.missingValuesFilled ?? cleaningSummary?.missing_values_imputed ?? quality?.missingCells ?? 0)}</strong></div>
                   <div>• Spaces Normalized: <strong>{(cleaningSummary?.whitespaceNormalized ?? 0)}</strong></div>
                   <div>• Constant/Empty Columns: <strong>{(cleaningSummary?.emptyColumnsRemoved ?? 0) + (cleaningSummary?.constantColumnsRemoved ?? 0)}</strong></div>
                 </div>
               </div>
 
+              {/* Visual Diff Table */}
               <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)" }}>🔍 Visual Diff Change Logs</div>
               <Table
                 headers={[
@@ -2019,14 +1989,16 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 data={changePreviewRows}
                 density="compact"
               />
-            </div>
-          )}
 
-          {cleaningStage === "completed" && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 10px", gap: 10 }}>
-              <div style={{ fontSize: 32 }}>✨</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--success, #10B981)" }}>Cleaned Dataset Successfully Cloned!</div>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", textAlign: "center" }}>The new lineage dataset has been loaded into your active workspace thread.</div>
+              {/* Bottom Apply Action Button */}
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+                <button
+                  onClick={applyClean}
+                  style={{ background: "var(--accent-color, #0F172A)", color: "var(--accent-text, #fff)", border: "none", borderRadius: "var(--radius-sm)", padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "var(--shadow-sm)" }}
+                >
+                  ✓ Apply & Load Cleaned Dataset
+                </button>
+              </div>
             </div>
           )}
         </div>
