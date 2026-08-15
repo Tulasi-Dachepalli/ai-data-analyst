@@ -239,12 +239,16 @@ function isMetaOrReportColumn(s) {
 }
 
 function pickDashboardPlan(stats) {
-  const validStats = (stats || []).filter(s => !isMetaOrReportColumn(s));
+  let validStats = (stats || []).filter(s => !isMetaOrReportColumn(s));
+  if (validStats.length === 0) {
+    validStats = (stats || []).filter(s => s && s.name && !s.name.startsWith("__"));
+  }
+
   const numeric = validStats.filter(s => s.type === "numeric");
-  const categorical = validStats.filter(s => s.type === "categorical" && s.unique > 1 && s.unique <= 30);
+  const categorical = validStats.filter(s => s.type === "categorical" && s.unique >= 1 && s.unique <= 50);
   const dateCols = validStats.filter(s => s.type === "date");
-  const kpiCols = numeric.slice(0, 4);
-  const categoryCols = categorical.slice(0, 2);
+  const kpiCols = numeric.length ? numeric.slice(0, 4) : validStats.slice(0, 4);
+  const categoryCols = categorical.length ? categorical.slice(0, 4) : validStats.slice(0, 2);
   const trendPlan = (dateCols.length && dateCols[0]?.name && numeric.length && numeric[0]?.name) ? { dateCol: dateCols[0].name, metricCol: numeric[0].name } : null;
   const distributionCols = numeric.slice(0, 2);
   const outlierCols = numeric.slice(0, 4);
@@ -1440,7 +1444,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   };
 
   const slicerCols = stats ? stats.filter(s => {
-    return s.type === "categorical" && s.unique > 1 && s.unique <= 15;
+    return !isMetaOrReportColumn(s) && s.type === "categorical" && s.unique > 1 && s.unique <= 30;
   }) : [];
 
   const kpis = plan ? plan.kpiCols.map(c => {
