@@ -844,6 +844,8 @@ function consumeCredit() {
 
 function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete }) {
   const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
+  const validCols = useMemo(() => (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c)), [columns]);
+  const quality = useMemo(() => calculateDataQuality(currentRows, (validCols.length > 0 ? validCols : columns || []).filter(c => c && !c.startsWith("__"))), [currentRows, validCols, columns]);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dataPage, setDataPage] = useState(0);
   const [sandboxVal, setSandboxVal] = useState("");
@@ -1435,63 +1437,69 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     consumeCredit();
     setCleaningError("");
 
-    const rows = currentRows || [];
-    const cols = columns || [];
+    try {
+      const rows = currentRows || [];
+      const cols = (columns || []).filter(c => c && !c.startsWith("__"));
 
-    const numCols = (stats || []).filter(s => s.type === "numeric");
-    const catCols = (stats || []).filter(s => s.type === "categorical");
+      const numCols = (stats || []).filter(s => s && s.type === "numeric");
+      const catCols = (stats || []).filter(s => s && s.type === "categorical");
 
-    const means = {};
-    numCols.forEach(c => { means[c.name] = c.mean ?? 0; });
+      const means = {};
+      numCols.forEach(c => { means[c.name] = c.mean ?? 0; });
 
-    const cleanedRows = (rows || []).map(r => {
-      const copy = { ...r };
-      numCols.forEach(c => {
-        if (copy[c.name] === null || copy[c.name] === undefined || copy[c.name] === "") {
-          copy[c.name] = means[c.name];
-        }
+      const cleanedRows = (rows || []).map(r => {
+        if (!r || typeof r !== "object") return {};
+        const copy = { ...r };
+        numCols.forEach(c => {
+          if (copy[c.name] === null || copy[c.name] === undefined || copy[c.name] === "") {
+            copy[c.name] = means[c.name];
+          }
+        });
+        catCols.forEach(c => {
+          if (copy[c.name] === null || copy[c.name] === undefined || String(copy[c.name]).trim() === "") {
+            copy[c.name] = "Unknown";
+          } else {
+            copy[c.name] = String(copy[c.name]).trim();
+          }
+        });
+        return copy;
       });
-      catCols.forEach(c => {
-        if (copy[c.name] === null || copy[c.name] === undefined || String(copy[c.name]).trim() === "") {
-          copy[c.name] = "Unknown";
-        } else {
-          copy[c.name] = String(copy[c.name]).trim();
-        }
+
+      const summaryData = {
+        rows_original: rows.length,
+        originalRows: rows.length,
+        rows_cleaned: cleanedRows.length,
+        cleanedRows: cleanedRows.length,
+        columns_formatted: cols.length,
+        originalColumns: cols.length,
+        cleanedColumns: cols.length,
+        missing_values_imputed: quality?.missingCells || 0,
+        missingValuesFilled: quality?.missingCells || 0,
+        duplicates_removed: quality?.duplicateRows || 0,
+        duplicatesRemoved: quality?.duplicateRows || 0,
+        whitespaceNormalized: 0,
+        emptyColumnsRemoved: 0,
+        constantColumnsRemoved: 0,
+        quality_score_before: quality?.score || 90,
+        quality_score_after: 100
+      };
+
+      setCleaningSummary(summaryData);
+      setCleanedProfile({
+        rows_data: cleanedRows,
+        columns_list: cols,
+        columns_info: {},
+        quality_score: 100
       });
-      return copy;
-    });
-
-    const summaryData = {
-      rows_original: rows.length,
-      originalRows: rows.length,
-      rows_cleaned: cleanedRows.length,
-      cleanedRows: cleanedRows.length,
-      columns_formatted: cols.length,
-      originalColumns: cols.length,
-      cleanedColumns: cols.length,
-      missing_values_imputed: quality?.missingCells || 0,
-      missingValuesFilled: quality?.missingCells || 0,
-      duplicates_removed: quality?.duplicateRows || 0,
-      duplicatesRemoved: quality?.duplicateRows || 0,
-      whitespaceNormalized: 0,
-      emptyColumnsRemoved: 0,
-      constantColumnsRemoved: 0,
-      quality_score_before: quality?.score || 90,
-      quality_score_after: 100
-    };
-
-    setCleaningSummary(summaryData);
-    setCleanedProfile({
-      rows_data: cleanedRows,
-      columns_list: cols,
-      columns_info: {},
-      quality_score: 100
-    });
-    setCleanedDatasetInfo({
-      id: serverId || `local-${Date.now()}`,
-      name: "Dataset (Cleaned)"
-    });
-    setCleaningStage("preview");
+      setCleanedDatasetInfo({
+        id: serverId || `local-${Date.now()}`,
+        name: "Dataset (Cleaned)"
+      });
+      setCleaningStage("preview");
+    } catch (err) {
+      console.error("Error inside triggerClean:", err);
+      setCleaningError(err?.message || "Failed to generate cleaning preview.");
+    }
   };
 
   useEffect(() => {
@@ -1527,7 +1535,6 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
     setCleaningStage("completed");
   };
 
-  const validCols = (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c));
   const freshStats = (currentRows && currentRows.length > 0)
     ? (validCols.length > 0 ? validCols : Object.keys(currentRows[0] || {}).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY/i.test(c)))
         .map(c => computeColumnStats(currentRows, c))
@@ -1576,8 +1583,6 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const correlations = activePlan.correlationPairs
     .map(([colA, colB]) => ({ colA, colB, r: correlation(currentRows, colA, colB) }))
     .filter(c => c.r !== null && Math.abs(c.r) >= 0.5);
-
-  const quality = calculateDataQuality(currentRows, (validCols.length > 0 ? validCols : columns || []).filter(c => c && !c.startsWith("__")));
 
   const toggleChartType = (colName, currentType) => {
     const isRegion = String(colName).toLowerCase() === "region";
