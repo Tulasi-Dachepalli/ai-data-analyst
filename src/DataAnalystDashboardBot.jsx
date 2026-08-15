@@ -5245,11 +5245,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   </div>
                   <button
                     onClick={() => {
-                      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                      if (scrollRef.current) {
+                        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                        scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+                      }
+                      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
                     }}
-                    style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 11, fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+                    style={{ background: "none", border: "none", color: "#8B5CF6", fontSize: 11.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
                   >
-                    Scroll to Thread ↓
+                    📜 Jump to Full Chat History ↓
                   </button>
                 </div>
                 <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--text-primary)", whiteSpace: "pre-wrap" }}>
