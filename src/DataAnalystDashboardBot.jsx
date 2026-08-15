@@ -4343,29 +4343,37 @@ export default function DataAnalystDashboardBot({ currentView }) {
         const isMax = /max|high|top|longest|greatest|most/i.test(q);
         const isMin = /min|low|bottom|shortest|least/i.test(q);
         
+        const numVals = (rows || []).map(r => Number(r[col.name])).filter(v => !isNaN(v));
+        const meanVal = (col.mean !== undefined && col.mean !== null && !isNaN(col.mean)) 
+          ? col.mean 
+          : +((numVals.length > 0 ? numVals.reduce((a, b) => a + b, 0) / numVals.length : 0).toFixed(2));
+        const minVal = col.min ?? (numVals.length > 0 ? Math.min(...numVals) : 0);
+        const maxVal = col.max ?? (numVals.length > 0 ? Math.max(...numVals) : 0);
+        const sumVal = col.sum ?? (numVals.length > 0 ? numVals.reduce((a, b) => a + b, 0) : 0);
+
         if (isSum) {
-          return `The total sum of **${col.name}** is **${col.sum !== undefined ? col.sum.toLocaleString() : "N/A"}**.`;
+          return `The total sum of **${col.name}** is **${sumVal.toLocaleString()}**.`;
         }
         if (isMax) {
           const sortedRows = [...(rows || [])].filter(r => r[col.name] !== null && r[col.name] !== undefined && !isNaN(Number(r[col.name]))).sort((a, b) => Number(b[col.name]) - Number(a[col.name]));
           if (sortedRows.length > 0) {
             const topRow = sortedRows[0];
             const nameVal = topRow["Name"] || topRow["Audit"] || topRow["Code"] || Object.values(topRow)[1] || Object.values(topRow)[0];
-            return `**${nameVal}** has the highest **${col.name}** with **${topRow[col.name]}** (Max: ${col.max}).`;
+            return `**${nameVal}** has the highest **${col.name}** with **${topRow[col.name]}** (Max: ${maxVal.toLocaleString()}).`;
           }
-          return `The maximum value of **${col.name}** is **${col.max}**.`;
+          return `The maximum value of **${col.name}** is **${maxVal.toLocaleString()}**.`;
         }
         if (isMin) {
           const sortedRows = [...(rows || [])].filter(r => r[col.name] !== null && r[col.name] !== undefined && !isNaN(Number(r[col.name]))).sort((a, b) => Number(a[col.name]) - Number(b[col.name]));
           if (sortedRows.length > 0) {
             const minRow = sortedRows[0];
             const nameVal = minRow["Name"] || minRow["Audit"] || minRow["Code"] || Object.values(minRow)[1] || Object.values(minRow)[0];
-            return `**${nameVal}** has the lowest **${col.name}** with **${minRow[col.name]}** (Min: ${col.min}).`;
+            return `**${nameVal}** has the lowest **${col.name}** with **${minRow[col.name]}** (Min: ${minVal.toLocaleString()}).`;
           }
-          return `The minimum value of **${col.name}** is **${col.min}**.`;
+          return `The minimum value of **${col.name}** is **${minVal.toLocaleString()}**.`;
         }
         // Default for average / mean queries or general metric questions (including typos like avarage, averge, avrg, etc.)
-        return `The average of **${col.name}** is **${col.mean !== undefined ? col.mean.toLocaleString() : "N/A"}** across ${rows.length.toLocaleString()} rows (range: ${col.min} to ${col.max}).`;
+        return `The average of **${col.name}** is **${meanVal.toLocaleString()}** across ${(rows || []).length.toLocaleString()} rows (range: ${minVal.toLocaleString()} to ${maxVal.toLocaleString()}).`;
       }
     }
     // 7. Entity / Specific Row Cell Value search (e.g., "what is IT Security auditor?", "details for AUD-103")
