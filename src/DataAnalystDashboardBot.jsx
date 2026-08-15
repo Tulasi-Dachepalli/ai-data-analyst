@@ -11,13 +11,31 @@ import {
 const COLORS = ["#3E6F8E", "#C98A3E", "#8B6BA8", "#6E8F63", "#B85C5C", "#4C9A9A", "#7A7A7A"];
 
 // ---------------- data helpers ----------------
-function detectType(values) {
+function detectType(values, colName) {
   const nonEmpty = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
   if (nonEmpty.length === 0) return "categorical";
+  
+  // If column name indicates Code, ID, UUID, Key, SKU, AUDIT, etc., NEVER mislabel as Date!
+  if (colName && /code|id|uuid|guid|sku|ref|token|hash|number|^aud/i.test(colName)) {
+    const sample = nonEmpty.slice(0, 60);
+    const numCount = sample.filter(v => v !== "" && !isNaN(Number(v))).length;
+    if (numCount / sample.length > 0.8) return "numeric";
+    return "categorical";
+  }
+
   const sample = nonEmpty.slice(0, 60);
   const numCount = sample.filter(v => v !== "" && !isNaN(Number(v))).length;
   if (numCount / sample.length > 0.8) return "numeric";
-  const dateCount = sample.filter(v => !isNaN(Date.parse(v)) && isNaN(Number(v))).length;
+
+  // Strict Date Detection: Must match ISO YYYY-MM-DD or standard date format, and NOT strings like "AUD-101"!
+  const dateRegex = /^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}/;
+  const dateCount = sample.filter(v => {
+    const str = String(v).trim();
+    if (str.length < 6 || !dateRegex.test(str)) return false;
+    const t = Date.parse(str);
+    return !isNaN(t) && isNaN(Number(str));
+  }).length;
+
   if (dateCount / sample.length > 0.8) return "date";
   return "categorical";
 }
@@ -32,7 +50,7 @@ function computeColumnStats(rows, col) {
   const values = rows.map(r => r[col]);
   const nonMissing = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
   const missing = values.length - nonMissing.length;
-  const type = detectType(values);
+  const type = detectType(values, col);
   const unique = new Set(nonMissing.map(String)).size;
   const base = { name: col, type, count: rows.length, missing, unique };
   if (type === "numeric") {
