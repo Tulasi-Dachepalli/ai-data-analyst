@@ -10,6 +10,22 @@ import {
 
 const COLORS = ["#3E6F8E", "#C98A3E", "#8B6BA8", "#6E8F63", "#B85C5C", "#4C9A9A", "#7A7A7A"];
 
+export function consumeCredit() {
+  try {
+    const current = parseInt(localStorage.getItem("aida_credits") || "50", 10);
+    const next = Math.max(0, current - 1);
+    localStorage.setItem("aida_credits", String(next));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("storage"));
+    }
+  } catch (e) {
+    console.warn("Credit update warning:", e);
+  }
+}
+if (typeof window !== "undefined") {
+  window.consumeCredit = consumeCredit;
+}
+
 // ---------------- data helpers ----------------
 function detectType(values, colName) {
   const nonEmpty = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
@@ -847,17 +863,6 @@ function trainTestSplitAndFit(rows, columns, stats) {
       predicted: +(slope * Number(r[bestPredictor]) + intercept).toFixed(2)
     }))
   };
-}
-
-function consumeCredit() {
-  try {
-    const current = parseInt(localStorage.getItem("aida_credits") || "50", 10);
-    const next = Math.max(0, current - 1);
-    localStorage.setItem("aida_credits", String(next));
-    window.dispatchEvent(new Event("storage"));
-  } catch (e) {
-    console.warn("Credit update warning:", e);
-  }
 }
 
 
@@ -4570,7 +4575,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
     const effectiveStats = currentActive.stats || [];
 
     try {
-      consumeCredit();
+      if (typeof consumeCredit === "function") consumeCredit();
+      else if (typeof window !== "undefined" && typeof window.consumeCredit === "function") window.consumeCredit();
     } catch (err) {
       console.warn("Credit deduction error:", err);
     }
