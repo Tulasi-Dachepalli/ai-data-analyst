@@ -3788,7 +3788,11 @@ export default function DataAnalystDashboardBot({ currentView }) {
     const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
     const catCols = safeStats.filter(s => s.type === "categorical" && s.unique <= 15).map(s => s.name);
     const dateCols = safeStats.filter(s => s.type === "date").map(s => s.name);
-    
+
+    // When the backend is known offline, skip chips that require the Python
+    // engine (forecasting, ML) — they'd silently fail instead of answering.
+    const backendOffline = !!active.backendOffline;
+
     const suggestions = [];
     if (numCols.length > 0) {
       suggestions.push(`What is the average of ${numCols[0]}?`);
@@ -3796,7 +3800,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
     if (catCols.length > 0 && numCols.length > 0) {
       suggestions.push(`average ${numCols[0]} by ${catCols[0]}`);
     }
-    if (dateCols.length > 0 && numCols.length > 0) {
+    // Forecast chip requires the live Python backend — hide it when offline
+    if (!backendOffline && dateCols.length > 0 && numCols.length > 0) {
       suggestions.push(`Forecast ${numCols[0]} next 3 months`);
     }
     suggestions.push("Are there unusual values?");
@@ -4001,7 +4006,9 @@ export default function DataAnalystDashboardBot({ currentView }) {
         : "";
       fallbackOverview = `Dataset loaded: **${rowCount.toLocaleString()} rows × ${totalCols} columns**. ${numSummary} ${catSummary} Data quality score: **${qScore}%**. Use the chips below or type a question to explore your data.`.trim();
     }
-    updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "assistant", kind: "text", content: text || fallbackOverview }] }));
+    // Use kind "local_overview" (not "text") when the content is locally computed
+    // so the panel header can label it correctly and never imply Claude generated it.
+    updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "assistant", kind: text ? "text" : "local_overview", content: text || fallbackOverview }] }));
     setLoadingLabel("Building your dashboard…");
     await buildDashboard(id, stats, rows, quality, serverId);
   };
@@ -4075,11 +4082,16 @@ export default function DataAnalystDashboardBot({ currentView }) {
           }
         }
 
+        // Track whether we fell back to client-side parsing so downstream
+        // chips and panel labels can distinguish offline-mode from a real
+        // backend-profiled dataset.
+        const usedClientFallback = !(profile && profile.rows_data);
         const id = Date.now() + "-" + file.name;
         const initialMessages = [{ role: "user", kind: "file", fileName: file.name, rowCount: rows.length, colCount: cleanCols.length }];
         const thread = {
           id, name: file.name, rows, columns: cleanCols, stats, quality, dashboard: null,
-          messages: initialMessages, loaded: true, serverId: null, isRawText, rawText
+          messages: initialMessages, loaded: true, serverId: null, isRawText, rawText,
+          backendOffline: usedClientFallback
         };
         setThreads(prev => [thread, ...prev]);
         setActiveId(id);
@@ -5461,30 +5473,47 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 </div>
               </div>
             )}
-            {latestAssistantMsg && (
-              <div style={{ background: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "var(--bg-secondary, #FFFFFF)" : "#0F172A", border: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "1px solid var(--border-color, #E2E8F0)" : "1px solid #1E293B", borderRadius: 12, padding: "14px 16px", marginBottom: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.12)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "#8B5CF6" : "#10B981", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>{latestAssistantMsg.content.includes("Dataset loaded successfully") ? "🤖" : "✨"}</span> {latestAssistantMsg.content.includes("Dataset loaded successfully") ? "AI Copilot Ready — Ask a Question Below:" : "Latest AI Copilot Answer:"}
+            {latestAssistantMsg && (() => {
+              const isLocalOverview = latestAssistantMsg.kind === "local_overview";
+              const isReadyMsg = latestAssistantMsg.content.includes("Dataset loaded successfully");
+              // Distinct label + colour for each mode so users can never mistake
+              // a locally-computed summary for a real Claude AI answer (avoids DEF-1).
+              const panelBg = isReadyMsg ? "var(--bg-secondary, #FFFFFF)" : "#0F172A";
+              const panelBorder = isReadyMsg ? "1px solid var(--border-color, #E2E8F0)" : isLocalOverview ? "1px solid #334155" : "1px solid #1E293B";
+              const labelColor = isReadyMsg ? "#8B5CF6" : isLocalOverview ? "#94A3B8" : "#10B981";
+              const labelIcon = isReadyMsg ? "🤖" : isLocalOverview ? "📊" : "✨";
+              const labelText = isReadyMsg
+                ? "AI Copilot Ready — Ask a Question Below:"
+                : isLocalOverview
+                  ? "Dataset Summary (AI offline — local stats):"
+                  : "Latest AI Copilot Answer:";
+              const textColor = isReadyMsg ? "var(--text-primary)" : isLocalOverview ? "#CBD5E1" : "#F8FAFC";
+              const linkColor = isReadyMsg ? "#8B5CF6" : "#38BDF8";
+              return (
+                <div style={{ background: panelBg, border: panelBorder, borderRadius: 12, padding: "14px 16px", marginBottom: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.12)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: labelColor, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>{labelIcon}</span> {labelText}
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (scrollRef.current) {
+                          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+                          scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+                        }
+                        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+                      }}
+                      style={{ background: "none", border: "none", color: linkColor, fontSize: 11.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      📜 Jump to Full Chat History ↓
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      if (scrollRef.current) {
-                        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                        scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-                      }
-                      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-                    }}
-                    style={{ background: "none", border: "none", color: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "#8B5CF6" : "#38BDF8", fontSize: 11.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
-                  >
-                    📜 Jump to Full Chat History ↓
-                  </button>
+                  <div style={{ fontSize: 13.5, lineHeight: 1.6, color: textColor, whiteSpace: "pre-wrap" }}>
+                    {latestAssistantMsg.content}
+                  </div>
                 </div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.6, color: latestAssistantMsg.content.includes("Dataset loaded successfully") ? "var(--text-primary)" : "#F8FAFC", whiteSpace: "pre-wrap" }}>
-                  {latestAssistantMsg.content}
-                </div>
-              </div>
-            )}
+              );
+            })()}
             {currentView === "ai-analyst" && (
               <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.25)", borderRadius: 10, padding: "8px 14px", marginBottom: 10, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: "#8B5CF6" }}>
                 💬 AI Copilot Chat Active — Ask any question about your data in plain English below:
