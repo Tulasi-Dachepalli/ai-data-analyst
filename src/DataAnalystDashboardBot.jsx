@@ -5527,24 +5527,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
-            {answerToast && (
-              <div style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", borderRadius: 12, padding: "12px 16px", marginBottom: 12, boxShadow: "0 8px 24px rgba(15,23,42,0.25)", position: "relative" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: "var(--success, #10B981)", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>✨</span> Instant AI Copilot Answer for "{answerToast.question}":
-                  </div>
-                  <button
-                    onClick={() => setAnswerToast(null)}
-                    style={{ background: "none", border: "none", color: "#94A3B8", fontSize: 16, cursor: "pointer", padding: "0 4px" }}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div style={{ fontSize: 13.5, lineHeight: 1.55, color: "#F8FAFC", whiteSpace: "pre-wrap" }}>
-                  {answerToast.answer}
-                </div>
-              </div>
-            )}
+
             {currentView === "ai-analyst" && (
               <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.25)", borderRadius: 10, padding: "8px 14px", marginBottom: 10, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: "#8B5CF6" }}>
                 💬 AI Copilot Chat Active — Ask any question about your data in plain English below:
