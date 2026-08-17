@@ -3805,7 +3805,14 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
   const latestAssistantMsg = useMemo(() => {
     if (!active || !Array.isArray(active.messages)) return null;
-    const assistantMsgs = active.messages.filter(m => (m.role === "assistant" || m.kind === "grounded_chat") && m.content);
+    // Exclude generic loader/placeholder messages so the panel only appears
+    // when there is a real answer or a stats-based overview — not a bare stub.
+    const PLACEHOLDER_PHRASES = ["Here's your data.", "Here is the analysis of your document."];
+    const assistantMsgs = active.messages.filter(
+      m => (m.role === "assistant" || m.kind === "grounded_chat") &&
+           m.content &&
+           !PLACEHOLDER_PHRASES.includes(m.content.trim())
+    );
     return assistantMsgs.length > 0 ? assistantMsgs[assistantMsgs.length - 1] : null;
   }, [active]);
 
@@ -3976,7 +3983,25 @@ export default function DataAnalystDashboardBot({ currentView }) {
     const system = "You are a professional corporate data analyst. Given a dataset's schema, verified summary statistics, and a computed data quality score (trust these exactly, never invent numbers), write a polished, professional executive overview (2-3 sentences). Describe what business entities/processes the dataset contains, call out any critical data quality issues (such as missing values or anomalies) that impact business decisions, and maintain a formal corporate tone. Plain conversational text, no markdown headers, no JSON.";
     const userText = JSON.stringify({ columns: stats, rowCount, quality });
     const text = await callClaude(system, userText, { requestType: "overview", datasetId: serverId });
-    updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "assistant", kind: "text", content: text || "Here's your data." }] }));
+    // Build a meaningful local overview when Claude is unreachable, using
+    // actual column stats already computed client-side so it's never generic.
+    let fallbackOverview = "";
+    if (!text) {
+      const numCols = (stats || []).filter(s => s.type === "numeric");
+      const catCols = (stats || []).filter(s => s.type === "categorical");
+      const totalCols = (stats || []).length;
+      const qScore = quality?.score ?? 95;
+      const topNum = numCols[0];
+      const topCat = catCols[0];
+      const numSummary = topNum
+        ? `Key metric **${topNum.name}** ranges from ${topNum.min?.toLocaleString() ?? "—"} to ${topNum.max?.toLocaleString() ?? "—"} (avg ${topNum.mean != null ? Number(topNum.mean).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}).`
+        : "";
+      const catSummary = topCat
+        ? `Primary dimension **${topCat.name}** has ${topCat.unique} unique values.`
+        : "";
+      fallbackOverview = `Dataset loaded: **${rowCount.toLocaleString()} rows × ${totalCols} columns**. ${numSummary} ${catSummary} Data quality score: **${qScore}%**. Use the chips below or type a question to explore your data.`.trim();
+    }
+    updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "assistant", kind: "text", content: text || fallbackOverview }] }));
     setLoadingLabel("Building your dashboard…");
     await buildDashboard(id, stats, rows, quality, serverId);
   };
