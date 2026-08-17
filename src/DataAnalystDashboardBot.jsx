@@ -16,6 +16,7 @@ export function consumeCredit() {
     const next = Math.max(0, current - 1);
     localStorage.setItem("aida_credits", String(next));
     if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: next } }));
       window.dispatchEvent(new Event("storage"));
     }
   } catch (e) {
@@ -3767,6 +3768,22 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const [activeId, setActiveId] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [usageStats, setUsageStats] = useState({ usedTokens: 0, limit: 50000, tier: "free", nextResetTime: null });
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  useEffect(() => {
+    const handleCreditUpdate = () => {
+      setUsageStats(prev => ({
+        ...prev,
+        usedTokens: Math.min(prev.limit, (prev.usedTokens || 0) + 250)
+      }));
+    };
+    window.addEventListener("aida_credits_updated", handleCreditUpdate);
+    window.addEventListener("storage", handleCreditUpdate);
+    return () => {
+      window.removeEventListener("aida_credits_updated", handleCreditUpdate);
+      window.removeEventListener("storage", handleCreditUpdate);
+    };
+  }, []);
 
   const fetchUsage = () => {
     api.getUsageStats()
@@ -5163,7 +5180,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
   };
 
   return (
-    <div className="aida-dashboard-container"
+    <div className={`aida-dashboard-container ${isFullScreen ? "fullscreen-mode" : ""}`}
+      style={isFullScreen ? { position: "fixed", inset: 0, zIndex: 9999, background: "var(--bg-primary)", width: "100vw", height: "100vh" } : {}}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
       onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
@@ -5256,24 +5274,53 @@ export default function DataAnalystDashboardBot({ currentView }) {
         )}
 
         {active && (
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "12px 20px 0", position: "relative" }}>
-            <div style={{ position: "relative" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px 0", position: "relative" }}>
+            {/* Quick onboarding guide banner */}
+            <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 12, color: "var(--text-secondary)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "5px 12px" }}>
+              <span style={{ fontWeight: 700, color: "#8B5CF6" }}>💡 3-Step Guide:</span>
+              <span>1️⃣ Upload Data</span>
+              <span>➔</span>
+              <span>2️⃣ View Analysis & Charts</span>
+              <span>➔</span>
+              <span>3️⃣ Ask AI Copilot Chat</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <button
-                onClick={() => setShowDownloadMenu(m => !m)}
-                disabled={!active.dashboard || !active.rows}
+                onClick={() => setIsFullScreen(prev => !prev)}
+                title={isFullScreen ? "Exit Fullscreen Mode" : "Expand Analysis to Fullscreen"}
                 style={{
                   fontSize: 12, fontWeight: 600,
-                  color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)",
-                  background: "var(--bg-secondary)",
+                  color: "var(--text-primary)",
+                  background: isFullScreen ? "#8B5CF6" : "var(--bg-secondary)",
+                  color: isFullScreen ? "#FFF" : "var(--text-primary)",
                   border: "1px solid var(--border-color)",
                   borderRadius: 7, padding: "7px 14px",
-                  cursor: (active.dashboard && active.rows) ? "pointer" : "default",
-                  opacity: (active.dashboard && active.rows) ? 1 : 0.5,
-                  display: "flex", alignItems: "center", gap: 6
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 6,
+                  boxShadow: isFullScreen ? "0 4px 12px rgba(139,92,246,0.3)" : "none"
                 }}
               >
-                ⬇ Download Report <span style={{ fontSize: 10 }}>▾</span>
+                {isFullScreen ? "↙ Exit Fullscreen" : "⛶ Fullscreen Mode"}
               </button>
+
+              <div style={{ position: "relative" }}>
+                <button
+                  onClick={() => setShowDownloadMenu(m => !m)}
+                  disabled={!active.dashboard || !active.rows}
+                  style={{
+                    fontSize: 12, fontWeight: 600,
+                    color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)",
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-color)",
+                    borderRadius: 7, padding: "7px 14px",
+                    cursor: (active.dashboard && active.rows) ? "pointer" : "default",
+                    opacity: (active.dashboard && active.rows) ? 1 : 0.5,
+                    display: "flex", alignItems: "center", gap: 6
+                  }}
+                >
+                  ⬇ Download Report <span style={{ fontSize: 10 }}>▾</span>
+                </button>
               {showDownloadMenu && active.dashboard && active.rows && (
                 <div
                   style={{
@@ -5309,7 +5356,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
               )}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 0 24px" }}>
           <div style={{ maxWidth: "100%", width: "100%", margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 18 }}>
