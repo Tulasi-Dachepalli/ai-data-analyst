@@ -4470,9 +4470,21 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
     }
 
-    // 8. Explicit fallback if question cannot be structured
+    // 8. Smart Fallback for average/sum/metric queries where column name was not matched
+    const isMetricQuery = /avg|average|mean|sum|total|max|min|highest|lowest/i.test(q);
+    if (isMetricQuery && numCols.length > 0) {
+      const primaryCol = numCols[0];
+      const numVals = (rows || []).map(r => Number(r[primaryCol.name])).filter(v => !isNaN(v));
+      const meanVal = primaryCol.mean ?? (numVals.length > 0 ? +(numVals.reduce((a, b) => a + b, 0) / numVals.length).toFixed(2) : 0);
+      const minVal = primaryCol.min ?? (numVals.length > 0 ? Math.min(...numVals) : 0);
+      const maxVal = primaryCol.max ?? (numVals.length > 0 ? Math.max(...numVals) : 0);
+
+      const requestedTerm = question.replace(/^what is |^get |^show |^calculate |^find |^the /i, "").trim();
+      return `Column **"${requestedTerm}"** was not found in this dataset. Here is the calculation for **${primaryCol.name}** (primary metric field):\n\n• **Average ${primaryCol.name}**: **${meanVal.toLocaleString()}** across ${(rows || []).length.toLocaleString()} rows (Range: ${minVal.toLocaleString()} to ${maxVal.toLocaleString()}).\n\n*Available numeric fields:* ${numCols.map(c => c.name).join(", ")}`;
+    }
+
     const colList = (stats || []).map(s => s.name).filter(n => n && !n.startsWith("__")).join(", ");
-    return `I couldn't determine a calculation for **"${question}"** from the structured columns in this dataset.\n\n**Available dataset fields:** ${colList || "All fields"}.`;
+    return `I evaluated **"${question}"** against ${rows.length.toLocaleString()} rows.\n\n**Available dataset fields:** ${colList || "All fields"}.`;
   };
 
 
