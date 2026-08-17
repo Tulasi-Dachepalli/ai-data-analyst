@@ -5485,47 +5485,6 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 </div>
               </div>
             )}
-            {latestAssistantMsg && (() => {
-              const isLocalOverview = latestAssistantMsg.kind === "local_overview";
-              const isReadyMsg = latestAssistantMsg.content.includes("Dataset loaded successfully");
-              // Distinct label + colour for each mode so users can never mistake
-              // a locally-computed summary for a real Claude AI answer (avoids DEF-1).
-              const panelBg = isReadyMsg ? "var(--bg-secondary, #FFFFFF)" : "#0F172A";
-              const panelBorder = isReadyMsg ? "1px solid var(--border-color, #E2E8F0)" : isLocalOverview ? "1px solid #334155" : "1px solid #1E293B";
-              const labelColor = isReadyMsg ? "#8B5CF6" : isLocalOverview ? "#94A3B8" : "#10B981";
-              const labelIcon = isReadyMsg ? "🤖" : isLocalOverview ? "📊" : "✨";
-              const labelText = isReadyMsg
-                ? "AI Copilot Ready — Ask a Question Below:"
-                : isLocalOverview
-                  ? "Dataset Summary (AI offline — local stats):"
-                  : "Latest AI Copilot Answer:";
-              const textColor = isReadyMsg ? "var(--text-primary)" : isLocalOverview ? "#CBD5E1" : "#F8FAFC";
-              const linkColor = isReadyMsg ? "#8B5CF6" : "#38BDF8";
-              return (
-                <div style={{ background: panelBg, border: panelBorder, borderRadius: 12, padding: "14px 16px", marginBottom: 12, boxShadow: "0 6px 20px rgba(0,0,0,0.12)" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 700, color: labelColor, display: "flex", alignItems: "center", gap: 6 }}>
-                      <span>{labelIcon}</span> {labelText}
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (scrollRef.current) {
-                          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-                          scrollRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-                        }
-                        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-                      }}
-                      style={{ background: "none", border: "none", color: linkColor, fontSize: 11.5, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
-                    >
-                      📜 Jump to Full Chat History ↓
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 13.5, lineHeight: 1.6, color: textColor, whiteSpace: "pre-wrap" }}>
-                    {latestAssistantMsg.content}
-                  </div>
-                </div>
-              );
-            })()}
             {currentView === "ai-analyst" && (
               <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.25)", borderRadius: 10, padding: "8px 14px", marginBottom: 10, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: "#8B5CF6" }}>
                 💬 AI Copilot Chat Active — Ask any question about your data in plain English below:
