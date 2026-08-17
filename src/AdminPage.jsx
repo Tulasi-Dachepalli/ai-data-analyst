@@ -646,9 +646,11 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                   <span style={{ fontSize: 11, color: "#8A8580", fontWeight: 600 }}>CONFIRM COMPANY NAME (Type <strong>{user?.companyName}</strong>)</span>
                   <input
                     type="text"
+                    name="confirm_company_name_no_autofill"
+                    autoComplete="off"
                     value={confirmName}
                     onChange={e => setConfirmName(e.target.value)}
-                    placeholder="Type company name..."
+                    placeholder={`Type "${user?.companyName || 'Tulasi'}" to confirm...`}
                     style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #E4C9C9", fontSize: 12.5 }}
                   />
                 </div>
