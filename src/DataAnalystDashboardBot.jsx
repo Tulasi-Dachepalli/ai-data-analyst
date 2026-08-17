@@ -4431,6 +4431,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
     return `I couldn't determine a calculation for **"${question}"** from the structured columns in this dataset.\n\n**Available dataset fields:** ${colList || "All fields"}.`;
   };
 
+
   const [answerToast, setAnswerToast] = useState(null);
 
   const handleSend = async (overrideQuestion) => {
@@ -4444,8 +4445,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
     let currentActive = active || (threads && threads[0]);
 
-    if (!currentActive || !currentActive.rows) {
-      // Auto-load sample dataset if no active dataset thread is loaded
+    // ── Case A: No active thread at all → auto-load sample dataset ──────────
+    if (!currentActive) {
       const defaultSample = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
       const stubStats = defaultSample.columns.map(c => computeColumnStats(defaultSample.rows, c));
       const stubQuality = calculateDataQuality(defaultSample.rows, defaultSample.columns);
@@ -4468,12 +4469,10 @@ export default function DataAnalystDashboardBot({ currentView }) {
       };
 
       setThreads(prev => [currentActive, ...prev]);
-    }
-
-    if (!activeId || activeId !== currentActive.id) {
       setActiveId(currentActive.id);
     }
 
+    // ── Case B: Active thread exists but rows not yet fetched (server stub) ──
     if (!currentActive.rows && currentActive.serverId) {
       setLoading(true);
       setLoadingLabel("Fetching dataset for analysis…");
@@ -4520,23 +4519,32 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
     }
 
-    if (!question || !currentActive) return;
-    consumeCredit();
+    if (!activeId || activeId !== currentActive.id) {
+      setActiveId(currentActive.id);
+    }
+
     const id = currentActive.id;
     const serverId = currentActive.serverId;
-    
+
+    // Use stats-based fallback when rows are empty (avoids blocking on empty row arrays)
+    const effectiveRows = currentActive.rows || [];
+    const effectiveStats = currentActive.stats || [];
+
+    consumeCredit();
+
     // Add user message to local state
-    updateThread(id, t => ({ ...t, messages: [...t.messages, { role: "user", kind: "text", content: question }] }));
+    updateThread(id, t => ({ ...t, messages: [...(t.messages || []), { role: "user", kind: "text", content: question }] }));
     setLoading(true);
     setLoadingLabel("Analyzing query…");
 
     try {
+      // ── Raw text document Q&A ──────────────────────────────────────────────
       if (currentActive?.isRawText) {
         const systemPrompt = "You are a professional management consultant and senior analyst. Answer the user's question about the uploaded document based on the text contents: \n\n" + (currentActive.rawText || "").slice(0, 15000);
         const narrative = await callClaude(systemPrompt, question, { requestType: "chat_narrative", datasetId: serverId });
         let finalMessages = null;
         updateThread(id, t => {
-          finalMessages = [...t.messages, { role: "assistant", kind: "text", content: narrative || "I couldn't find an answer in the document." }];
+          finalMessages = [...(t.messages || []), { role: "assistant", kind: "text", content: narrative || "I couldn't find an answer in the document." }];
           return { ...t, messages: finalMessages };
         });
         setAnswerToast({ question, answer: narrative || "No narrative found." });
@@ -4549,28 +4557,29 @@ export default function DataAnalystDashboardBot({ currentView }) {
         return;
       }
 
-      // Compute local grounded answer for instant 0ms responses
-      const effectiveRows = currentActive.rows || [];
-      const effectiveStats = currentActive.stats || [];
+      // ── Local grounded answer (always computed — never returns null) ────────
       const localAnswer = answerQueryLocally(question, effectiveRows, effectiveStats, currentActive.quality, currentActive.dashboard);
 
+      // Always show local answer immediately for non-server datasets, or when
+      // a local answer is available (non-null, non-empty) for server datasets
       if (!serverId || localAnswer) {
-        const finalAns = localAnswer || `Analyzed dataset for **"${question}"**.`;
+        const finalAns = localAnswer || `I analyzed your dataset for **"${question}"** — please check the Dashboard tab for visual insights!`;
         updateThread(id, t => ({
           ...t,
-          messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: finalAns, confidence_score: 0.95 }]
+          messages: [...(t.messages || []), { role: "assistant", kind: "grounded_chat", content: finalAns, confidence_score: 0.95 }]
         }));
         setAnswerToast({ question, answer: finalAns });
         setLoading(false);
+        fetchUsage();
         setTimeout(() => {
           if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }, 50);
         return;
       }
 
-      // Fallback query to secured Express Gateway endpoint
+      // ── Server-side AI fallback (only for server datasets with no local match) ──
       const response = await api.chatDataset(serverId, question);
-      
+
       if (response && response.success && Array.isArray(response.messages) && response.messages.length > 0) {
         const lastMsg = response.messages[response.messages.length - 1];
         updateThread(id, t => ({ ...t, messages: response.messages }));
@@ -4582,13 +4591,14 @@ export default function DataAnalystDashboardBot({ currentView }) {
       }
     } catch (err) {
       console.error("Chat evaluation fallback:", err);
-      const localAnswer = answerQueryLocally(question, currentActive.rows, currentActive.stats, currentActive.quality, currentActive.dashboard);
-      const finalAns = localAnswer || `Answer for **"${question}"**: Evaluated across ${(currentActive.rows || []).length} rows.`;
+      // Final safety net: always produce an answer even if everything above failed
+      const fallbackAnswer = answerQueryLocally(question, effectiveRows, effectiveStats, currentActive.quality, currentActive.dashboard)
+        || `I analyzed your dataset for **"${question}"**. Check the Dashboard tab for visual insights across ${effectiveRows.length.toLocaleString()} rows.`;
       updateThread(id, t => ({
         ...t,
-        messages: [...t.messages, { role: "assistant", kind: "grounded_chat", content: finalAns, confidence_score: 0.90 }]
+        messages: [...(t.messages || []), { role: "assistant", kind: "grounded_chat", content: fallbackAnswer, confidence_score: 0.90 }]
       }));
-      setAnswerToast({ question, answer: finalAns });
+      setAnswerToast({ question, answer: fallbackAnswer });
     }
     setLoading(false);
     fetchUsage();
