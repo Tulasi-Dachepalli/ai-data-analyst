@@ -20,8 +20,15 @@ export function consumeCredit(tokensToConsume = 500) {
     const nextUsed = currentUsed + tokensToConsume;
     localStorage.setItem("aida_used_tokens", String(nextUsed));
 
+    let resetTime = localStorage.getItem("aida_token_reset_time");
+    if (nextUsed >= 50000 && !resetTime) {
+      const fiveHoursLater = Date.now() + 5 * 60 * 60 * 1000;
+      localStorage.setItem("aida_token_reset_time", String(fiveHoursLater));
+      resetTime = String(fiveHoursLater);
+    }
+
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: nextCredits, usedTokens: nextUsed } }));
+      window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: nextCredits, usedTokens: nextUsed, resetTime: resetTime ? parseInt(resetTime, 10) : null } }));
       window.dispatchEvent(new Event("storage"));
     }
   } catch (e) {
@@ -3773,31 +3780,66 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const [activeId, setActiveId] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const getLocalUsedTokens = () => {
+    const resetTimeStr = localStorage.getItem("aida_token_reset_time");
+    if (resetTimeStr) {
+      const resetTime = parseInt(resetTimeStr, 10);
+      if (Date.now() >= resetTime) {
+        localStorage.setItem("aida_used_tokens", "0");
+        localStorage.setItem("aida_credits", "50");
+        localStorage.removeItem("aida_token_reset_time");
+        return 0;
+      }
+    }
     const storedUsed = parseInt(localStorage.getItem("aida_used_tokens") || "0", 10);
     if (storedUsed > 0) return storedUsed;
     const storedCredits = parseInt(localStorage.getItem("aida_credits") || "50", 10);
     return Math.max(0, 50 - storedCredits) * 500;
   };
 
+  const getNextResetTime = () => {
+    const resetTimeStr = localStorage.getItem("aida_token_reset_time");
+    if (resetTimeStr) {
+      const resetTime = parseInt(resetTimeStr, 10);
+      if (Date.now() < resetTime) return resetTime;
+      localStorage.removeItem("aida_token_reset_time");
+    }
+    return null;
+  };
+
   const [usageStats, setUsageStats] = useState({
     usedTokens: getLocalUsedTokens(),
     limit: 50000,
     tier: "free",
-    nextResetTime: null
+    nextResetTime: getNextResetTime()
   });
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     const handleCreditUpdate = (e) => {
       const newUsed = e?.detail?.usedTokens ?? getLocalUsedTokens();
+      const newReset = e?.detail?.resetTime ?? getNextResetTime();
       setUsageStats(prev => ({
         ...prev,
-        usedTokens: newUsed
+        usedTokens: newUsed,
+        nextResetTime: newReset
       }));
     };
+
+    // Periodically check if 5-hour reset time has passed
+    const timer = setInterval(() => {
+      const resetTimeStr = localStorage.getItem("aida_token_reset_time");
+      if (resetTimeStr && Date.now() >= parseInt(resetTimeStr, 10)) {
+        localStorage.setItem("aida_used_tokens", "0");
+        localStorage.setItem("aida_credits", "50");
+        localStorage.removeItem("aida_token_reset_time");
+        setUsageStats(prev => ({ ...prev, usedTokens: 0, nextResetTime: null }));
+      }
+    }, 10000);
+
     window.addEventListener("aida_credits_updated", handleCreditUpdate);
     window.addEventListener("storage", handleCreditUpdate);
     return () => {
+      clearInterval(timer);
       window.removeEventListener("aida_credits_updated", handleCreditUpdate);
       window.removeEventListener("storage", handleCreditUpdate);
     };
@@ -5268,9 +5310,13 @@ export default function DataAnalystDashboardBot({ currentView }) {
               }} />
             </div>
 
-            {usageStats.nextResetTime && (
+            {usageStats.nextResetTime ? (
+              <div style={{ fontSize: 9.5, color: "#C98A3E", fontWeight: 600, marginTop: 2, textAlign: "center" }}>
+                ⏳ Quota Limit Reached. Free tokens auto-refresh at {new Date(usageStats.nextResetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (5-hour cooldown)
+              </div>
+            ) : (
               <div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 2, textAlign: "center" }}>
-                Locked. Refreshes: {new Date(usageStats.nextResetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                Free Plan • Auto-refreshes 5 hours after quota completion
               </div>
             )}
 
