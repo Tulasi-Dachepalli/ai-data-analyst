@@ -10,13 +10,18 @@ import {
 
 const COLORS = ["#3E6F8E", "#C98A3E", "#8B6BA8", "#6E8F63", "#B85C5C", "#4C9A9A", "#7A7A7A"];
 
-export function consumeCredit() {
+export function consumeCredit(tokensToConsume = 500) {
   try {
-    const current = parseInt(localStorage.getItem("aida_credits") || "50", 10);
-    const next = Math.max(0, current - 1);
-    localStorage.setItem("aida_credits", String(next));
+    const currentCredits = parseInt(localStorage.getItem("aida_credits") || "50", 10);
+    const nextCredits = Math.max(0, currentCredits - 1);
+    localStorage.setItem("aida_credits", String(nextCredits));
+
+    const currentUsed = parseInt(localStorage.getItem("aida_used_tokens") || "0", 10);
+    const nextUsed = currentUsed + tokensToConsume;
+    localStorage.setItem("aida_used_tokens", String(nextUsed));
+
     if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: next } }));
+      window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: nextCredits, usedTokens: nextUsed } }));
       window.dispatchEvent(new Event("storage"));
     }
   } catch (e) {
@@ -3767,14 +3772,27 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [usageStats, setUsageStats] = useState({ usedTokens: 0, limit: 50000, tier: "free", nextResetTime: null });
+  const getLocalUsedTokens = () => {
+    const storedUsed = parseInt(localStorage.getItem("aida_used_tokens") || "0", 10);
+    if (storedUsed > 0) return storedUsed;
+    const storedCredits = parseInt(localStorage.getItem("aida_credits") || "50", 10);
+    return Math.max(0, 50 - storedCredits) * 500;
+  };
+
+  const [usageStats, setUsageStats] = useState({
+    usedTokens: getLocalUsedTokens(),
+    limit: 50000,
+    tier: "free",
+    nextResetTime: null
+  });
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
-    const handleCreditUpdate = () => {
+    const handleCreditUpdate = (e) => {
+      const newUsed = e?.detail?.usedTokens ?? getLocalUsedTokens();
       setUsageStats(prev => ({
         ...prev,
-        usedTokens: Math.min(prev.limit, (prev.usedTokens || 0) + 250)
+        usedTokens: newUsed
       }));
     };
     window.addEventListener("aida_credits_updated", handleCreditUpdate);
@@ -3788,9 +3806,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const fetchUsage = () => {
     api.getUsageStats()
       .then(res => {
-        if (res) setUsageStats(res);
+        if (res && typeof res.usedTokens === "number") {
+          setUsageStats(res);
+        } else {
+          setUsageStats(prev => ({ ...prev, usedTokens: getLocalUsedTokens() }));
+        }
       })
-      .catch(err => console.error("Failed to load token usage stats:", err));
+      .catch(() => {
+        setUsageStats(prev => ({ ...prev, usedTokens: getLocalUsedTokens() }));
+      });
   };
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -5216,9 +5240,22 @@ export default function DataAnalystDashboardBot({ currentView }) {
           <div style={{ background: "linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-primary) 100%)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>Token Usage</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--text-secondary)" }}>
-                {Math.round(usageStats.usedTokens).toLocaleString()} / {usageStats.limit.toLocaleString()} Used
-              </span>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--text-secondary)" }}>
+                  {Math.round(usageStats.usedTokens).toLocaleString()} / {usageStats.limit.toLocaleString()} Used
+                </span>
+                <button
+                  onClick={() => {
+                    localStorage.setItem("aida_used_tokens", "0");
+                    localStorage.setItem("aida_credits", "50");
+                    window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: 50, usedTokens: 0 } }));
+                  }}
+                  title="Reset Token & Credit counter"
+                  style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10B981", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", fontWeight: 700 }}
+                >
+                  + Reset
+                </button>
+              </div>
             </div>
             
             <div style={{ background: "var(--border-color)", height: 8, borderRadius: 4, overflow: "hidden" }}>
