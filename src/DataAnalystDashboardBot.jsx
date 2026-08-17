@@ -5657,64 +5657,127 @@ export default function DataAnalystDashboardBot({ currentView }) {
       </div>
 
       {showUpgradeModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(43,42,39,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20 }}>
-          <div style={{ background: "#FFFFFF", borderRadius: 16, width: "100%", maxWidth: 640, padding: 24, boxShadow: "0 20px 50px rgba(0,0,0,0.15)", position: "relative" }}>
-            <button onClick={() => setShowUpgradeModal(false)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", fontSize: 18, color: "#8A8580", cursor: "pointer" }}>✕</button>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", backdropFilter: "blur(12px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 20, fontFamily: "sans-serif" }}>
+          <div style={{ background: "#121316", color: "#F4F4F5", borderRadius: 24, width: "100%", maxWidth: 1020, padding: "32px 36px", boxShadow: "0 25px 60px rgba(0,0,0,0.6)", position: "relative", border: "1px solid #27272A", maxHeight: "90vh", overflowY: "auto" }}>
+            <button onClick={() => setShowUpgradeModal(false)} style={{ position: "absolute", top: 20, right: 24, background: "none", border: "none", fontSize: 20, color: "#71717A", cursor: "pointer" }}>✕</button>
             
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#C98A3E", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Premium SaaS Upgrade</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: "#2B2A27" }}>Unlock Unlimited AI Data Insights</div>
-              <p style={{ fontSize: 13.5, color: "#8A8580", marginTop: 6 }}>You have consumed your rolling AI Token Credits quota. Upgrade your plan to continue.</p>
+            {/* Top Plan Category Tabs */}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+              <div style={{ background: "#18181B", border: "1px solid #27272A", borderRadius: 12, padding: 4, display: "flex", gap: 4 }}>
+                <button style={{ background: "#27272A", color: "#FFF", border: "none", borderRadius: 8, padding: "6px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Individual</button>
+                <button style={{ background: "transparent", color: "#71717A", border: "none", borderRadius: 8, padding: "6px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Team and Enterprise</button>
+              </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              {/* Free Plan */}
-              <div style={{ border: "1px solid #E4E0D8", borderRadius: 12, padding: 16, background: "#FDFCFA" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#5C584F" }}>Free Trial</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: "#2B2A27", margin: "10px 0" }}>$0 <span style={{ fontSize: 12, fontWeight: 400, color: "#8A8580" }}>/ month</span></div>
-                <ul style={{ fontSize: 12, color: "#8A8580", paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <li>50,000 rolling token credits</li>
-                  <li>Basic summary reports</li>
-                  <li>Standard bar & pie charts</li>
-                </ul>
-                <button disabled style={{ width: "100%", marginTop: 24, padding: "8px 12px", border: "1px solid #DDD8CE", borderRadius: 8, background: "#F7F5F0", color: "#A6A196", fontSize: 12.5, fontWeight: 600 }}>Active Plan</button>
+            {/* 3-Column Plan Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, alignItems: "stretch" }}>
+              
+              {/* Card 1: Free */}
+              <div style={{ background: "#18181B", border: "1px solid #27272A", borderRadius: 20, padding: 24, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#27272A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 16 }}>🌱</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#FFF", marginBottom: 4 }}>Free</div>
+                  <div style={{ fontSize: 13, color: "#A1A1AA", marginBottom: 16 }}>Meet AI Data Analyst</div>
+                  <div style={{ fontSize: 32, fontWeight: 800, color: "#FFF", marginBottom: 20 }}>₹0</div>
+
+                  <button disabled style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: "1px solid #27272A", background: "#27272A", color: "#A1A1AA", fontSize: 14, fontWeight: 600, marginBottom: 24 }}>Use for free</button>
+
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5, color: "#A1A1AA" }}>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Chat on web, desktop, and mobile</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Generate code and visualize data</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Connect CSV, Excel, and SQL files</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> 50,000 rolling token credits</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Built-in web analytics search</li>
+                  </ul>
+                </div>
               </div>
 
-              {/* Professional Plan */}
-              <div style={{ border: "2px solid #C98A3E", borderRadius: 12, padding: 16, background: "#FFFFFF", position: "relative", boxShadow: "0 4px 20px rgba(201,138,62,0.08)" }}>
-                <div style={{ position: "absolute", top: -10, right: 12, background: "#C98A3E", color: "#fff", fontSize: 9.5, fontWeight: 700, padding: "2px 8px", borderRadius: 10, textTransform: "uppercase" }}>Popular</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#C98A3E" }}>Professional Pro</div>
-                <div style={{ fontSize: 24, fontWeight: 700, color: "#2B2A27", margin: "10px 0" }}>$49 <span style={{ fontSize: 12, fontWeight: 400, color: "#8A8580" }}>/ month</span></div>
-                <ul style={{ fontSize: 12, color: "#5C584F", paddingLeft: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <li><strong>Unlimited</strong> uploads & analyses</li>
-                  <li>ML Sandbox Predictor models</li>
-                  <li>Excel, HTML & Word Reports</li>
-                  <li>Numeric Correlation Heatmaps</li>
-                </ul>
-                <button
-                  onClick={async () => {
-                    try {
-                      setLoading(true);
-                      setLoadingLabel("Upgrading subscription…");
-                      const res = await api.upgradeSubscription("pro");
-                      if (res && res.success) {
-                        const nextUser = { ...user, tier: "pro" };
-                        localStorage.setItem("aida_user", JSON.stringify(nextUser));
-                        setShowUpgradeModal(false);
-                        alert("🎉 Congratulations! You have successfully upgraded to Professional Pro plan! Unlimited uploads unlocked.");
-                        window.location.reload();
+              {/* Card 2: Pro */}
+              <div style={{ background: "#18181B", border: "2px solid #8B5CF6", borderRadius: 20, padding: 24, display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", boxShadow: "0 10px 30px rgba(139,92,246,0.2)" }}>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(139,92,246,0.2)", color: "#8B5CF6", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>⚡</div>
+                    <div style={{ background: "#27272A", border: "1px solid #3F3F46", borderRadius: 20, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: "#A1A1AA" }}>
+                      Monthly · <span style={{ color: "#8B5CF6" }}>Save 17%</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#FFF", marginBottom: 4 }}>Pro</div>
+                  <div style={{ fontSize: 13, color: "#A1A1AA", marginBottom: 16 }}>Research, code, and analyze</div>
+                  
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 32, fontWeight: 800, color: "#FFF" }}>₹2,000</span>
+                    <span style={{ fontSize: 13, color: "#71717A" }}>INR / month</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 20 }}>₹23,999 billed annually (includes GST)</div>
+
+                  <button
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        setLoadingLabel("Upgrading to Pro plan…");
+                        const res = await api.upgradeSubscription("pro");
+                        if (res && res.success) {
+                          const nextUser = { ...user, tier: "pro" };
+                          localStorage.setItem("aida_user", JSON.stringify(nextUser));
+                          setShowUpgradeModal(false);
+                          alert("🎉 Congratulations! You have successfully upgraded to Pro plan!");
+                          window.location.reload();
+                        }
+                      } catch (err) {
+                        alert("Failed to upgrade subscription: " + err.message);
+                      } finally {
+                        setLoading(false);
                       }
-                    } catch (err) {
-                      alert("Failed to upgrade subscription: " + err.message);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  style={{ width: "100%", marginTop: 24, padding: "8px 12px", border: "none", borderRadius: 8, background: "#C98A3E", color: "#fff", fontSize: 12.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}
-                >
-                  Upgrade to Pro
-                </button>
+                    }}
+                    style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: "none", background: "#FFF", color: "#000", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 24, transition: "opacity 0.2s" }}
+                  >
+                    Get Pro plan
+                  </button>
+
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", marginBottom: 10 }}>Everything in Free and:</div>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5, color: "#D4D4D8" }}>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#8B5CF6" }}>✓</span> Unlimited uploads & dataset profiling</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#8B5CF6" }}>✓</span> Power through tasks with ML Sandbox</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#8B5CF6" }}>✓</span> Build and prototype with AI Auto-Charts</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#8B5CF6" }}>✓</span> Higher usage limits & priority speed</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#8B5CF6" }}>✓</span> Access to advanced Claude AI models</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#8B5CF6" }}>✓</span> Export Excel, HTML & Word reports</li>
+                  </ul>
+                </div>
               </div>
+
+              {/* Card 3: Max */}
+              <div style={{ background: "#18181B", border: "1px solid #27272A", borderRadius: 20, padding: 24, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#27272A", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, marginBottom: 16 }}>🚀</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#FFF", marginBottom: 4 }}>Max</div>
+                  <div style={{ fontSize: 13, color: "#A1A1AA", marginBottom: 16 }}>Higher limits, priority access</div>
+                  
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 13, color: "#A1A1AA" }}>From</span>
+                    <span style={{ fontSize: 32, fontWeight: 800, color: "#FFF" }}>₹11,999</span>
+                  </div>
+                  <div style={{ fontSize: 11, color: "#71717A", marginBottom: 20 }}>INR / month billed monthly (includes GST)</div>
+
+                  <button
+                    onClick={() => alert("Max Plan selected — dedicated enterprise server will be provisioned.")}
+                    style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: "1px solid #3F3F46", background: "#FFF", color: "#000", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}
+                  >
+                    Get Max plan
+                  </button>
+                  <div style={{ fontSize: 11, color: "#71717A", textAlign: "center", marginBottom: 20 }}>No commitment · Cancel anytime</div>
+
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#FFF", marginBottom: 10 }}>Everything in Pro, plus:</div>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 10, fontSize: 12.5, color: "#A1A1AA" }}>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Up to 20x more usage than Pro*</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Dedicated Python FastAPI engine</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Early access to advanced AI features</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Higher output limits for all tasks</li>
+                    <li style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ color: "#71717A" }}>✓</span> Priority access at high traffic times</li>
+                  </ul>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
