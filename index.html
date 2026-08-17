@@ -8,6 +8,18 @@
   </head>
   <body style="margin:0; background:#F0EEE9;">
     <div id="root"></div>
+    <script>
+      window.consumeCredit = function() {
+        try {
+          var current = parseInt(localStorage.getItem("aida_credits") || "50", 10);
+          var next = Math.max(0, current - 1);
+          localStorage.setItem("aida_credits", String(next));
+          window.dispatchEvent(new Event("storage"));
+        } catch (e) {
+          console.warn("Credit update warning:", e);
+        }
+      };
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
