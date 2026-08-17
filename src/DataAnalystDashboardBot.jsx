@@ -847,6 +847,8 @@ function trainTestSplitAndFit(rows, columns, stats) {
       predicted: +(slope * Number(r[bestPredictor]) + intercept).toFixed(2)
     }))
   };
+}
+
 function consumeCredit() {
   try {
     const current = parseInt(localStorage.getItem("aida_credits") || "50", 10);
@@ -857,7 +859,7 @@ function consumeCredit() {
     console.warn("Credit update warning:", e);
   }
 }
-}
+
 
 function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete }) {
   const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
@@ -4567,7 +4569,11 @@ export default function DataAnalystDashboardBot({ currentView }) {
     const effectiveRows = currentActive.rows || [];
     const effectiveStats = currentActive.stats || [];
 
-    consumeCredit();
+    try {
+      consumeCredit();
+    } catch (err) {
+      console.warn("Credit deduction error:", err);
+    }
 
     // Add user message to local state
     updateThread(id, t => ({ ...t, messages: [...(t.messages || []), { role: "user", kind: "text", content: question }] }));
