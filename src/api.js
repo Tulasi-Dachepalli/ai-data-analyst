@@ -263,3 +263,16 @@ export function deleteWorkspace(password) {
     body: JSON.stringify({ password })
   });
 }
+
+export async function getUsageStats() {
+  try {
+    return await request("/api/auth/usage");
+  } catch (err) {
+    const adminRes = await request("/api/admin/usage").catch(() => null);
+    if (adminRes && adminRes.usage) {
+      return { usedTokens: adminRes.usage.totalTokens || 0, limit: 50000 };
+    }
+    throw err;
+  }
+}
+
