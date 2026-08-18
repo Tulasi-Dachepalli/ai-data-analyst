@@ -386,6 +386,8 @@ router.post("/reset-password", async (req, res) => {
   } finally {
     client.release();
   }
+});
+
 // GET /api/auth/usage — returns current rolling window token usage metrics for the logged-in user's company
 router.get("/usage", requireAuth, async (req, res) => {
   try {
