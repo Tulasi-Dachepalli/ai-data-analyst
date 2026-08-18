@@ -59,8 +59,16 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-export function getUsageStats() {
-  return request("/api/auth/usage");
+export async function getUsageStats() {
+  try {
+    return await request("/api/auth/usage");
+  } catch (err) {
+    const adminRes = await request("/api/admin/usage").catch(() => null);
+    if (adminRes && adminRes.usage) {
+      return { usedTokens: adminRes.usage.totalTokens || 0, limit: 50000 };
+    }
+    throw err;
+  }
 }
 
 export function listDatasets() {
@@ -264,15 +272,5 @@ export function deleteWorkspace(password) {
   });
 }
 
-export async function getUsageStats() {
-  try {
-    return await request("/api/auth/usage");
-  } catch (err) {
-    const adminRes = await request("/api/admin/usage").catch(() => null);
-    if (adminRes && adminRes.usage) {
-      return { usedTokens: adminRes.usage.totalTokens || 0, limit: 50000 };
-    }
-    throw err;
-  }
-}
+
 
