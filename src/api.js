@@ -1,4 +1,4 @@
-const base = () => import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "";
+const base = () => import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "https://ai-data-analyst-backend-2.onrender.com";
 
 function authHeaders() {
   const token = localStorage.getItem("aida_token");

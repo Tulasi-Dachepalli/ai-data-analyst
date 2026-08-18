@@ -334,7 +334,7 @@ function pickDashboardPlan(stats) {
 }
 
 async function callClaude(system, userText, { requestType, datasetId } = {}) {
-  const base = import.meta.env.VITE_API_BASE_URL || "";
+  const base = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "https://ai-data-analyst-backend-2.onrender.com";
   const token = localStorage.getItem("aida_token");
   const res = await fetch(`${base}/api/analyze`, {
     method: "POST",
