@@ -5376,7 +5376,6 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   fontSize: 12, fontWeight: 600,
                   color: "var(--text-primary)",
                   background: isFullScreen ? "#8B5CF6" : "var(--bg-secondary)",
-                  color: isFullScreen ? "#FFF" : "var(--text-primary)",
                   border: "1px solid var(--border-color)",
                   borderRadius: 7, padding: "7px 14px",
                   cursor: "pointer",
@@ -5385,6 +5384,28 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 }}
               >
                 {isFullScreen ? "↙ Exit Fullscreen" : "⛶ Fullscreen Mode"}
+              </button>
+
+              <button
+                onClick={() => {
+                  const shareUrl = "https://ai-data-analyst-tawny.vercel.app";
+                  const shareText = `I just analyzed my dataset and generated an executive KPI dashboard in 1 click using AI Data & Science Copilot! 🚀 Check it out live: ${shareUrl}`;
+                  const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
+                  window.open(linkedinUrl, "_blank", "noopener,noreferrer");
+                }}
+                title="Share Dataset Insights on LinkedIn"
+                style={{
+                  fontSize: 12, fontWeight: 600,
+                  color: "#FFF",
+                  background: "#0A66C2",
+                  border: "none",
+                  borderRadius: 7, padding: "7px 14px",
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", gap: 6,
+                  boxShadow: "0 2px 8px rgba(10,102,194,0.3)"
+                }}
+              >
+                💼 Share on LinkedIn
               </button>
 
               <div style={{ position: "relative" }}>
@@ -5778,6 +5799,22 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 </div>
               </div>
 
+            </div>
+
+            {/* B2B & Freelance Custom Services Banner */}
+            <div style={{ marginTop: 24, background: "#18181B", border: "1px solid #27272A", borderRadius: 16, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#FFF", marginBottom: 2 }}>Need Done-For-You Data Analytics or Custom B2B Workspace Setup?</div>
+                <div style={{ fontSize: 12, color: "#A1A1AA" }}>Get custom dataset processing, dedicated AI pipelines, or team onboarding directly from the developer.</div>
+              </div>
+              <button
+                onClick={() => {
+                  window.open("https://www.linkedin.com/", "_blank", "noopener,noreferrer");
+                }}
+                style={{ background: "#0A66C2", color: "#FFF", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 4px 12px rgba(10,102,194,0.3)" }}
+              >
+                💼 Contact Developer on LinkedIn ➔
+              </button>
             </div>
           </div>
         </div>
