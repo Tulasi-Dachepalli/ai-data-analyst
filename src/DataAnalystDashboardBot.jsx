@@ -5389,7 +5389,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
               <button
                 onClick={() => {
                   const shareUrl = "https://ai-data-analyst-tawny.vercel.app";
-                  const shareText = `I just analyzed my dataset and generated an executive KPI dashboard in 1 click using AI Data & Science Copilot! 🚀 Check it out live: ${shareUrl}`;
+                  const shareText = "I just analyzed my dataset and generated an executive KPI dashboard in 1 click using AI Data & Science Copilot! 🚀 Check it out live:";
                   const linkedinUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareText)}`;
                   window.open(linkedinUrl, "_blank", "noopener,noreferrer");
                 }}
