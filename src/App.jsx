@@ -47,7 +47,7 @@ export default function App() {
   }
 
   const isAdmin = user?.role === "admin";
-  const showVerifyBanner = user && !user.emailVerified;
+  const showVerifyBanner = false; // Email verification removed
 
   const renderContent = () => {
     if (view === "admin-members" && isAdmin) {

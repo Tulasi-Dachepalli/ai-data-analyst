@@ -112,7 +112,7 @@ export async function initDb() {
 
   // Simple self-migration: a fresh boolean column with a DEFAULT and no
   // collision risk, unlike name_normalized — safe to just always run.
-  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT false;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT true;`);
 
   // Add subscription tier to companies table
   await pool.query(`ALTER TABLE companies ADD COLUMN IF NOT EXISTS tier TEXT NOT NULL DEFAULT 'free';`);

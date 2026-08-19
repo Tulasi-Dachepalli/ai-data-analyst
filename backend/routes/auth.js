@@ -135,9 +135,9 @@ router.post("/signup", async (req, res) => {
       role = "admin"; // First user becomes admin/owner
     }
 
-    // Insert user
+    // Insert user (auto-verified)
     const inserted = await client.query(
-      "INSERT INTO users (company_id, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING *",
+      "INSERT INTO users (company_id, email, password_hash, role, email_verified) VALUES ($1, $2, $3, $4, true) RETURNING *",
       [company.id, normalizedEmail, passwordHash, role]
     );
     user = inserted.rows[0];
@@ -158,16 +158,10 @@ router.post("/signup", async (req, res) => {
     await logAction(company.id, user.id, user.email, "SIGNUP_NEW_ORG", `Created and registered new company workspace "${company.name}"`, req);
   }
 
-  try {
-    await sendVerificationEmail(user.id, user.email);
-  } catch (err) {
-    console.error("Failed to send verification email:", err);
-  }
-
   const token = issueToken(user);
   return res.status(201).json({
     token,
-    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: false, tier: company.tier || 'free' }
+    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: true, tier: company.tier || 'free' }
   });
 });
 
