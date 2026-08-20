@@ -49,11 +49,13 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ error: "Your workspace authorization has changed — please log in again." });
     }
 
-    const CLOCK_SKEW_GRACE_SECONDS = 5;
-    const issuedAtSeconds = Number(payload.iat);
-    const changedAtSeconds = Math.floor(new Date(dbUser.password_changed_at).getTime() / 1000);
-    if (issuedAtSeconds < changedAtSeconds - CLOCK_SKEW_GRACE_SECONDS) {
-      return res.status(401).json({ error: "Your session has expired — please log in again." });
+    if (dbUser.password_changed_at) {
+      const CLOCK_SKEW_GRACE_SECONDS = 5;
+      const issuedAtSeconds = Number(payload.iat);
+      const changedAtSeconds = Math.floor(new Date(dbUser.password_changed_at).getTime() / 1000);
+      if (issuedAtSeconds && !isNaN(changedAtSeconds) && issuedAtSeconds < changedAtSeconds - CLOCK_SKEW_GRACE_SECONDS) {
+        return res.status(401).json({ error: "Your session has expired — please log in again." });
+      }
     }
 
     // Build req.user entirely from database properties, not trusting state from the client token
