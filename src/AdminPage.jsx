@@ -344,15 +344,17 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
               </div>
 
               <div style={{ ...card, marginBottom: 20 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#2B2A27", marginBottom: 2 }}>Team members</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#2B2A27", marginBottom: 2 }}>Registered Users & Team Members ({members.length})</div>
                 <div style={{ fontSize: 11.5, color: "#A6A196", marginBottom: 10 }}>
-                  Role changes take effect the next time that person logs in.
+                  Global user list & workspace membership details.
                 </div>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
                       <th style={th}>Email</th>
                       <th style={th}>Role</th>
+                      <th style={th}>Workspace</th>
+                      <th style={th}>Tier</th>
                       <th style={th}>Joined</th>
                       <th style={th}></th>
                     </tr>
@@ -362,6 +364,8 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                       <tr key={m.id}>
                         <td style={td}>{m.email}{m.email === currentUserEmail ? " (you)" : ""}</td>
                         <td style={td}>{m.role}</td>
+                        <td style={td}>{m.companyName || "Default Workspace"}</td>
+                        <td style={td}><span style={{ textTransform: "uppercase", fontSize: 11, fontWeight: 700, background: m.tier === "pro" ? "rgba(139,92,246,0.1)" : "#F0EEE9", color: m.tier === "pro" ? "#8B5CF6" : "#5C584F", padding: "2px 6px", borderRadius: 4 }}>{m.tier || "free"}</span></td>
                         <td style={td}>{formatDateOnly(m.createdAt)}</td>
                         <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                           {m.email !== currentUserEmail && (
