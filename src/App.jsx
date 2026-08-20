@@ -56,8 +56,8 @@ export default function App() {
     if (view === "admin-audit" && isAdmin) {
       return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="audit" />;
     }
-    if (view === "admin-security" && isAdmin) {
-      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="danger" />;
+    if (view === "admin-security" || view === "security") {
+      return <TrustPage onBack={() => setView("dashboard")} />;
     }
     if (view === "settings" || view === "security") {
       return <TrustPage onBack={() => setView("dashboard")} />;
