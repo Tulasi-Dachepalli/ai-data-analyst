@@ -161,11 +161,13 @@ router.post("/signup", async (req, res) => {
   // Send instant email notification to creator/admin
   try {
     const adminNotificationEmail = process.env.ADMIN_NOTIFY_EMAIL || "tulasidachepally9393@gmail.com";
-    await sendEmail({
+    console.log(`[Signup Alert] Attempting to send alert email to ${adminNotificationEmail} for new user ${user.email}...`);
+    const emailResult = await sendEmail({
       to: adminNotificationEmail,
       subject: `🎉 New User Signup: ${user.email} (${company.name})`,
       html: newSignupAlertEmailHtml(user.email, company.name)
     });
+    console.log(`[Signup Alert Result]:`, emailResult);
   } catch (notifyErr) {
     console.error("Failed to send admin signup email notification:", notifyErr);
   }

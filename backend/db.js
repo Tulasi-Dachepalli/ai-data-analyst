@@ -18,7 +18,9 @@ const useSSL = process.env.PGSSL === "false"
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: useSSL ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 5000
+  connectionTimeoutMillis: 30000,
+  idleTimeoutMillis: 30000,
+  keepAlive: true
 });
 
 pool.on("error", (err) => {
@@ -27,7 +29,23 @@ pool.on("error", (err) => {
   console.error("Unexpected Postgres pool error:", err);
 });
 
-export async function initDb() {
+export async function initDb(retries = 5, delayMs = 3000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`Initializing database schema (attempt ${attempt}/${retries})...`);
+      await runSchemaQueries();
+      console.log("Database schema initialized successfully.");
+      return;
+    } catch (err) {
+      console.error(`Database initialization attempt ${attempt} failed:`, err.message);
+      if (attempt === retries) throw err;
+      console.log(`Retrying database connection in ${delayMs / 1000}s...`);
+      await new Promise((res) => setTimeout(res, delayMs));
+    }
+  }
+}
+
+async function runSchemaQueries() {
   // Base tables. Deliberately does NOT declare name_normalized inline on
   // companies — that's added by migrateCompanyNameNormalized() below, which
   // runs the same way whether companies is brand new or pre-existing, so
