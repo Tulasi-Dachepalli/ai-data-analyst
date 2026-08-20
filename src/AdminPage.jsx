@@ -402,8 +402,8 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                         <td style={td}>{m.companyName || "Default Workspace"}</td>
                         <td style={td}><span style={{ textTransform: "uppercase", fontSize: 11, fontWeight: 700, background: m.tier === "pro" ? "rgba(139,92,246,0.1)" : "#F0EEE9", color: m.tier === "pro" ? "#8B5CF6" : "#5C584F", padding: "2px 6px", borderRadius: 4 }}>{m.tier || "free"}</span></td>
                         <td style={td}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: m.emailVerified ? "#10B981" : "#F59E0B" }}>
-                            {m.emailVerified ? "✅ Verified" : "⏳ Active"}
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "#10B981" }}>
+                            {m.emailVerified ? "✅ Active (Verified)" : "✅ Active"}
                           </span>
                         </td>
                         {currentUserEmail === "tulasidachepally9393@gmail.com" && <td style={td}>{m.datasetCount ?? 0}</td>}
