@@ -50,8 +50,8 @@ export default function App() {
   const showVerifyBanner = false; // Email verification removed
 
   const renderContent = () => {
-    if (view === "admin-members" && isAdmin) {
-      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="invites" />;
+    if ((view === "admin-members" || view === "team") && isAdmin) {
+      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="dashboard" />;
     }
     if (view === "admin-audit" && isAdmin) {
       return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="audit" />;
@@ -59,20 +59,15 @@ export default function App() {
     if (view === "admin-security" && isAdmin) {
       return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="danger" />;
     }
-    if (view === "settings") {
-      // Map global settings view to AdminPage general configurations if admin, else TrustPage
-      return isAdmin ? (
-        <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="dashboard" />
-      ) : (
-        <TrustPage onBack={() => setView("dashboard")} />
-      );
+    if (view === "settings" || view === "security") {
+      return <TrustPage onBack={() => setView("dashboard")} />;
     }
     if (view === "trust") {
       return <TrustPage onBack={() => setView("dashboard")} />;
     }
 
     if (view === "team") {
-      return <TrustPage onBack={() => setView("dashboard")} />;
+      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="dashboard" />;
     }
 
     // All workspace navigation views (overview, datasets, ai-analyst, dashboards, insights, reports)
