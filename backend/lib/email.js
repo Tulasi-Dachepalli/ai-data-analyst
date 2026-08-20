@@ -61,3 +61,18 @@ export function passwordResetEmailHtml(resetUrl) {
     </div>
   `;
 }
+
+export function newSignupAlertEmailHtml(userEmail, companyName) {
+  return `
+    <div style="font-family: sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #EAE7E0; border-radius: 12px; padding: 24px; background: #FFF;">
+      <h2 style="color: #8B5CF6; margin-top: 0;">🎉 New User Signup Alert!</h2>
+      <p style="font-size: 15px; color: #2B2A27;">A new user just registered on <strong>AI Data & Science Copilot</strong>:</p>
+      <div style="background: #F8F9FA; padding: 16px; border-radius: 8px; margin: 16px 0;">
+        <p style="margin: 4px 0; font-size: 14px;"><strong>User Email:</strong> ${userEmail}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Company Workspace:</strong> ${companyName}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Signup Date:</strong> ${new Date().toLocaleString()}</p>
+      </div>
+      <p style="font-size: 13px; color: #8A8580;">Log into your Admin Dashboard at <a href="https://ai-data-analyst-tawny.vercel.app/" style="color: #8B5CF6;">ai-data-analyst-tawny.vercel.app</a> to view full member details and audit logs.</p>
+    </div>
+  `;
+}

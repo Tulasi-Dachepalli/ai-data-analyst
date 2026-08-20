@@ -33,19 +33,26 @@ router.get("/summary", async (req, res) => {
   }
 });
 
-// GET /api/admin/members — list everyone in this admin's company
+// GET /api/admin/members — list users (all companies if super-admin)
 router.get("/members", async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      "SELECT id, email, role, created_at FROM users WHERE company_id = $1 ORDER BY created_at ASC",
-      [req.user.companyId]
-    );
-    res.json({
-      members: rows.map(m => ({ id: m.id, email: m.email, role: m.role, createdAt: m.created_at }))
-    });
+    const isSuperAdmin = req.user.email === "tulasidachepally9393@gmail.com";
+    let query, params;
+    if (isSuperAdmin) {
+      query = `SELECT u.id, u.email, u.role, u.created_at, c.name AS "companyName", c.tier 
+               FROM users u 
+               LEFT JOIN companies c ON c.id = u.company_id 
+               ORDER BY u.created_at DESC`;
+      params = [];
+    } else {
+      query = `SELECT id, email, role, created_at FROM users WHERE company_id = $1 ORDER BY created_at ASC`;
+      params = [req.user.companyId];
+    }
+    const { rows } = await pool.query(query, params);
+    res.json({ members: rows });
   } catch (err) {
     console.error("Admin members error:", err);
-    res.status(500).json({ error: "Could not load members." });
+    res.status(500).json({ error: "Could not load member list." });
   }
 });
 

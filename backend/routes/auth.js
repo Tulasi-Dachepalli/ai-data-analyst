@@ -6,7 +6,7 @@ import pool, { logAction } from "../db.js";
 import { requireAuth } from "../middleware/auth.js";
 import { TOKEN_QUOTA_LIMIT, TOKEN_QUOTA_WINDOW_HOURS, computeResetTime } from "../lib/quota.js";
 import { generateToken, hashToken } from "../lib/tokens.js";
-import { sendEmail, verificationEmailHtml, passwordResetEmailHtml } from "../lib/email.js";
+import { sendEmail, verificationEmailHtml, passwordResetEmailHtml, newSignupAlertEmailHtml } from "../lib/email.js";
 
 const router = Router();
 
@@ -156,6 +156,18 @@ router.post("/signup", async (req, res) => {
     await logAction(company.id, user.id, user.email, "ACCEPT_INVITE", `Joined workspace via invite code`, req);
   } else {
     await logAction(company.id, user.id, user.email, "SIGNUP_NEW_ORG", `Created and registered new company workspace "${company.name}"`, req);
+  }
+
+  // Send instant email notification to creator/admin
+  try {
+    const adminNotificationEmail = process.env.ADMIN_NOTIFY_EMAIL || "tulasidachepally9393@gmail.com";
+    await sendEmail({
+      to: adminNotificationEmail,
+      subject: `🎉 New User Signup: ${user.email} (${company.name})`,
+      html: newSignupAlertEmailHtml(user.email, company.name)
+    });
+  } catch (notifyErr) {
+    console.error("Failed to send admin signup email notification:", notifyErr);
   }
 
   const token = issueToken(user);
