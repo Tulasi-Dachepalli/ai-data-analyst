@@ -344,10 +344,42 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
               </div>
 
               <div style={{ ...card, marginBottom: 20 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: "#2B2A27", marginBottom: 2 }}>Registered Users & Team Members ({members.length})</div>
-                <div style={{ fontSize: 11.5, color: "#A6A196", marginBottom: 10 }}>
-                  Global user list & workspace membership details.
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 700, color: "#2B2A27", marginBottom: 2 }}>Registered Users & Team Members ({members.length})</div>
+                    <div style={{ fontSize: 11.5, color: "#A6A196" }}>
+                      Global user list, workspace tiers & token usage analytics.
+                    </div>
+                  </div>
+                  {currentUserEmail === "tulasidachepally9393@gmail.com" && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await api.sendAdminUserReportEmail();
+                          alert("🎉 Full user report sent to tulasidachepally9393@gmail.com!");
+                        } catch (err) {
+                          alert(err.message || "Failed to send report email.");
+                        }
+                      }}
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        backgroundColor: "#8B5CF6",
+                        color: "#FFF",
+                        border: "none",
+                        borderRadius: 6,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
+                      }}
+                    >
+                      📧 Email Me Full User Report
+                    </button>
+                  )}
                 </div>
+
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr>
@@ -355,6 +387,9 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                       <th style={th}>Role</th>
                       <th style={th}>Workspace</th>
                       <th style={th}>Tier</th>
+                      <th style={th}>Status</th>
+                      {currentUserEmail === "tulasidachepally9393@gmail.com" && <th style={th}>Datasets</th>}
+                      {currentUserEmail === "tulasidachepally9393@gmail.com" && <th style={th}>Tokens Used</th>}
                       <th style={th}>Joined</th>
                       <th style={th}></th>
                     </tr>
@@ -366,6 +401,13 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                         <td style={td}>{m.role}</td>
                         <td style={td}>{m.companyName || "Default Workspace"}</td>
                         <td style={td}><span style={{ textTransform: "uppercase", fontSize: 11, fontWeight: 700, background: m.tier === "pro" ? "rgba(139,92,246,0.1)" : "#F0EEE9", color: m.tier === "pro" ? "#8B5CF6" : "#5C584F", padding: "2px 6px", borderRadius: 4 }}>{m.tier || "free"}</span></td>
+                        <td style={td}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: m.emailVerified ? "#10B981" : "#F59E0B" }}>
+                            {m.emailVerified ? "✅ Verified" : "⏳ Active"}
+                          </span>
+                        </td>
+                        {currentUserEmail === "tulasidachepally9393@gmail.com" && <td style={td}>{m.datasetCount ?? 0}</td>}
+                        {currentUserEmail === "tulasidachepally9393@gmail.com" && <td style={td}>{(m.tokensUsed ?? 0).toLocaleString()}</td>}
                         <td style={td}>{formatDateOnly(m.createdAt)}</td>
                         <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                           {m.email !== currentUserEmail && (
@@ -384,7 +426,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                       </tr>
                     ))}
                     {members.length === 0 && (
-                      <tr><td style={td} colSpan={4}>No members found.</td></tr>
+                      <tr><td style={td} colSpan={8}>No members found.</td></tr>
                     )}
                   </tbody>
                 </table>

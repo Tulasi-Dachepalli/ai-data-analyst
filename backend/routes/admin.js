@@ -39,13 +39,19 @@ router.get("/members", async (req, res) => {
     const isSuperAdmin = req.user.email === "tulasidachepally9393@gmail.com";
     let query, params;
     if (isSuperAdmin) {
-      query = `SELECT u.id, u.email, u.role, u.created_at, c.name AS "companyName", c.tier 
+      query = `SELECT u.id, u.email, u.role, u.created_at, u.email_verified AS "emailVerified", 
+                      c.name AS "companyName", c.tier,
+                      COUNT(DISTINCT d.id)::int AS "datasetCount",
+                      COALESCE(SUM(au.total_tokens), 0)::int AS "tokensUsed"
                FROM users u 
                LEFT JOIN companies c ON c.id = u.company_id 
+               LEFT JOIN datasets d ON d.created_by = u.id
+               LEFT JOIN ai_usage au ON au.user_id = u.id
+               GROUP BY u.id, u.email, u.role, u.created_at, u.email_verified, c.name, c.tier
                ORDER BY u.created_at DESC`;
       params = [];
     } else {
-      query = `SELECT id, email, role, created_at FROM users WHERE company_id = $1 ORDER BY created_at ASC`;
+      query = `SELECT u.id, u.email, u.role, u.created_at, u.email_verified AS "emailVerified" FROM users u WHERE u.company_id = $1 ORDER BY u.created_at ASC`;
       params = [req.user.companyId];
     }
     const { rows } = await pool.query(query, params);
@@ -53,6 +59,66 @@ router.get("/members", async (req, res) => {
   } catch (err) {
     console.error("Admin members error:", err);
     res.status(500).json({ error: "Could not load member list." });
+  }
+});
+
+// POST /api/admin/send-user-report — sends an email digest of all registered users to the super-admin
+router.post("/send-user-report", async (req, res) => {
+  if (req.user.email !== "tulasidachepally9393@gmail.com") {
+    return res.status(403).json({ error: "Only Super Admin can trigger global user report emails." });
+  }
+  try {
+    const { rows } = await pool.query(`
+      SELECT u.id, u.email, u.role, u.created_at, u.email_verified, c.name AS "companyName", c.tier
+      FROM users u 
+      LEFT JOIN companies c ON c.id = u.company_id 
+      ORDER BY u.created_at DESC
+    `);
+
+    let rowsHtml = rows.map(r => `
+      <tr>
+        <td style="padding:8px;border:1px solid #DDD;">${r.email}</td>
+        <td style="padding:8px;border:1px solid #DDD;">${r.role}</td>
+        <td style="padding:8px;border:1px solid #DDD;">${r.companyName || 'N/A'}</td>
+        <td style="padding:8px;border:1px solid #DDD;text-transform:uppercase;">${r.tier || 'free'}</td>
+        <td style="padding:8px;border:1px solid #DDD;">${r.email_verified ? '✅ Verified' : '❌ Unverified'}</td>
+        <td style="padding:8px;border:1px solid #DDD;">${new Date(r.created_at).toLocaleString()}</td>
+      </tr>
+    `).join("");
+
+    const emailHtml = `
+      <div style="font-family:sans-serif;max-width:650px;margin:0 auto;padding:20px;border:1px solid #EEE;border-radius:10px;">
+        <h2 style="color:#8B5CF6;">📊 Global Registered Users Report</h2>
+        <p>Total Registered Users: <strong>${rows.length}</strong></p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#F4F4F5;">
+              <th style="padding:8px;border:1px solid #DDD;text-align:left;">Email</th>
+              <th style="padding:8px;border:1px solid #DDD;text-align:left;">Role</th>
+              <th style="padding:8px;border:1px solid #DDD;text-align:left;">Workspace</th>
+              <th style="padding:8px;border:1px solid #DDD;text-align:left;">Tier</th>
+              <th style="padding:8px;border:1px solid #DDD;text-align:left;">Status</th>
+              <th style="padding:8px;border:1px solid #DDD;text-align:left;">Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const { sendEmail } = await import("../lib/email.js");
+    const result = await sendEmail({
+      to: "tulasidachepally9393@gmail.com",
+      subject: `📊 Registered Users Report (${rows.length} Total Users)`,
+      html: emailHtml
+    });
+
+    res.json({ success: true, sent: result.sent, totalUsers: rows.length });
+  } catch (err) {
+    console.error("Failed to send user report email:", err);
+    res.status(500).json({ error: "Failed to send report email." });
   }
 });
 

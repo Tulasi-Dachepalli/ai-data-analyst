@@ -265,12 +265,22 @@ export function getAuditLogs(page = 1, limit = 50) {
   return request(`/api/admin/audit-logs?page=${page}&limit=${limit}`);
 }
 
+export function purgeWorkspace(companyName, password) {
+  return request("/api/admin/purge-workspace", {
+    method: "POST",
+    body: JSON.stringify({ companyName, password })
+  });
+}
+
+export function sendAdminUserReportEmail() {
+  return request("/api/admin/send-user-report", {
+    method: "POST"
+  });
+}
+
 export function deleteWorkspace(password) {
   return request("/api/admin/workspace", {
     method: "DELETE",
     body: JSON.stringify({ password })
   });
 }
-
-
-
