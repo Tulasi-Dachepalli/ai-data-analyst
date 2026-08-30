@@ -319,8 +319,13 @@ router.post("/forgot-password", async (req, res) => {
         [user.id, hash, expiresAt]
       );
       const resetUrl = `${FRONTEND_URL}/?reset_token=${raw}`;
-      await sendEmail({ to: user.email, subject: "Reset your password", html: passwordResetEmailHtml(resetUrl) });
+      console.log(`[Forgot Password] Attempting to send reset email to ${user.email}...`);
+      console.log(`[Forgot Password Reset Link]: ${resetUrl}`);
+      const emailResult = await sendEmail({ to: user.email, subject: "Reset your password", html: passwordResetEmailHtml(resetUrl) });
+      console.log(`[Forgot Password Result]:`, emailResult);
       await logAction(user.company_id, user.id, user.email, "REQUEST_PASSWORD_RESET", "Requested password reset email link", req);
+    } else {
+      console.log(`[Forgot Password] Requested for email not found in database: ${email}`);
     }
   } catch (err) {
     console.error("Forgot-password error:", err);
