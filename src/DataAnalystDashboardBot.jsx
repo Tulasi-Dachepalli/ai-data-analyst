@@ -3,6 +3,9 @@ import Papa from "papaparse";
 import * as XLSX from "xlsx";
 import * as api from "./api";
 import Table from "./components/ui/Table";
+import DataHealthInspector from "./DataHealthInspector";
+import ExecutiveReportGenerator from "./ExecutiveReportGenerator";
+import WhatIfSimulator from "./WhatIfSimulator";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -5465,7 +5468,16 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 0 24px" }}>
           <div style={{ maxWidth: "100%", width: "100%", margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 18 }}>
-            {!active && (
+            {currentView === "health" && (
+              <DataHealthInspector dataset={active} data={active?.rows} columns={active?.columns} />
+            )}
+            {currentView === "whatif" && (
+              <WhatIfSimulator data={active?.rows} columns={active?.columns} />
+            )}
+            {currentView === "exec-reports" && (
+              <ExecutiveReportGenerator dataset={active} data={active?.rows} columns={active?.columns} />
+            )}
+            {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && (
               <div style={{ textAlign: "center", color: "#A6A196", fontSize: 13.5, marginTop: 100, lineHeight: 1.7 }}>
                 <div style={{ fontSize: 17, color: "#2B2A27", fontWeight: 600, marginBottom: 6 }}>Data Analyst</div>
                 Upload your file (csv or excel) - I'll build a dashboard and you can ask follow-up questions.

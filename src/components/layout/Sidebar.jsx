@@ -198,6 +198,31 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <div style={sectionHeaderStyle}>AI Intelligence Suite</div>
+        <button onClick={() => setView("health")} style={navItemStyle(currentView === "health")} title="Automated Data Quality Scoring & Anomaly Detection">
+          <Icons.Security />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Data Health Inspector</span>
+            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🩺 Quality Score & Outliers</span>
+          </div>
+        </button>
+
+        <button onClick={() => setView("whatif")} style={navItemStyle(currentView === "whatif")} title="Interactive What-If Growth & Revenue Simulator">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>What-If Simulator</span>
+            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Projections & Scenarios</span>
+          </div>
+        </button>
+
+        <button onClick={() => setView("exec-reports")} style={navItemStyle(currentView === "exec-reports")} title="1-Click Executive Summary PDF & HTML Export">
+          <Icons.Reports />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Executive Reports</span>
+            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>📄 1-Click Executive Export</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
@@ -224,14 +249,34 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
         </button>
       </div>
 
-      {/* Logout Footer */}
+      {/* Security Badge & Logout Footer */}
       <div style={{
-        padding: "16px",
+        padding: "14px 16px",
         borderTop: "1px solid var(--border-color)",
         display: "flex",
         flexDirection: "column",
-        gap: "10px"
+        gap: "10px",
+        background: "var(--bg-secondary)"
       }}>
+        <div style={{
+          fontSize: "10.5px",
+          color: "var(--text-muted)",
+          textAlign: "center",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "4px",
+          fontWeight: 600,
+          background: "var(--bg-hover)",
+          padding: "6px",
+          borderRadius: "6px",
+          border: "1px solid var(--border-color)"
+        }}>
+          <span>🔒 256-Bit Encrypted</span>
+          <span>•</span>
+          <span>SOC2 Ready</span>
+        </div>
+
         <button onClick={onLogout} style={{
           display: "flex",
           alignItems: "center",
