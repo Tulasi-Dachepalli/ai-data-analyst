@@ -352,31 +352,59 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                     </div>
                   </div>
                   {currentUserEmail === "tulasidachepally9393@gmail.com" && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          await api.sendAdminUserReportEmail();
-                          alert("🎉 Full user report sent to tulasidachepally9393@gmail.com!");
-                        } catch (err) {
-                          alert(err.message || "Failed to send report email.");
-                        }
-                      }}
-                      style={{
-                        padding: "6px 12px",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        backgroundColor: "#8B5CF6",
-                        color: "#FFF",
-                        border: "none",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6
-                      }}
-                    >
-                      📧 Email Me Full User Report
-                    </button>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api.sendAdminUserReportEmail();
+                            alert("🎉 Full user report sent to tulasidachepally9393@gmail.com!");
+                          } catch (err) {
+                            alert(err.message || "Failed to send report email.");
+                          }
+                        }}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          backgroundColor: "#8B5CF6",
+                          color: "#FFF",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6
+                        }}
+                      >
+                        📧 Email Me Full User Report
+                      </button>
+
+                      <button
+                        onClick={async () => {
+                          try {
+                            await api.sendAdminMonthlyReportEmail();
+                            alert("📅 Monthly report sent to tulasidachepally9393@gmail.com!");
+                          } catch (err) {
+                            alert(err.message || "Failed to send monthly report email.");
+                          }
+                        }}
+                        style={{
+                          padding: "6px 12px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          backgroundColor: "#10B981",
+                          color: "#FFF",
+                          border: "none",
+                          borderRadius: 6,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6
+                        }}
+                      >
+                        📅 Email Me Monthly Report
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -402,8 +430,8 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                         <td style={td}>{m.companyName || "Default Workspace"}</td>
                         <td style={td}><span style={{ textTransform: "uppercase", fontSize: 11, fontWeight: 700, background: m.tier === "pro" ? "rgba(139,92,246,0.1)" : "#F0EEE9", color: m.tier === "pro" ? "#8B5CF6" : "#5C584F", padding: "2px 6px", borderRadius: 4 }}>{m.tier || "free"}</span></td>
                         <td style={td}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: "#10B981" }}>
-                            {m.emailVerified ? "✅ Active (Verified)" : "✅ Active"}
+                          <span style={{ fontSize: 11, fontWeight: 600, color: m.emailVerified ? "#10B981" : "#F59E0B" }}>
+                            {m.emailVerified ? "✅ Active (Verified)" : "⚠️ Unverified"}
                           </span>
                         </td>
                         {currentUserEmail === "tulasidachepally9393@gmail.com" && <td style={td}>{m.datasetCount ?? 0}</td>}

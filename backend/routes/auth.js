@@ -135,10 +135,13 @@ router.post("/signup", async (req, res) => {
       role = "admin"; // First user becomes admin/owner
     }
 
-    // Insert user (auto-verified)
+    const isSuperAdmin = normalizedEmail === "tulasidachepally9393@gmail.com";
+    const initialVerified = isSuperAdmin;
+
+    // Insert user
     const inserted = await client.query(
-      "INSERT INTO users (company_id, email, password_hash, role, email_verified) VALUES ($1, $2, $3, $4, true) RETURNING *",
-      [company.id, normalizedEmail, passwordHash, role]
+      "INSERT INTO users (company_id, email, password_hash, role, email_verified) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+      [company.id, normalizedEmail, passwordHash, role, initialVerified]
     );
     user = inserted.rows[0];
 
@@ -158,7 +161,17 @@ router.post("/signup", async (req, res) => {
     await logAction(company.id, user.id, user.email, "SIGNUP_NEW_ORG", `Created and registered new company workspace "${company.name}"`, req);
   }
 
-  // Send instant email notification to creator/admin
+  // 1. Send Verification Link directly to the NEW USER
+  if (!user.email_verified) {
+    try {
+      console.log(`[Verification Email] Sending verification link directly to new user ${user.email}...`);
+      await sendVerificationEmail(user.id, user.email);
+    } catch (verifyErr) {
+      console.error("Failed to send verification email to user:", verifyErr);
+    }
+  }
+
+  // 2. Send instant email alert notification to Admin
   try {
     const adminNotificationEmail = process.env.ADMIN_NOTIFY_EMAIL || "tulasidachepally9393@gmail.com";
     console.log(`[Signup Alert] Attempting to send alert email to ${adminNotificationEmail} for new user ${user.email}...`);
@@ -175,7 +188,7 @@ router.post("/signup", async (req, res) => {
   const token = issueToken(user);
   return res.status(201).json({
     token,
-    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: true, tier: company.tier || 'free' }
+    user: { email: user.email, role: user.role, companyName: company.name, emailVerified: user.email_verified, tier: company.tier || 'free' }
   });
 });
 

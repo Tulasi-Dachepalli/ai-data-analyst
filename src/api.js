@@ -278,6 +278,12 @@ export function sendAdminUserReportEmail() {
   });
 }
 
+export function sendAdminMonthlyReportEmail() {
+  return request("/api/admin/send-monthly-report", {
+    method: "POST"
+  });
+}
+
 export function deleteWorkspace(password) {
   return request("/api/admin/workspace", {
     method: "DELETE",

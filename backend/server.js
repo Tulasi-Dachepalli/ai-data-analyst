@@ -100,6 +100,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "Something went wrong." });
 });
 
+import { initScheduler } from "./lib/scheduler.js";
+
 async function start() {
   if (!process.env.JWT_SECRET) {
     console.error("CRITICAL: JWT_SECRET environment variable is not configured!");
@@ -108,6 +110,7 @@ async function start() {
   try {
     await initDb();
     console.log("Database schema ready.");
+    initScheduler();
   } catch (err) {
     console.error("Failed to initialize the database — check DATABASE_URL in backend/.env:", err.message);
     process.exit(1);

@@ -118,7 +118,60 @@ router.post("/send-user-report", async (req, res) => {
     res.json({ success: true, sent: result.sent, totalUsers: rows.length });
   } catch (err) {
     console.error("Failed to send user report email:", err);
-    res.status(500).json({ error: "Failed to send report email." });
+    res.status(500).json({ error: "Could not send report email." });
+  }
+});
+
+// Helper function to dispatch monthly summary report
+export async function sendMonthlyAdminReport() {
+  const { rows: members } = await pool.query(`
+    SELECT u.id, u.email, u.role, u.created_at, u.email_verified, c.name AS "companyName"
+    FROM users u 
+    LEFT JOIN companies c ON c.id = u.company_id 
+    ORDER BY u.created_at DESC
+  `);
+
+  const { rows: datasetsRes } = await pool.query("SELECT COUNT(*)::int AS n FROM datasets");
+  const { rows: usageRes } = await pool.query("SELECT COALESCE(SUM(total_tokens), 0)::bigint AS n FROM ai_usage");
+
+  const totalUsers = members.length;
+  const verifiedUsers = members.filter(m => m.email_verified).length;
+  
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const newUsersMonth = members.filter(m => new Date(m.created_at) >= startOfMonth).length;
+
+  const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  const { sendEmail, monthlyReportEmailHtml } = await import("../lib/email.js");
+  const emailHtml = monthlyReportEmailHtml(
+    monthName,
+    totalUsers,
+    newUsersMonth,
+    verifiedUsers,
+    datasetsRes[0]?.n || 0,
+    Number(usageRes[0]?.n || 0),
+    members
+  );
+
+  return await sendEmail({
+    to: "tulasidachepally9393@gmail.com",
+    subject: `📅 Monthly Platform Report (${monthName}) — ${totalUsers} Members`,
+    html: emailHtml
+  });
+}
+
+// POST /api/admin/send-monthly-report — trigger monthly analytics email on demand
+router.post("/send-monthly-report", async (req, res) => {
+  if (req.user.email !== "tulasidachepally9393@gmail.com") {
+    return res.status(403).json({ error: "Only Super Admin can trigger monthly report emails." });
+  }
+  try {
+    const result = await sendMonthlyAdminReport();
+    res.json({ success: true, sent: result.sent });
+  } catch (err) {
+    console.error("Failed to send monthly report email:", err);
+    res.status(500).json({ error: "Could not send monthly report email." });
   }
 });
 

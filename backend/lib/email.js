@@ -76,3 +76,61 @@ export function newSignupAlertEmailHtml(userEmail, companyName) {
     </div>
   `;
 }
+
+export function monthlyReportEmailHtml(monthName, totalUsers, newUsersMonth, verifiedUsers, totalDatasets, totalTokens, userList) {
+  let userRowsHtml = userList.map(u => `
+    <tr>
+      <td style="padding:8px;border:1px solid #EAE7E0;">${u.email}</td>
+      <td style="padding:8px;border:1px solid #EAE7E0;">${u.companyName || 'N/A'}</td>
+      <td style="padding:8px;border:1px solid #EAE7E0;">${u.email_verified ? '✅ Verified' : '⚠️ Unverified'}</td>
+      <td style="padding:8px;border:1px solid #EAE7E0;">${new Date(u.created_at).toLocaleDateString()}</td>
+    </tr>
+  `).join("");
+
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #EAE7E0; border-radius: 12px; padding: 24px; background: #FFF;">
+      <h2 style="color: #8B5CF6; margin-top: 0;">📅 Monthly Platform Analytics & User Report (${monthName})</h2>
+      <p style="font-size: 14px; color: #555;">Here is your automated monthly performance summary for <strong>AI Data & Science Copilot</strong>:</p>
+
+      <div style="display: flex; gap: 12px; margin: 20px 0;">
+        <div style="flex: 1; background: #F8F9FA; padding: 12px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 22px; font-weight: bold; color: #8B5CF6;">${totalUsers}</div>
+          <div style="font-size: 12px; color: #666;">Total Registered</div>
+        </div>
+        <div style="flex: 1; background: #F8F9FA; padding: 12px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 22px; font-weight: bold; color: #10B981;">+${newUsersMonth}</div>
+          <div style="font-size: 12px; color: #666;">New This Month</div>
+        </div>
+        <div style="flex: 1; background: #F8F9FA; padding: 12px; border-radius: 8px; text-align: center;">
+          <div style="font-size: 22px; font-weight: bold; color: #3B82F6;">${verifiedUsers}</div>
+          <div style="font-size: 12px; color: #666;">Verified Users</div>
+        </div>
+      </div>
+
+      <div style="background: #F9FAFB; padding: 14px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
+        <p style="margin: 4px 0;">📁 <strong>Total Datasets Processed:</strong> ${totalDatasets}</p>
+        <p style="margin: 4px 0;">🤖 <strong>Total AI Tokens Consumed:</strong> ${totalTokens.toLocaleString()}</p>
+      </div>
+
+      <h3 style="font-size: 16px; color: #2B2A27; margin-bottom: 8px;">Registered Members List</h3>
+      <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+        <thead>
+          <tr style="background: #F3F4F6;">
+            <th style="padding:8px;border:1px solid #EAE7E0;">Email</th>
+            <th style="padding:8px;border:1px solid #EAE7E0;">Workspace</th>
+            <th style="padding:8px;border:1px solid #EAE7E0;">Status</th>
+            <th style="padding:8px;border:1px solid #EAE7E0;">Joined</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${userRowsHtml}
+        </tbody>
+      </table>
+
+      <p style="font-size: 12px; color: #8A8580; margin-top: 24px; text-align: center;">
+        Automated report sent to Super-Admin (tulasidachepally9393@gmail.com).<br/>
+        Visit <a href="https://ai-data-analyst-tawny.vercel.app/admin" style="color: #8B5CF6;">Admin Dashboard</a> for real-time controls.
+      </p>
+    </div>
+  `;
+}
