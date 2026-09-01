@@ -12,9 +12,9 @@ databases:
 services:
   - type: web
     name: ai-data-analyst-backend
-    runtime: docker
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    runtime: node
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
     plan: free
     healthCheckPath: /health
     envVars:
