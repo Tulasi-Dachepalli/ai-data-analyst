@@ -1,5 +1,6 @@
 import React from "react";
 import { getCompanyBranding } from "./CompanyBrandingManager";
+import PptxDeckExporter from "./PptxDeckExporter";
 
 export default function ExecutiveReportGenerator({ dataset, data = [], columns = [], aiInsights = "" }) {
   const handleDownloadReport = () => {
@@ -134,6 +135,8 @@ export default function ExecutiveReportGenerator({ dataset, data = [], columns =
         >
           📥 Download Printable Executive Report (.html)
         </button>
+
+        <PptxDeckExporter dataset={dataset} data={data} columns={columns} />
       </div>
     </div>
   );
