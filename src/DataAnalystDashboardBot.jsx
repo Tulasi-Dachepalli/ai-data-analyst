@@ -9,6 +9,7 @@ import WhatIfSimulator from "./WhatIfSimulator";
 import GoogleSheetsImporter, { extractGoogleSheetCsvUrl } from "./GoogleSheetsImporter";
 import VoiceInputButton from "./VoiceInputButton";
 import TextToSpeechButton from "./TextToSpeechButton";
+import PaymentCheckoutModal from "./PaymentCheckoutModal";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -4579,6 +4580,19 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
   const [answerToast, setAnswerToast] = useState(null);
   const [showGoogleSheetsModal, setShowGoogleSheetsModal] = useState(false);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState("pro");
+
+  const handleCheckoutSuccess = async (newTier) => {
+    try {
+      await api.upgradeSubscription(newTier);
+    } catch (err) {
+      console.warn("Backend tier upgrade notice:", err);
+    }
+    const currentUser = JSON.parse(localStorage.getItem("aida_user") || "{}");
+    const updatedUser = { ...currentUser, tier: newTier };
+    localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+  };
 
   const handleGoogleSheetsSuccess = (data) => {
     const safeRows = data.rows || [];
@@ -5840,23 +5854,10 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   <div style={{ fontSize: 11, color: "#71717A", marginBottom: 20 }}>₹23,999 billed annually (includes GST)</div>
 
                   <button
-                    onClick={async () => {
-                      try {
-                        setLoading(true);
-                        setLoadingLabel("Upgrading to Pro plan…");
-                        const res = await api.upgradeSubscription("pro");
-                        if (res && res.success) {
-                          const nextUser = { ...user, tier: "pro" };
-                          localStorage.setItem("aida_user", JSON.stringify(nextUser));
-                          setShowUpgradeModal(false);
-                          alert("🎉 Congratulations! You have successfully upgraded to Pro plan!");
-                          window.location.reload();
-                        }
-                      } catch (err) {
-                        alert("Failed to upgrade subscription: " + err.message);
-                      } finally {
-                        setLoading(false);
-                      }
+                    onClick={() => {
+                      setCheckoutPlan("pro");
+                      setShowUpgradeModal(false);
+                      setShowCheckoutModal(true);
                     }}
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: "none", background: "#FFF", color: "#000", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 24, transition: "opacity 0.2s" }}
                   >
@@ -5889,7 +5890,11 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   <div style={{ fontSize: 11, color: "#71717A", marginBottom: 20 }}>INR / month billed monthly (includes GST)</div>
 
                   <button
-                    onClick={() => alert("Max Plan selected — dedicated enterprise server will be provisioned.")}
+                    onClick={() => {
+                      setCheckoutPlan("max");
+                      setShowUpgradeModal(false);
+                      setShowCheckoutModal(true);
+                    }}
                     style={{ width: "100%", padding: "12px 16px", borderRadius: 12, border: "1px solid #3F3F46", background: "#FFF", color: "#000", fontSize: 14, fontWeight: 700, cursor: "pointer", marginBottom: 10 }}
                   >
                     Get Max plan
@@ -5933,6 +5938,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
           isOpen={showGoogleSheetsModal}
           onClose={() => setShowGoogleSheetsModal(false)}
           onImportSuccess={handleGoogleSheetsSuccess}
+        />
+      )}
+
+      {showCheckoutModal && (
+        <PaymentCheckoutModal
+          isOpen={showCheckoutModal}
+          onClose={() => setShowCheckoutModal(false)}
+          selectedPlan={checkoutPlan}
+          onPaymentSuccess={handleCheckoutSuccess}
         />
       )}
     </div>
