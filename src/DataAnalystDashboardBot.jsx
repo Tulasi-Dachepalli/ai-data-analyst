@@ -17,6 +17,7 @@ import CompanyBrandingManager from "./CompanyBrandingManager";
 import DeepStatisticalSummary from "./DeepStatisticalSummary";
 import SqlQueryGenerator from "./SqlQueryGenerator";
 import ClusterSegmentation from "./ClusterSegmentation";
+import ChartThemeSelector, { getChartPalette } from "./ChartThemeSelector";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -626,6 +627,9 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
   if (!normData || normData.length === 0) return null;
   const h = height || 210;
   const cType = String(chartType || "bar").toLowerCase();
+  const palette = getChartPalette();
+  const themeColors = palette.colors;
+  const primaryColor = palette.primary || themeColors[0] || "#3E6F8E";
 
   if (cType === "map") {
     return <RegionMap data={normData} />;
@@ -639,7 +643,7 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
           dataKey="value"
           nameKey="group"
           stroke="#fff"
-          fill="#3E6F8E"
+          fill={primaryColor}
         />
       </ResponsiveContainer>
     );
@@ -650,7 +654,7 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
       <ResponsiveContainer width="100%" height={h}>
         <PieChart>
           <Pie data={normData} dataKey="value" nameKey="group" cx="50%" cy="50%" outerRadius={75} label={(d) => d.group}>
-            {normData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+            {normData.map((_, i) => <Cell key={i} fill={themeColors[i % themeColors.length]} />)}
           </Pie>
           <Tooltip />
         </PieChart>
@@ -669,7 +673,7 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
             <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
             <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
             <Tooltip />
-            <Line type="monotone" dataKey="value" stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} name={metricLabel || "Value"} />
+            <Line type="monotone" dataKey="value" stroke={primaryColor} strokeWidth={2} dot={{ r: 3 }} name={metricLabel || "Value"} />
             {regResult && (
               <Line type="linear" dataKey="trendline" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Trendline (Linear Fit)" />
             )}
@@ -687,7 +691,7 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
           <XAxis dataKey="group" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
           <YAxis dataKey="value" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
           <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-          <Scatter name={metricLabel || "Scatter"} data={normData} fill="#3E6F8E" />
+          <Scatter name={metricLabel || "Scatter"} data={normData} fill={primaryColor} />
         </ScatterChart>
       </ResponsiveContainer>
     );
@@ -700,7 +704,7 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
         <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} interval={0} angle={-20} textAnchor="end" height={44} />
         <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
         <Tooltip />
-        <Bar dataKey="value" fill="#3E6F8E" name={metricLabel || "Value"} radius={[3, 3, 0, 0]} />
+        <Bar dataKey="value" fill={primaryColor} name={metricLabel || "Value"} radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -5533,6 +5537,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
               >
                 {isFullScreen ? "↙ Exit Fullscreen" : "⛶ Fullscreen Mode"}
               </button>
+
+              <ChartThemeSelector onThemeChange={() => setThreads(prev => [...prev])} />
 
               <button
                 onClick={() => {
