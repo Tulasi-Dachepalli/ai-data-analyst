@@ -287,6 +287,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("transform")} style={navItemStyle(currentView === "transform")} title="Data Transformation & Calculated Column Studio">
+          <Icons.Code />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Formula Studio</span>
+            <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Calculated Columns & Filters</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
