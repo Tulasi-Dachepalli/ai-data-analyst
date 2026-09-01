@@ -239,6 +239,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("branding")} style={navItemStyle(currentView === "branding")} title="Corporate Logo & Custom PDF Report Header Settings">
+          <Icons.Security />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Corporate Branding</span>
+            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🏢 Custom Logo & Headers</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team

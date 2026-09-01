@@ -1,4 +1,5 @@
 import React from "react";
+import { getCompanyBranding } from "./CompanyBrandingManager";
 
 export default function ExecutiveReportGenerator({ dataset, data = [], columns = [], aiInsights = "" }) {
   const handleDownloadReport = () => {
@@ -6,6 +7,7 @@ export default function ExecutiveReportGenerator({ dataset, data = [], columns =
     const totalCols = columns.length;
     const reportDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     const datasetName = dataset?.name || "Uploaded Dataset";
+    const branding = getCompanyBranding();
 
     // Summary calculation
     const numericCols = columns.filter(col => data.some(r => typeof r[col] === "number" || !isNaN(Number(r[col]))));
@@ -28,14 +30,14 @@ export default function ExecutiveReportGenerator({ dataset, data = [], columns =
       <html>
       <head>
         <meta charset="utf-8" />
-        <title>Executive Analytics Report - ${datasetName}</title>
+        <title>${branding.companyName} — Executive Analytics Report (${datasetName})</title>
         <style>
           body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #F3F4F6; color: #1F2937; margin: 0; padding: 40px 20px; }
           .container { max-width: 800px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #F3F4F6; padding-bottom: 20px; margin-bottom: 30px; }
-          .badge { background: #8B5CF6; color: #FFF; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+          .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid ${branding.brandColor}; padding-bottom: 20px; margin-bottom: 30px; }
+          .badge { background: ${branding.brandColor}; color: #FFF; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
           .section { margin-bottom: 32px; }
-          .section-title { font-size: 18px; font-weight: 700; color: #1F2937; margin-bottom: 16px; border-left: 4px solid #8B5CF6; padding-left: 10px; }
+          .section-title { font-size: 18px; font-weight: 700; color: #1F2937; margin-bottom: 16px; border-left: 4px solid ${branding.brandColor}; padding-left: 10px; }
           .kpi-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
           .footer { text-align: center; border-top: 1px solid #E5E7EB; padding-top: 20px; font-size: 12px; color: #9CA3AF; margin-top: 40px; }
           @media print { body { background: #FFF; padding: 0; } .container { box-shadow: none; border-radius: 0; } }
