@@ -231,6 +231,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("correlation")} style={navItemStyle(currentView === "correlation")} title="Pearson Correlation Matrix & Heatmap Grid">
+          <Icons.Insights />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Correlation Matrix</span>
+            <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>📊 Heatmap Grid & Matrix</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team

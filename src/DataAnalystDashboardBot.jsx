@@ -11,6 +11,7 @@ import VoiceInputButton from "./VoiceInputButton";
 import TextToSpeechButton from "./TextToSpeechButton";
 import PaymentCheckoutModal from "./PaymentCheckoutModal";
 import ThresholdAlertManager from "./ThresholdAlertManager";
+import CorrelationHeatmap from "./CorrelationHeatmap";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -5610,7 +5611,10 @@ export default function DataAnalystDashboardBot({ currentView }) {
             {currentView === "alerts" && (
               <ThresholdAlertManager data={active?.rows} columns={active?.columns} />
             )}
-            {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
+            {currentView === "correlation" && (
+              <CorrelationHeatmap data={active?.rows} columns={active?.columns} />
+            )}
+            {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && currentView !== "correlation" && (
               <div style={{ textAlign: "center", color: "#A6A196", fontSize: 13.5, marginTop: 100, lineHeight: 1.7 }}>
                 <div style={{ fontSize: 17, color: "#2B2A27", fontWeight: 600, marginBottom: 6 }}>Data Analyst</div>
                 Upload your file (csv or excel) - I'll build a dashboard and you can ask follow-up questions.
