@@ -133,7 +133,27 @@ export default function ExecutiveReportGenerator({ dataset, data = [], columns =
             boxShadow: "0 2px 6px rgba(139,92,246,0.3)"
           }}
         >
-          📥 Download Printable Executive Report (.html)
+          📥 Printable Executive Report (.html)
+        </button>
+
+        <button
+          onClick={() => window.print()}
+          style={{
+            padding: "10px 18px",
+            fontSize: 13,
+            fontWeight: 700,
+            backgroundColor: "#059669",
+            color: "#FFF",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            boxShadow: "0 2px 6px rgba(5,150,105,0.3)"
+          }}
+        >
+          📄 Save as PDF (.pdf)
         </button>
 
         <PptxDeckExporter dataset={dataset} data={data} columns={columns} />
