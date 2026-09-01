@@ -383,6 +383,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("geomap")} style={navItemStyle(currentView === "geomap")} title="Interactive Regional Geo-Map Heatmap Visualizer">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Geo-Map Visualizer</span>
+            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🗺️ Regional Density Heatmap</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
