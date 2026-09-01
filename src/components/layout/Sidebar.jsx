@@ -319,6 +319,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("forecast")} style={navItemStyle(currentView === "forecast")} title="AI Predictive Time-Series Forecasting & 95% Confidence Bounds">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>AI Forecast</span>
+            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Time-Series Trends</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
