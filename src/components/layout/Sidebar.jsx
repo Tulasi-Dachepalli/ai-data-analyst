@@ -247,6 +247,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("stats")} style={navItemStyle(currentView === "stats")} title="Deep Descriptive Statistics, Percentiles & Skewness">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Statistical Profiling</span>
+            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📐 Percentiles & Skewness</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
