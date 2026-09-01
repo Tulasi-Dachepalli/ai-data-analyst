@@ -327,6 +327,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("montecarlo")} style={navItemStyle(currentView === "montecarlo")} title="Monte Carlo Risk & Financial Scenario Simulator">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Monte Carlo Risk</span>
+            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎲 1,000 Stochastic Runs</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
