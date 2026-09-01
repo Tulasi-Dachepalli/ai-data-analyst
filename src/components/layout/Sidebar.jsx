@@ -311,6 +311,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("search")} style={navItemStyle(currentView === "search")} title="Advanced Data Search, Multi-Column Sorting & Excel Exporter">
+          <Icons.Code />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Subset Explorer</span>
+            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🔍 Search, Sort & Excel Export</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
