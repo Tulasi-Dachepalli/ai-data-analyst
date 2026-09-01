@@ -93,15 +93,16 @@ function anyIdKeywords(colName) {
 if (typeof window !== "undefined") window.anyIdKeywords = anyIdKeywords;
 
 function computeColumnStats(rows, col) {
-  const values = rows.map(r => r[col]);
+  const evalRows = rows.length > 5000 ? rows.slice(0, 5000) : rows;
+  const values = evalRows.map(r => r[col]);
   const nonMissing = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
-  const missing = values.length - nonMissing.length;
-  const missingRate = values.length ? +((missing / values.length) * 100).toFixed(1) : 0;
+  const missing = evalRows.length - nonMissing.length;
+  const missingRate = evalRows.length ? +((missing / evalRows.length) * 100).toFixed(1) : 0;
   const isHighMissing = missingRate > 50.0;
   const type = detectType(values, col);
   const trimmedStrings = nonMissing.map(v => String(v).trim());
   const unique = new Set(trimmedStrings).size;
-  const base = { name: col, type, count: rows.length, missing, missingRate, isHighMissing, unique };
+  const base = { name: col, type, count: rows.length, missing: Math.round(missingRate * rows.length / 100), missingRate, isHighMissing, unique };
   if (type === "numeric") {
     const nums = nonMissing.map(Number).filter(n => !isNaN(n));
     const sorted = [...nums].sort((a, b) => a - b);
@@ -157,18 +158,20 @@ function mapBackendStats(backendStats) {
 }
 
 function calculateDataQuality(rows, columns) {
+  const evalRows = rows.length > 5000 ? rows.slice(0, 5000) : rows;
+  const sampleCells = evalRows.length * columns.length;
   const totalCells = rows.length * columns.length;
   let missingCells = 0;
-  rows.forEach(row => {
+  evalRows.forEach(row => {
     columns.forEach(col => {
       const v = row[col];
-      if (v === null || v === undefined || String(v).trim() === "") missingCells++;
+      if (v === null || v === undefined || String(v).trim() !== "") missingCells++;
     });
   });
 
   const seenHashes = new Set();
   let duplicateRows = 0;
-  (rows || []).forEach(row => {
+  evalRows.forEach(row => {
     const rowHash = JSON.stringify((columns || []).map(c => String(row[c] ?? "").trim()));
     if (seenHashes.has(rowHash)) {
       duplicateRows++;
@@ -177,9 +180,11 @@ function calculateDataQuality(rows, columns) {
     }
   });
 
-  const missingRate = totalCells ? missingCells / totalCells : 0;
+  const missingRate = sampleCells ? missingCells / sampleCells : 0;
+  const scaledMissing = Math.round(missingRate * totalCells);
+  const scaledDuplicates = Math.round(duplicateRows * (rows.length / evalRows.length));
   const score = Math.max(0, Math.round((1 - missingRate) * 100));
-  return { score, missingCells, missingRate: +(missingRate * 100).toFixed(2), duplicateRows };
+  return { score, missingCells: scaledMissing, missingRate: +(missingRate * 100).toFixed(2), duplicateRows: scaledDuplicates };
 }
 
 function detectOutliers(rows, column) {
