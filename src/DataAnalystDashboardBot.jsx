@@ -6,6 +6,7 @@ import Table from "./components/ui/Table";
 import DataHealthInspector from "./DataHealthInspector";
 import ExecutiveReportGenerator from "./ExecutiveReportGenerator";
 import WhatIfSimulator from "./WhatIfSimulator";
+import GoogleSheetsImporter, { extractGoogleSheetCsvUrl } from "./GoogleSheetsImporter";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -4575,6 +4576,41 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
 
   const [answerToast, setAnswerToast] = useState(null);
+  const [showGoogleSheetsModal, setShowGoogleSheetsModal] = useState(false);
+
+  const handleGoogleSheetsSuccess = (data) => {
+    const safeRows = data.rows || [];
+    const safeCols = data.columns || [];
+    const safeStats = safeCols.map(c => computeColumnStats(safeRows, c));
+    const safeQuality = calculateDataQuality(safeRows, safeCols);
+    const plan = pickDashboardPlan(safeStats);
+
+    const kpis = plan.kpiCols.map(c => ({ label: `Avg ${c.name}`, value: (c.mean != null) ? c.mean.toLocaleString() : "0" }));
+    const categoryCharts = plan.categoryCols.map(c => ({ title: `Count by ${c.name}`, metricLabel: "count", type: "bar", data: (c.top || []).map(t => ({ name: t.value, count: t.count })) }));
+    const numericCharts = plan.numCompareCols.map(c => ({ title: `Average by Category`, metricLabel: c.numCol, type: "bar", data: (c.groups || []).map(g => ({ name: g.name, [c.numCol]: g.mean })) }));
+
+    const initialDashboard = { narrative: `Imported **${safeRows.length.toLocaleString()} rows** and **${safeCols.length} columns** from Google Sheets.`, kpis, charts: [...categoryCharts, ...numericCharts] };
+
+    const newId = `gs-${Date.now()}`;
+    const newThread = {
+      id: newId,
+      name: data.name,
+      rows: safeRows,
+      columns: safeCols,
+      stats: safeStats,
+      quality: safeQuality,
+      dashboard: initialDashboard,
+      googleSheetUrl: data.googleSheetUrl,
+      loaded: true,
+      messages: [
+        { kind: "file", fileName: data.name, rowCount: safeRows.length, colCount: safeCols.length },
+        { kind: "dashboard" }
+      ]
+    };
+
+    setThreads(prev => [newThread, ...prev]);
+    setActiveId(newId);
+  };
 
   const handleSend = async (overrideQuestion) => {
     const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : input;
@@ -5256,16 +5292,23 @@ export default function DataAnalystDashboardBot({ currentView }) {
       onDrop={(e) => { e.preventDefault(); setDragOver(false); handleFiles(e.dataTransfer.files); }}
     >
       <div className="aida-dashboard-sidebar">
-        <button onClick={() => {
-          if (usageStats && usageStats.tier === "free" && usageStats.usedTokens >= usageStats.limit) {
-            setShowUpgradeModal(true);
-          } else if (fileInputRef.current) {
-            fileInputRef.current.click();
-          }
-        }}
-          style={{ display: "flex", alignItems: "center", gap: 8, background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(62, 111, 142, 0.25)" }}>
-          <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
-        </button>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <button onClick={() => {
+            if (usageStats && usageStats.tier === "free" && usageStats.usedTokens >= usageStats.limit) {
+              setShowUpgradeModal(true);
+            } else if (fileInputRef.current) {
+              fileInputRef.current.click();
+            }
+          }}
+            style={{ display: "flex", alignItems: "center", gap: 8, background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(62, 111, 142, 0.25)" }}>
+            <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
+          </button>
+          
+          <button onClick={() => setShowGoogleSheetsModal(true)}
+            style={{ display: "flex", alignItems: "center", gap: 8, background: "#10B981", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(16, 185, 129, 0.25)" }}>
+            <span style={{ fontSize: 14 }}>🔗</span> Import Google Sheet
+          </button>
+        </div>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
         <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 6, padding: "0 4px" }}>Recent</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: 1 }}>
@@ -5372,6 +5415,55 @@ export default function DataAnalystDashboardBot({ currentView }) {
             </div>
 
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {active && active.googleSheetUrl && (
+                <button
+                  onClick={async () => {
+                    const csvUrl = extractGoogleSheetCsvUrl(active.googleSheetUrl);
+                    if (!csvUrl) return;
+                    setLoading(true);
+                    setLoadingLabel("Syncing latest rows from Google Sheets…");
+                    try {
+                      const response = await fetch(csvUrl);
+                      if (!response.ok) throw new Error("Could not fetch Google Sheet. Check sharing permissions.");
+                      const csvText = await response.text();
+                      Papa.parse(csvText, {
+                        header: true,
+                        skipEmptyLines: true,
+                        complete: (results) => {
+                          const newRows = results.data;
+                          const newCols = results.meta.fields || Object.keys(newRows[0] || {});
+                          const newStats = newCols.map(c => computeColumnStats(newRows, c));
+                          const newQuality = calculateDataQuality(newRows, newCols);
+
+                          updateThread(active.id, prev => ({
+                            ...prev,
+                            rows: newRows,
+                            columns: newCols,
+                            stats: newStats,
+                            quality: newQuality
+                          }));
+                          alert("✅ Successfully synced latest data from Google Sheets!");
+                          setLoading(false);
+                        }
+                      });
+                    } catch (err) {
+                      alert("Failed to sync Google Sheet: " + err.message);
+                      setLoading(false);
+                    }
+                  }}
+                  title="Refetch latest live rows from Google Sheets"
+                  style={{
+                    fontSize: 12, fontWeight: 700,
+                    color: "#FFF", background: "#10B981",
+                    border: "none", borderRadius: 7, padding: "7px 14px",
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                    boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)"
+                  }}
+                >
+                  🔄 Sync Google Sheet
+                </button>
+              )}
+
               <button
                 onClick={() => setIsFullScreen(prev => !prev)}
                 title={isFullScreen ? "Exit Fullscreen Mode" : "Expand Analysis to Fullscreen"}
@@ -5830,6 +5922,14 @@ export default function DataAnalystDashboardBot({ currentView }) {
             </div>
           </div>
         </div>
+      )}
+
+      {showGoogleSheetsModal && (
+        <GoogleSheetsImporter
+          isOpen={showGoogleSheetsModal}
+          onClose={() => setShowGoogleSheetsModal(false)}
+          onImportSuccess={handleGoogleSheetsSuccess}
+        />
       )}
     </div>
   );
