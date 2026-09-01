@@ -295,6 +295,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("pareto")} style={navItemStyle(currentView === "pareto")} title="Pareto 80/20 Cumulative Distribution & Dual-Axis Chart">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Pareto Analysis</span>
+            <span style={{ fontSize: "10px", color: "#6366F1", fontWeight: 600 }}>📊 80/20 Rule Distribution</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
