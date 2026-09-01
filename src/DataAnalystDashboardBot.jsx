@@ -22,6 +22,7 @@ import LanguageTranslator, { getAppLanguage } from "./LanguageTranslator";
 import PivotTableEngine from "./PivotTableEngine";
 import CohortRetentionHeatmap from "./CohortRetentionHeatmap";
 import DataFormulaStudio from "./DataFormulaStudio";
+import ChartAnnotationPin from "./ChartAnnotationPin";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -632,6 +633,7 @@ function normalizeChartData(chartData, xAxisKey, yAxisKey) {
 }
 
 function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
+  const [annotations, setAnnotations] = useState([]);
   const normData = normalizeChartData(data, xAxis, yAxis);
   if (!normData || normData.length === 0) return null;
   const h = height || 210;
@@ -640,34 +642,53 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
   const themeColors = palette.colors;
   const primaryColor = palette.primary || themeColors[0] || "#3E6F8E";
 
+  const renderAnnotations = () => (
+    <ChartAnnotationPin
+      annotations={annotations}
+      onAddAnnotation={anno => setAnnotations(prev => [...prev, anno])}
+      onDeleteAnnotation={id => setAnnotations(prev => prev.filter(a => a.id !== id))}
+    />
+  );
+
   if (cType === "map") {
-    return <RegionMap data={normData} />;
+    return (
+      <div>
+        <RegionMap data={normData} />
+        {renderAnnotations()}
+      </div>
+    );
   }
 
   if (cType === "treemap") {
     return (
-      <ResponsiveContainer width="100%" height={h}>
-        <Treemap
-          data={normData}
-          dataKey="value"
-          nameKey="group"
-          stroke="#fff"
-          fill={primaryColor}
-        />
-      </ResponsiveContainer>
+      <div>
+        <ResponsiveContainer width="100%" height={h}>
+          <Treemap
+            data={normData}
+            dataKey="value"
+            nameKey="group"
+            stroke="#fff"
+            fill={primaryColor}
+          />
+        </ResponsiveContainer>
+        {renderAnnotations()}
+      </div>
     );
   }
 
   if (cType === "pie" && normData.length <= 8) {
     return (
-      <ResponsiveContainer width="100%" height={h}>
-        <PieChart>
-          <Pie data={normData} dataKey="value" nameKey="group" cx="50%" cy="50%" outerRadius={75} label={(d) => d.group}>
-            {normData.map((_, i) => <Cell key={i} fill={themeColors[i % themeColors.length]} />)}
-          </Pie>
-          <Tooltip />
-        </PieChart>
-      </ResponsiveContainer>
+      <div>
+        <ResponsiveContainer width="100%" height={h}>
+          <PieChart>
+            <Pie data={normData} dataKey="value" nameKey="group" cx="50%" cy="50%" outerRadius={75} label={(d) => d.group}>
+              {normData.map((_, i) => <Cell key={i} fill={themeColors[i % themeColors.length]} />)}
+            </Pie>
+            <Tooltip />
+          </PieChart>
+        </ResponsiveContainer>
+        {renderAnnotations()}
+      </div>
     );
   }
   if (cType === "line") {
@@ -689,33 +710,40 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
           </LineChart>
         </ResponsiveContainer>
         {regResult && <RegressionTrendline chartData={normData} metricLabel={metricLabel} />}
+        {renderAnnotations()}
       </div>
     );
   }
   if (cType === "scatter") {
     return (
-      <ResponsiveContainer width="100%" height={h}>
-        <ScatterChart margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-          <XAxis dataKey="group" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
-          <YAxis dataKey="value" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
-          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-          <Scatter name={metricLabel || "Scatter"} data={normData} fill={primaryColor} />
-        </ScatterChart>
-      </ResponsiveContainer>
+      <div>
+        <ResponsiveContainer width="100%" height={h}>
+          <ScatterChart margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+            <XAxis dataKey="group" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
+            <YAxis dataKey="value" stroke="var(--text-muted)" fontSize={10.5} tickLine={false} />
+            <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+            <Scatter name={metricLabel || "Scatter"} data={normData} fill={primaryColor} />
+          </ScatterChart>
+        </ResponsiveContainer>
+        {renderAnnotations()}
+      </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={h}>
-      <BarChart data={normData}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-        <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} interval={0} angle={-20} textAnchor="end" height={44} />
-        <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
-        <Tooltip />
-        <Bar dataKey="value" fill={primaryColor} name={metricLabel || "Value"} radius={[3, 3, 0, 0]} />
-      </BarChart>
-    </ResponsiveContainer>
+    <div>
+      <ResponsiveContainer width="100%" height={h}>
+        <BarChart data={normData}>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+          <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} interval={0} angle={-20} textAnchor="end" height={44} />
+          <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
+          <Tooltip />
+          <Bar dataKey="value" fill={primaryColor} name={metricLabel || "Value"} radius={[3, 3, 0, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+      {renderAnnotations()}
+    </div>
   );
 }
 
