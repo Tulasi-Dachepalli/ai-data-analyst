@@ -263,6 +263,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("clustering")} style={navItemStyle(currentView === "clustering")} title="AI K-Means Unsupervised Clustering & Segmentation">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Cluster Segmentation</span>
+            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🤖 K-Means ML Clustering</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
