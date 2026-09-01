@@ -52,7 +52,12 @@ function detectType(values, colName) {
   const nonEmpty = values.filter(v => v !== null && v !== undefined && String(v).trim() !== "");
   if (nonEmpty.length === 0) return "categorical";
   
-  // If column name indicates Code, ID, UUID, Key, SKU, AUDIT, etc., NEVER mislabel as Date!
+  // 1. Explicit Date Column Name Match
+  if (colName && /date|time|created|updated|joined|month|year|timestamp|day|dob|^dt$/i.test(colName)) {
+    return "date";
+  }
+
+  // 2. If column name indicates Code, ID, UUID, Key, SKU, AUDIT, etc., NEVER mislabel as Date!
   if (colName && /code|id|uuid|guid|sku|ref|token|hash|number|^aud/i.test(colName)) {
     const sample = nonEmpty.slice(0, 60);
     const numCount = sample.filter(v => v !== "" && !isNaN(Number(v))).length;
@@ -60,20 +65,24 @@ function detectType(values, colName) {
     return "categorical";
   }
 
+  // 3. Strict Date Value Detection
   const sample = nonEmpty.slice(0, 60);
-  const numCount = sample.filter(v => v !== "" && !isNaN(Number(v))).length;
-  if (numCount / sample.length > 0.8) return "numeric";
-
-  // Strict Date Detection: Must match ISO YYYY-MM-DD or standard date format, and NOT strings like "AUD-101"!
   const dateRegex = /^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}/;
   const dateCount = sample.filter(v => {
+    if (v instanceof Date && !isNaN(v.getTime())) return true;
     const str = String(v).trim();
-    if (str.length < 6 || !dateRegex.test(str)) return false;
+    if (str.length < 6) return false;
+    if (dateRegex.test(str)) return true;
     const t = Date.parse(str);
     return !isNaN(t) && isNaN(Number(str));
   }).length;
 
-  if (dateCount / sample.length > 0.8) return "date";
+  if (dateCount / sample.length > 0.6) return "date";
+
+  // 4. Numeric Detection (only if not date or code/id)
+  const numCount = sample.filter(v => v !== "" && !isNaN(Number(v))).length;
+  if (numCount / sample.length > 0.8) return "numeric";
+
   return "categorical";
 }
 
@@ -327,7 +336,8 @@ function pickDashboardPlan(stats) {
     : validStats.filter(s => s.type === "categorical" && s.unique >= 1 && s.unique <= 50);
 
   const dateCols = validStats.filter(s => s.type === "date");
-  const kpiCols = numeric.length ? numeric.slice(0, 4) : validStats.slice(0, 4);
+  const nonDateValid = validStats.filter(s => s.type !== "date" && !/date|time|created|updated|joined|month|year|timestamp|day|dob|^dt$/i.test(s.name));
+  const kpiCols = numeric.length ? numeric.slice(0, 4) : nonDateValid.slice(0, 4);
   const categoryCols = categorical.length ? categorical.slice(0, 4) : validStats.slice(0, 2);
   const trendPlan = (dateCols.length && dateCols[0]?.name && numeric.length && numeric[0]?.name) ? { dateCol: dateCols[0].name, metricCol: numeric[0].name } : null;
   const distributionCols = numeric.slice(0, 2);
@@ -411,7 +421,7 @@ function extractBestSheetData(sheet) {
   }
 
   // 3. Parse json starting from bestHeaderIdx
-  const rawRows = XLSX.utils.sheet_to_json(sheet, { range: bestHeaderIdx, defval: "" });
+  const rawRows = XLSX.utils.sheet_to_json(sheet, { range: bestHeaderIdx, defval: "", raw: false, dateNF: "yyyy-mm-dd" });
   if (!rawRows || rawRows.length === 0) return { rows: [], columns: [] };
 
   const rawCols = Object.keys(rawRows[0] || {}).filter(c => c && !c.startsWith("__EMPTY") && c.trim() !== "");
@@ -419,7 +429,13 @@ function extractBestSheetData(sheet) {
   const cleanRows = rawRows.map(r => {
     const cleanObj = {};
     rawCols.forEach(col => {
-      cleanObj[col] = r[col];
+      let val = r[col];
+      if (val instanceof Date) {
+        val = val.toISOString().slice(0, 10);
+      } else if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
+        val = val.slice(0, 10);
+      }
+      cleanObj[col] = val;
     });
     return cleanObj;
   }).filter(r => Object.values(r).some(v => v !== null && v !== undefined && String(v).trim() !== ""));
@@ -516,7 +532,7 @@ function parseFile(file) {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target.result, { type: "binary" });
+          const wb = XLSX.read(e.target.result, { type: "binary", cellDates: true });
           const best = selectBestExcelSheet(wb);
           if (!best) throw new Error("No data sheet found in workbook.");
           resolve({ rows: best.rows, columns: best.columns });
