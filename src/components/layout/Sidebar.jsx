@@ -255,6 +255,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("sql")} style={navItemStyle(currentView === "sql")} title="AI Natural Language to ANSI SQL Translation & Execution">
+          <Icons.Code />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>AI SQL Generator</span>
+            <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Text-to-SQL & Live Execution</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
