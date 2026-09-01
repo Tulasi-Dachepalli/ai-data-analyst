@@ -391,6 +391,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("webhooks")} style={navItemStyle(currentView === "webhooks")} title="Real-Time Slack & Webhook Anomaly Alert Dispatcher">
+          <Icons.Code />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Slack & Webhooks</span>
+            <span style={{ fontSize: "10px", color: "#4A154B", fontWeight: 600 }}>⚡ Real-Time Anomaly Alerts</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
