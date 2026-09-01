@@ -343,6 +343,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("abc")} style={navItemStyle(currentView === "abc")} title="ABC Inventory & Revenue Categorization Matrix">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>ABC Classification</span>
+            <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>📦 Class A / B / C Matrix</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
