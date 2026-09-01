@@ -18,6 +18,7 @@ import DeepStatisticalSummary from "./DeepStatisticalSummary";
 import SqlQueryGenerator from "./SqlQueryGenerator";
 import ClusterSegmentation from "./ClusterSegmentation";
 import ChartThemeSelector, { getChartPalette } from "./ChartThemeSelector";
+import LanguageTranslator, { getAppLanguage } from "./LanguageTranslator";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -366,13 +367,18 @@ function pickDashboardPlan(stats) {
 async function callClaude(system, userText, { requestType, datasetId } = {}) {
   const base = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "https://ai-data-analyst-backend-2.onrender.com";
   const token = localStorage.getItem("aida_token");
+  const targetLang = getAppLanguage();
+  const langSystem = targetLang && targetLang.code !== "en"
+    ? `${system}\n\nIMPORTANT INSTRUCTION: Please generate your entire output natively in the ${targetLang.name} language.`
+    : system;
+
   const res = await fetch(`${base}/api/analyze`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {})
     },
-    body: JSON.stringify({ system, userText, requestType, datasetId })
+    body: JSON.stringify({ system: langSystem, userText, requestType, datasetId })
   });
   if (res.status === 401) {
     // Session expired or invalid — send back to the login screen.
@@ -5539,6 +5545,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
               </button>
 
               <ChartThemeSelector onThemeChange={() => setThreads(prev => [...prev])} />
+              <LanguageTranslator />
 
               <button
                 onClick={() => {
