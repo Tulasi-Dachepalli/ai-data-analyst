@@ -303,6 +303,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("anomalies")} style={navItemStyle(currentView === "anomalies")} title="AI Outlier & Anomaly Root-Cause Investigator">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Anomaly Investigator</span>
+            <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>🚨 Outliers & Root Cause AI</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
