@@ -1,5 +1,16 @@
 const base = () => import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "https://ai-data-analyst-backend-2.onrender.com";
 
+// Auto Keep-Alive Poller (pings Render backend every 4 mins to prevent cold-start sleeps)
+export function pingBackendHealth() {
+  fetch(`${base()}/health`, { method: "GET", mode: "cors" }).catch(() => {});
+}
+
+// Start keep-alive interval automatically
+if (typeof window !== "undefined") {
+  pingBackendHealth();
+  setInterval(pingBackendHealth, 4 * 60 * 1000); // Ping every 4 minutes
+}
+
 function authHeaders() {
   const token = localStorage.getItem("aida_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
