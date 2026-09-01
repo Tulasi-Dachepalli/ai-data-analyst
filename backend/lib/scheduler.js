@@ -28,6 +28,18 @@ export function initScheduler() {
   // Run initial check 30 seconds after server startup
   setTimeout(checkAndRunMonthlyReport, 30000);
 
-  // Set recurring interval check
+  // Set recurring interval check for monthly report
   setInterval(checkAndRunMonthlyReport, TWELVE_HOURS);
+
+  // Self Keep-Alive Pinger (Pings health URL every 5 minutes to prevent cold starts)
+  const FIVE_MINUTES = 5 * 60 * 1000;
+  const selfKeepAlive = async () => {
+    try {
+      const backendUrl = process.env.BACKEND_URL || "https://ai-data-analyst-backend-2.onrender.com";
+      await fetch(`${backendUrl}/health`);
+    } catch (e) {
+      // Silent catch
+    }
+  };
+  setInterval(selfKeepAlive, FIVE_MINUTES);
 }

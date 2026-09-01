@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DataAnalystDashboardBot from "./DataAnalystDashboardBot";
 import AuthPage from "./AuthPage";
 import AdminPage from "./AdminPage";
@@ -17,6 +17,23 @@ export default function App() {
   });
   const [view, setView] = useState("dashboard"); // "dashboard" | "admin" | "trust"
   const [resendState, setResendState] = useState("idle"); // "idle" | "sending" | "sent" | "error"
+  const [isWarmingUp, setIsWarmingUp] = useState(false);
+
+  useEffect(() => {
+    const pingBackend = async () => {
+      const base = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "https://ai-data-analyst-backend-2.onrender.com";
+      const start = Date.now();
+      try {
+        const res = await fetch(`${base}/health`);
+        if (Date.now() - start > 3000) {
+          setIsWarmingUp(false);
+        }
+      } catch (e) {
+        setIsWarmingUp(true);
+      }
+    };
+    pingBackend();
+  }, []);
 
   const handleAuthenticated = (t, u) => {
     setToken(t);
