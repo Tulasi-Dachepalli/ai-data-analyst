@@ -1,6 +1,7 @@
 import React from "react";
 import { getCompanyBranding } from "./CompanyBrandingManager";
 import PptxDeckExporter from "./PptxDeckExporter";
+import AiAudioNarrator from "./AiAudioNarrator";
 
 export default function ExecutiveReportGenerator({ dataset, data = [], columns = [], aiInsights = "" }) {
   const handleDownloadReport = () => {
@@ -158,6 +159,8 @@ export default function ExecutiveReportGenerator({ dataset, data = [], columns =
 
         <PptxDeckExporter dataset={dataset} data={data} columns={columns} />
       </div>
+
+      <AiAudioNarrator text={aiInsights} />
     </div>
   );
 }
