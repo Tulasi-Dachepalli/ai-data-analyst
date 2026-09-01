@@ -223,6 +223,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("alerts")} style={navItemStyle(currentView === "alerts")} title="Automated Slack & WhatsApp Threshold Notifications">
+          <Icons.Reports />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Threshold Alerts</span>
+            <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>📢 Slack & WhatsApp Webhooks</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
