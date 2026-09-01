@@ -375,6 +375,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("rfm")} style={navItemStyle(currentView === "rfm")} title="AI RFM Customer Loyalty & Churn Risk Segmentation">
+          <Icons.Team />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>RFM Segmentation</span>
+            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🏷️ Churn & Loyalty Matrix</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
