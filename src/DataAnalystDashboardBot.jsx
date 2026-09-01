@@ -12,6 +12,7 @@ import TextToSpeechButton from "./TextToSpeechButton";
 import PaymentCheckoutModal from "./PaymentCheckoutModal";
 import ThresholdAlertManager from "./ThresholdAlertManager";
 import CorrelationHeatmap from "./CorrelationHeatmap";
+import RegressionTrendline, { calculateLinearRegression } from "./RegressionTrendline";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -653,16 +654,25 @@ function ChartBlock({ chartType, data, metricLabel, height, xAxis, yAxis }) {
     );
   }
   if (cType === "line") {
+    const regResult = calculateLinearRegression(normData);
+    const lineData = regResult ? regResult.augmentedData : normData;
+
     return (
-      <ResponsiveContainer width="100%" height={h}>
-        <LineChart data={normData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
-          <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
-          <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
-          <Tooltip />
-          <Line type="monotone" dataKey="value" stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} name={metricLabel || "Value"} />
-        </LineChart>
-      </ResponsiveContainer>
+      <div>
+        <ResponsiveContainer width="100%" height={h}>
+          <LineChart data={lineData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" />
+            <XAxis dataKey="group" tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
+            <YAxis tick={{ fontSize: 10.5, fill: "var(--text-muted)" }} />
+            <Tooltip />
+            <Line type="monotone" dataKey="value" stroke="#3E6F8E" strokeWidth={2} dot={{ r: 3 }} name={metricLabel || "Value"} />
+            {regResult && (
+              <Line type="linear" dataKey="trendline" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Trendline (Linear Fit)" />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
+        {regResult && <RegressionTrendline chartData={normData} metricLabel={metricLabel} />}
+      </div>
     );
   }
   if (cType === "scatter") {
