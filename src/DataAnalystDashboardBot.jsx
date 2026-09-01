@@ -7,6 +7,8 @@ import DataHealthInspector from "./DataHealthInspector";
 import ExecutiveReportGenerator from "./ExecutiveReportGenerator";
 import WhatIfSimulator from "./WhatIfSimulator";
 import GoogleSheetsImporter, { extractGoogleSheetCsvUrl } from "./GoogleSheetsImporter";
+import VoiceInputButton from "./VoiceInputButton";
+import TextToSpeechButton from "./TextToSpeechButton";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -5643,6 +5645,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
                     <div style={{ whiteSpace: "pre-wrap" }}>
                       {renderFormattedText(m.content || m.answer || "The requested metrics were retrieved deterministically from the dataset context.")}
                     </div>
+                    <TextToSpeechButton text={m.content || m.answer} />
 
                     {/* Relevant columns information badge list */}
                     {m.relevant_columns && m.relevant_columns.length > 0 && (
@@ -5763,6 +5766,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10, background: "#FFFFFF", border: "1px solid #DDD8CE", borderRadius: 24, padding: "8px 10px 8px 16px", boxShadow: "0 3px 16px rgba(43, 42, 39, 0.04)" }}>
               <button onClick={() => fileInputRef.current && fileInputRef.current.click()} title="Attach a file"
                 style={{ width: 32, height: 32, borderRadius: "50%", border: "1px solid #DDD8CE", background: "#fff", color: "#8A8580", fontSize: 16, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 1, transition: "all 0.2s ease" }}>+</button>
+              <VoiceInputButton onSpeechResult={(transcript) => setInput(prev => (prev ? prev + " " + transcript : transcript))} />
               <textarea ref={textareaRef} value={input} onChange={(e) => { setInput(e.target.value); autoGrow(e); }}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder={active ? "Ask about your data…" : "Upload a file to begin, then ask away…"} rows={1}
