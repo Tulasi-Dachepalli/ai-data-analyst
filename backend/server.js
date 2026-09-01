@@ -8,6 +8,7 @@ import datasetsRouter from "./routes/datasets.js";
 import adminRouter from "./routes/admin.js";
 import { requireAuth, requireAdmin, requireTokenQuota } from "./middleware/auth.js";
 import pool, { initDb } from "./db.js";
+import { initScheduler } from "./lib/scheduler.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -99,8 +100,6 @@ app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   res.status(500).json({ error: "Something went wrong." });
 });
-
-import { initScheduler } from "./lib/scheduler.js";
 
 async function start() {
   if (!process.env.JWT_SECRET) {
