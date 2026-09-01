@@ -335,6 +335,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("cleaner")} style={navItemStyle(currentView === "cleaner")} title="1-Click Automated Missing Value Imputation & Data Cleaner">
+          <Icons.Code />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Data Auto-Cleaner</span>
+            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🧹 Impute & Clean Data</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team

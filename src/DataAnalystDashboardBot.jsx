@@ -28,6 +28,7 @@ import AnomalyInvestigator from "./AnomalyInvestigator";
 import DataSubsetExplorer from "./DataSubsetExplorer";
 import TimeSeriesForecasting from "./TimeSeriesForecasting";
 import MonteCarloSimulator from "./MonteCarloSimulator";
+import DataAutoCleaner from "./DataAutoCleaner";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -5744,7 +5745,37 @@ export default function DataAnalystDashboardBot({ currentView }) {
             {currentView === "montecarlo" && (
               <MonteCarloSimulator data={active?.rows} columns={active?.columns} />
             )}
-            {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && currentView !== "correlation" && currentView !== "branding" && currentView !== "stats" && currentView !== "sql" && currentView !== "clustering" && currentView !== "pivot" && currentView !== "cohort" && currentView !== "transform" && currentView !== "pareto" && currentView !== "anomalies" && currentView !== "search" && currentView !== "forecast" && currentView !== "montecarlo" && (
+            {currentView === "cleaner" && (
+              <DataAutoCleaner
+                data={active?.rows}
+                columns={active?.columns}
+                onUpdateDataset={(newRows, newCols) => {
+                  if (!activeId) return;
+                  const newStats = newCols.map(c => computeColumnStats(newRows, c));
+                  const newQuality = calculateDataQuality(newRows, newCols);
+                  const newPlan = pickDashboardPlan(newStats);
+
+                  setThreads(prev => prev.map(t => {
+                    if (t.id === activeId) {
+                      return {
+                        ...t,
+                        rows: newRows,
+                        columns: newCols,
+                        stats: newStats,
+                        quality: newQuality,
+                        dashboard: {
+                          ...t.dashboard,
+                          rawRows: newRows,
+                          plan: newPlan
+                        }
+                      };
+                    }
+                    return t;
+                  }));
+                }}
+              />
+            )}
+            {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && currentView !== "correlation" && currentView !== "branding" && currentView !== "stats" && currentView !== "sql" && currentView !== "clustering" && currentView !== "pivot" && currentView !== "cohort" && currentView !== "transform" && currentView !== "pareto" && currentView !== "anomalies" && currentView !== "search" && currentView !== "forecast" && currentView !== "montecarlo" && currentView !== "cleaner" && (
               <div style={{ textAlign: "center", color: "#A6A196", fontSize: 13.5, marginTop: 100, lineHeight: 1.7 }}>
                 <div style={{ fontSize: 17, color: "#2B2A27", fontWeight: 600, marginBottom: 6 }}>Data Analyst</div>
                 Upload your file (csv or excel) - I'll build a dashboard and you can ask follow-up questions.
