@@ -351,6 +351,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("benchmarks")} style={navItemStyle(currentView === "benchmarks")} title="Industry KPI Benchmarking & Performance Variance Scorecard">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>KPI Benchmarking</span>
+            <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>🎯 Industry Profile Variance</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
