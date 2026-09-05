@@ -412,6 +412,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("script")} style={navItemStyle(currentView === "script")} title="AI Executive Presentation Speech & Slide Script Generator">
+          <Icons.Reports />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>Presentation Script</span>
+            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎬 3-Min Executive Speech</span>
+          </div>
+        </button>
+
         {!isMisAnalyst && (
           <>
             <div style={sectionHeaderStyle}>Manage</div>
