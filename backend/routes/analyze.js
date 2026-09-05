@@ -40,6 +40,14 @@ router.post("/", async (req, res) => {
   }
   const safeRequestType = typeof requestType === "string" && requestType.trim() ? requestType.trim().slice(0, 60) : "unknown";
 
+  // Server-side RBAC restriction for MIS Analyst role
+  if (req.user && req.user.role === "mis_analyst") {
+    const restrictedTypes = ["clustering", "forecast", "ml_modeling"];
+    if (restrictedTypes.includes(safeRequestType)) {
+      return res.status(403).json({ error: "Access denied: MIS Analyst role is restricted from ML Modeling and Advanced Forecasting." });
+    }
+  }
+
   try {
     let text = "";
     let inputTokens = 0;

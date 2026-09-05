@@ -84,6 +84,16 @@ export function requireAdmin(req, res, next) {
 }
 
 /**
+ * Middleware to restrict MIS Analyst role from advanced Data Science & ML endpoints
+ */
+export function restrictMisAnalyst(req, res, next) {
+  if (req.user && req.user.role === "mis_analyst") {
+    return res.status(403).json({ error: "Access denied: MIS Analyst role is restricted from ML Modeling and Advanced Forecasting." });
+  }
+  next();
+}
+
+/**
  * Middleware to enforce the rolling token quota limit.
  * - enterprise: fully unlimited (bypass)
  * - pro: 50,000 tokens per 1-hour rolling window

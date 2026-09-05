@@ -514,9 +514,10 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                     <select
                       value={inviteRole}
                       onChange={e => setInviteRole(e.target.value)}
-                      style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 12.5, background: "#fff", width: 110 }}
+                      style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 12.5, background: "#fff", width: 130 }}
                     >
                       <option value="member">Member</option>
+                      <option value="mis_analyst">MIS Analyst</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>

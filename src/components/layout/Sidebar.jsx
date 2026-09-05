@@ -69,6 +69,7 @@ const Icons = {
 
 export default function Sidebar({ user, currentView, setView, onLogout, isOpen, setIsOpen }) {
   const isAdmin = user?.role === "admin";
+  const isMisAnalyst = user?.role === "mis_analyst";
 
   const navItemStyle = (isActive) => ({
     display: "flex",
@@ -263,13 +264,15 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
-        <button onClick={() => setView("clustering")} style={navItemStyle(currentView === "clustering")} title="AI K-Means Unsupervised Clustering & Segmentation">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Cluster Segmentation</span>
-            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🤖 K-Means ML Clustering</span>
-          </div>
-        </button>
+        {!isMisAnalyst && (
+          <button onClick={() => setView("clustering")} style={navItemStyle(currentView === "clustering")} title="AI K-Means Unsupervised Clustering & Segmentation">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Cluster Segmentation</span>
+              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🤖 K-Means ML Clustering</span>
+            </div>
+          </button>
+        )}
 
         <button onClick={() => setView("pivot")} style={navItemStyle(currentView === "pivot")} title="Interactive 2D Pivot Table & Cross-Tabulation">
           <Icons.Reports />
@@ -319,13 +322,15 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
-        <button onClick={() => setView("forecast")} style={navItemStyle(currentView === "forecast")} title="AI Predictive Time-Series Forecasting & 95% Confidence Bounds">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>AI Forecast</span>
-            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Time-Series Trends</span>
-          </div>
-        </button>
+        {!isMisAnalyst && (
+          <button onClick={() => setView("forecast")} style={navItemStyle(currentView === "forecast")} title="AI Predictive Time-Series Forecasting & 95% Confidence Bounds">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>AI Forecast</span>
+              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Time-Series Trends</span>
+            </div>
+          </button>
+        )}
 
         <button onClick={() => setView("montecarlo")} style={navItemStyle(currentView === "montecarlo")} title="Monte Carlo Risk & Financial Scenario Simulator">
           <Icons.Overview />
@@ -407,10 +412,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
-        <div style={sectionHeaderStyle}>Manage</div>
-        <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
-          <Icons.Team /> Team
-        </button>
+        {!isMisAnalyst && (
+          <>
+            <div style={sectionHeaderStyle}>Manage</div>
+            <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
+              <Icons.Team /> Team
+            </button>
+          </>
+        )}
 
         {isAdmin && (
           <>
