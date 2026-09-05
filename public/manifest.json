@@ -1,0 +1,16 @@
+{
+  "short_name": "AI Copilot",
+  "name": "AI Data & Science Copilot",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#FFFFFF",
+  "theme_color": "#3E6F8E",
+  "display": "standalone",
+  "orientation": "any"
+}

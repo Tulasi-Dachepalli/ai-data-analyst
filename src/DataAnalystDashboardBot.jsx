@@ -39,6 +39,7 @@ import SlackWebhookDispatcher from "./SlackWebhookDispatcher";
 import AiDataDebate from "./AiDataDebate";
 import PresentationScriptGenerator from "./PresentationScriptGenerator";
 import GlobalFilterBar from "./GlobalFilterBar";
+import PwaInstallPrompt from "./PwaInstallPrompt";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -5616,6 +5617,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
               >
                 💼 Share on LinkedIn
               </button>
+
+              <PwaInstallPrompt />
 
               <div style={{ position: "relative" }}>
                 <button
