@@ -23,7 +23,9 @@ export default function App() {
     if (!t || t === "undefined" || t === "null") {
       t = "demo-session-token-" + Date.now();
       localStorage.setItem("aida_token", t);
-      localStorage.setItem("aida_user", JSON.stringify(DEFAULT_USER));
+      if (!localStorage.getItem("aida_user")) {
+        localStorage.setItem("aida_user", JSON.stringify(DEFAULT_USER));
+      }
     }
     return t;
   });
