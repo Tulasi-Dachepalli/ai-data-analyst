@@ -4072,6 +4072,38 @@ export default function DataAnalystDashboardBot({ currentView }) {
   }, [active?.messages?.length || 0, loading]);
 
   useEffect(() => {
+    const aiSuiteViews = [
+      "health", "whatif", "exec-reports", "alerts", "correlation", "branding",
+      "stats", "sql", "clustering", "pivot", "cohort", "transform", "pareto",
+      "anomalies", "search", "forecast", "montecarlo", "cleaner", "abc",
+      "benchmarks", "digest", "goalseek", "rfm", "geomap", "webhooks", "debate", "script"
+    ];
+    if (aiSuiteViews.includes(currentView) && (!active || !active.rows || active.rows.length === 0)) {
+      const defaultSample = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
+      const stubStats = defaultSample.columns.map(c => computeColumnStats(defaultSample.rows, c));
+      const stubQuality = calculateDataQuality(defaultSample.rows, defaultSample.columns);
+      const stubPlan = pickDashboardPlan(stubStats);
+
+      const sampleThread = {
+        id: `sample-${Date.now()}`,
+        name: defaultSample.name,
+        rows: defaultSample.rows,
+        columns: defaultSample.columns,
+        stats: stubStats,
+        quality: stubQuality,
+        dashboard: {
+          sheetName: defaultSample.name,
+          rawRows: defaultSample.rows,
+          plan: stubPlan,
+          narrative: `Sample dataset loaded automatically.`
+        },
+        messages: []
+      };
+
+      setThreads(prev => [sampleThread, ...prev]);
+      setActiveId(sampleThread.id);
+    }
+
     if (currentView === "ai-analyst") {
       setTimeout(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -5711,152 +5743,162 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 0 24px" }}>
           <div style={{ maxWidth: "100%", width: "100%", margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 18 }}>
-            {active && (
-              <GlobalFilterBar
-                data={active?.rows}
-                columns={active?.columns}
-                onFilterChange={(rows) => setGlobalFilteredRows(rows)}
-              />
-            )}
-            {currentView === "health" && (
-              <DataHealthInspector dataset={active} data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "whatif" && (
-              <WhatIfSimulator data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "exec-reports" && (
-              <ExecutiveReportGenerator dataset={active} data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "alerts" && (
-              <ThresholdAlertManager data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "correlation" && (
-              <CorrelationHeatmap data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "branding" && (
-              <CompanyBrandingManager />
-            )}
-            {currentView === "stats" && (
-              <DeepStatisticalSummary data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "sql" && (
-              <SqlQueryGenerator data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "clustering" && (
-              <ClusterSegmentation data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "pivot" && (
-              <PivotTableEngine data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "cohort" && (
-              <CohortRetentionHeatmap data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "transform" && (
-              <DataFormulaStudio
-                data={active?.rows}
-                columns={active?.columns}
-                onUpdateDataset={(newRows, newCols) => {
-                  if (!activeId) return;
-                  const newStats = newCols.map(c => computeColumnStats(newRows, c));
-                  const newQuality = calculateDataQuality(newRows, newCols);
-                  const newPlan = pickDashboardPlan(newStats);
+            {(() => {
+              const sampleFallback = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
+              const activeData = (active?.rows && active.rows.length > 0) ? active.rows : sampleFallback.rows;
+              const activeCols = (active?.columns && active.columns.length > 0) ? active.columns : sampleFallback.columns;
 
-                  setThreads(prev => prev.map(t => {
-                    if (t.id === activeId) {
-                      return {
-                        ...t,
-                        rows: newRows,
-                        columns: newCols,
-                        stats: newStats,
-                        quality: newQuality,
-                        dashboard: {
-                          ...t.dashboard,
-                          rawRows: newRows,
-                          plan: newPlan
-                        }
-                      };
-                    }
-                    return t;
-                  }));
-                }}
-              />
-            )}
-            {currentView === "pareto" && (
-              <ParetoAnalysis data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "anomalies" && (
-              <AnomalyInvestigator
-                data={active?.rows}
-                columns={active?.columns}
-                onCallAi={prompt => callClaude("System: You are an expert Data Scientist.", prompt, { requestType: "anomaly", datasetId: activeId })}
-              />
-            )}
-            {currentView === "search" && (
-              <DataSubsetExplorer data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "forecast" && (
-              <TimeSeriesForecasting data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "montecarlo" && (
-              <MonteCarloSimulator data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "cleaner" && (
-              <DataAutoCleaner
-                data={active?.rows}
-                columns={active?.columns}
-                onUpdateDataset={(newRows, newCols) => {
-                  if (!activeId) return;
-                  const newStats = newCols.map(c => computeColumnStats(newRows, c));
-                  const newQuality = calculateDataQuality(newRows, newCols);
-                  const newPlan = pickDashboardPlan(newStats);
+              return (
+                <>
+                  {active && (
+                    <GlobalFilterBar
+                      data={activeData}
+                      columns={activeCols}
+                      onFilterChange={(rows) => setGlobalFilteredRows(rows)}
+                    />
+                  )}
+                  {currentView === "health" && (
+                    <DataHealthInspector dataset={active} data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "whatif" && (
+                    <WhatIfSimulator data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "exec-reports" && (
+                    <ExecutiveReportGenerator dataset={active} data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "alerts" && (
+                    <ThresholdAlertManager data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "correlation" && (
+                    <CorrelationHeatmap data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "branding" && (
+                    <CompanyBrandingManager />
+                  )}
+                  {currentView === "stats" && (
+                    <DeepStatisticalSummary data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "sql" && (
+                    <SqlQueryGenerator data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "clustering" && (
+                    <ClusterSegmentation data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "pivot" && (
+                    <PivotTableEngine data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "cohort" && (
+                    <CohortRetentionHeatmap data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "transform" && (
+                    <DataFormulaStudio
+                      data={activeData}
+                      columns={activeCols}
+                      onUpdateDataset={(newRows, newCols) => {
+                        if (!activeId) return;
+                        const newStats = newCols.map(c => computeColumnStats(newRows, c));
+                        const newQuality = calculateDataQuality(newRows, newCols);
+                        const newPlan = pickDashboardPlan(newStats);
 
-                  setThreads(prev => prev.map(t => {
-                    if (t.id === activeId) {
-                      return {
-                        ...t,
-                        rows: newRows,
-                        columns: newCols,
-                        stats: newStats,
-                        quality: newQuality,
-                        dashboard: {
-                          ...t.dashboard,
-                          rawRows: newRows,
-                          plan: newPlan
-                        }
-                      };
-                    }
-                    return t;
-                  }));
-                }}
-              />
-            )}
-            {currentView === "abc" && (
-              <AbcClassification data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "benchmarks" && (
-              <IndustryBenchmarking data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "digest" && (
-              <EmailDigestDispatcher dataset={active} />
-            )}
-            {currentView === "goalseek" && (
-              <GoalSeekSolver data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "rfm" && (
-              <RfmSegmentation data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "geomap" && (
-              <GeoMapVisualizer data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "webhooks" && (
-              <SlackWebhookDispatcher dataset={active} />
-            )}
-            {currentView === "debate" && (
-              <AiDataDebate data={active?.rows} columns={active?.columns} />
-            )}
-            {currentView === "script" && (
-              <PresentationScriptGenerator data={active?.rows} columns={active?.columns} datasetName={active?.fileName || "Active Workspace Dataset"} />
-            )}
+                        setThreads(prev => prev.map(t => {
+                          if (t.id === activeId) {
+                            return {
+                              ...t,
+                              rows: newRows,
+                              columns: newCols,
+                              stats: newStats,
+                              quality: newQuality,
+                              dashboard: {
+                                ...t.dashboard,
+                                rawRows: newRows,
+                                plan: newPlan
+                              }
+                            };
+                          }
+                          return t;
+                        }));
+                      }}
+                    />
+                  )}
+                  {currentView === "pareto" && (
+                    <ParetoAnalysis data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "anomalies" && (
+                    <AnomalyInvestigator
+                      data={activeData}
+                      columns={activeCols}
+                      onCallAi={prompt => callClaude("System: You are an expert Data Scientist.", prompt, { requestType: "anomaly", datasetId: activeId })}
+                    />
+                  )}
+                  {currentView === "search" && (
+                    <DataSubsetExplorer data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "forecast" && (
+                    <TimeSeriesForecasting data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "montecarlo" && (
+                    <MonteCarloSimulator data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "cleaner" && (
+                    <DataAutoCleaner
+                      data={activeData}
+                      columns={activeCols}
+                      onUpdateDataset={(newRows, newCols) => {
+                        if (!activeId) return;
+                        const newStats = newCols.map(c => computeColumnStats(newRows, c));
+                        const newQuality = calculateDataQuality(newRows, newCols);
+                        const newPlan = pickDashboardPlan(newStats);
+
+                        setThreads(prev => prev.map(t => {
+                          if (t.id === activeId) {
+                            return {
+                              ...t,
+                              rows: newRows,
+                              columns: newCols,
+                              stats: newStats,
+                              quality: newQuality,
+                              dashboard: {
+                                ...t.dashboard,
+                                rawRows: newRows,
+                                plan: newPlan
+                              }
+                            };
+                          }
+                          return t;
+                        }));
+                      }}
+                    />
+                  )}
+                  {currentView === "abc" && (
+                    <AbcClassification data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "benchmarks" && (
+                    <IndustryBenchmarking data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "digest" && (
+                    <EmailDigestDispatcher dataset={active} />
+                  )}
+                  {currentView === "goalseek" && (
+                    <GoalSeekSolver data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "rfm" && (
+                    <RfmSegmentation data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "geomap" && (
+                    <GeoMapVisualizer data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "webhooks" && (
+                    <SlackWebhookDispatcher dataset={active} />
+                  )}
+                  {currentView === "debate" && (
+                    <AiDataDebate data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "script" && (
+                    <PresentationScriptGenerator data={activeData} columns={activeCols} datasetName={active?.fileName || "Active Workspace Dataset"} />
+                  )}
+                </>
+              );
+            })()}
             {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && currentView !== "correlation" && currentView !== "branding" && currentView !== "stats" && currentView !== "sql" && currentView !== "clustering" && currentView !== "pivot" && currentView !== "cohort" && currentView !== "transform" && currentView !== "pareto" && currentView !== "anomalies" && currentView !== "search" && currentView !== "forecast" && currentView !== "montecarlo" && currentView !== "cleaner" && currentView !== "abc" && currentView !== "benchmarks" && currentView !== "digest" && currentView !== "goalseek" && currentView !== "rfm" && currentView !== "geomap" && currentView !== "webhooks" && currentView !== "debate" && currentView !== "script" && (
               <div style={{ textAlign: "center", color: "#A6A196", fontSize: 13.5, marginTop: 100, lineHeight: 1.7 }}>
                 <div style={{ fontSize: 17, color: "#2B2A27", fontWeight: 600, marginBottom: 6 }}>Data Analyst</div>
