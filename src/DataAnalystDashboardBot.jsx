@@ -2739,13 +2739,24 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                   }
                   setMlTrainStage("loading");
                   setMlTrainError("");
+                  const validFeatures = (selectedFeatures || []).filter(f => !isIdentifierColumn(f, currentRows));
                   const payload = {
                     task_type: selectedTask,
                     target: selectedTarget,
-                    features: selectedFeatures,
+                    features: validFeatures,
                     test_size: testSize,
                     cv_folds: cvFolds
                   };
+
+                  // Auto pre-populate sandboxInputs with row 1 sample data
+                  const sampleInputs = {};
+                  validFeatures.forEach(feat => {
+                    if (currentRows[0] && currentRows[0][feat] !== undefined) {
+                      sampleInputs[feat] = currentRows[0][feat];
+                    }
+                  });
+                  setSandboxInputs(sampleInputs);
+
                   api.trainMlModel(serverId, payload)
                     .then(res => {
                       if (res && res.success) {
@@ -2778,8 +2789,6 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                         "GradientBoostingRegressor": { r2: 0.89, mae: 14.1, rmse: 20.5, cv_r2: 0.87 },
                         "RidgeRegression": { r2: 0.82, mae: 19.3, rmse: 26.8, cv_r2: 0.80 }
                       };
-
-                      const validFeatures = (selectedFeatures || []).filter(f => !isIdentifierColumn(f, currentRows));
 
                       const localMlResult = {
                         success: true,
@@ -3150,7 +3159,7 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
                 <div style={{ border: "1px solid var(--border-color)", borderRadius: "var(--radius-md)", padding: 12, background: "var(--bg-primary)" }}>
                   <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase" }}>Total Observations</div>
                   <div style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", marginTop: 4 }}>
-                    {(forecastAnalysisData.observations && forecastAnalysisData.observations > 0) ? forecastAnalysisData.observations : (currentRows || []).length} rows
+                    {(forecastAnalysisData.observations && forecastAnalysisData.observations > 0) ? `${forecastAnalysisData.observations} rows` : `${(currentRows || []).length} rows (no date column found)`}
                   </div>
                   <div style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 4 }}>
                     Min observations: 5 rows
@@ -4752,8 +4761,8 @@ export default function DataAnalystDashboardBot({ currentView }) {
   };
 
   const handleSend = async (overrideQuestion) => {
-    const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : input;
-    const question = (rawQuestion || "").replace(/^💡\s*/, "").trim();
+    const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : (typeof input === "string" ? input : "");
+    const question = (rawQuestion || "").replace(/^[💡⚡❓]\s*/, "").trim();
     if (!question) return;
 
     // Immediately clear input box in 0ms so user sees draft cleared instantly

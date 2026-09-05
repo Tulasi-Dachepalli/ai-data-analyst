@@ -66,7 +66,29 @@ export default function App() {
   const isAdmin = user?.role === "admin";
   const showVerifyBanner = false; // Email verification removed
 
+  const isMisAnalyst = user?.role === "mis_analyst";
+
   const renderContent = () => {
+    if (isMisAnalyst && ["reports", "clustering", "forecast", "team", "admin-members", "admin-audit"].includes(view)) {
+      return (
+        <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: 40, textAlign: "center", margin: "40px auto", maxWidth: 640 }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary, #0F172A)", margin: "0 0 8px 0" }}>
+            Access Restricted — MIS Analyst Role
+          </h3>
+          <p style={{ fontSize: 13, color: "var(--text-secondary, #475569)", margin: "0 0 20px 0", lineHeight: 1.6 }}>
+            Machine Learning model training, unsupervised clustering, AI time-series forecasting, and Team Admin management are restricted for the MIS Analyst role.
+          </p>
+          <button
+            onClick={() => setView("dashboard")}
+            style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+          >
+            Return to Executive BI Workspace
+          </button>
+        </div>
+      );
+    }
+
     if ((view === "admin-members" || view === "team") && isAdmin) {
       return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="dashboard" />;
     }

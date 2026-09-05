@@ -19,7 +19,7 @@ function authHeaders() {
 async function request(path, options = {}) {
   let res;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000);
+  const timeoutId = setTimeout(() => controller.abort(), 20000);
 
   try {
     res = await fetch(`${base()}${path}`, {
@@ -31,9 +31,9 @@ async function request(path, options = {}) {
   } catch (netErr) {
     clearTimeout(timeoutId);
     if (netErr.name === "AbortError") {
-      throw new Error("Server request timed out after 35s. Please refresh to reconnect.");
+      throw new Error("Analysis service timed out after 20s — please retry or use instant browser mode.");
     }
-    throw new Error("Network offline or server unreachable. Operating in browser mode.");
+    throw new Error("Network offline or server unreachable. Operating in instant browser mode.");
   }
 
   if (res.status === 401) {
