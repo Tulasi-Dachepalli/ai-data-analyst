@@ -219,13 +219,15 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
-        <button onClick={() => setView("reports")} style={navItemStyle(currentView === "reports")} title="Machine Learning Predictions & Time-Series Trend Forecasting">
-          <Icons.Reports />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>ML & Forecasting</span>
-            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Predictive Models & Trends</span>
-          </div>
-        </button>
+        {!isMisAnalyst && (
+          <button onClick={() => setView("reports")} style={navItemStyle(currentView === "reports")} title="Machine Learning Predictions & Time-Series Trend Forecasting">
+            <Icons.Reports />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>ML & Forecasting</span>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Predictive Models & Trends</span>
+            </div>
+          </button>
+        )}
 
         <div style={sectionHeaderStyle}>AI Intelligence Suite</div>
         <button onClick={() => setView("health")} style={navItemStyle(currentView === "health")} title="Automated Data Quality Scoring & Anomaly Detection">
