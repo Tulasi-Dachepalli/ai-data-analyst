@@ -148,6 +148,28 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
         )}
       </div>
 
+      {/* Live Role Switcher (1-Click Test Sandbox) */}
+      <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-color)", background: "rgba(139, 92, 246, 0.04)" }}>
+        <div style={{ fontSize: "10.5px", fontWeight: 700, color: "#8B5CF6", marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>⚡ Active Role Sandbox:</span>
+          <span style={{ fontSize: 9, background: "#8B5CF6", color: "#FFF", padding: "1px 5px", borderRadius: 4 }}>TEST</span>
+        </div>
+        <select
+          value={user?.role || "admin"}
+          onChange={(e) => {
+            const nextRole = e.target.value;
+            const updatedUser = { ...(user || {}), role: nextRole };
+            localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+            window.location.reload();
+          }}
+          style={{ width: "100%", padding: "4px 8px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 11.5, fontWeight: 700, background: "#FFF", color: "#333", cursor: "pointer" }}
+        >
+          <option value="admin">👑 Admin (Full Access)</option>
+          <option value="mis_analyst">📊 MIS Analyst (Restricted)</option>
+          <option value="member">👤 Member</option>
+        </select>
+      </div>
+
       {/* Navigation Groups */}
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
         <div style={sectionHeaderStyle}>Analytics Workspace</div>
