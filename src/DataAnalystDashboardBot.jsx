@@ -38,6 +38,7 @@ import GeoMapVisualizer from "./GeoMapVisualizer";
 import SlackWebhookDispatcher from "./SlackWebhookDispatcher";
 import AiDataDebate from "./AiDataDebate";
 import PresentationScriptGenerator from "./PresentationScriptGenerator";
+import GlobalFilterBar from "./GlobalFilterBar";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, Treemap, ScatterChart, Scatter
@@ -3969,6 +3970,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
   const [slicerFilters, setSlicerFilters] = useState({});
   const [chartTypes, setChartTypes] = useState({});
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [globalFilteredRows, setGlobalFilteredRows] = useState(null);
 
   const active = threads.find(t => t.id === activeId) || threads[0] || null;
 
@@ -5672,6 +5674,13 @@ export default function DataAnalystDashboardBot({ currentView }) {
 
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 0 24px" }}>
           <div style={{ maxWidth: "100%", width: "100%", margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 18 }}>
+            {active && (
+              <GlobalFilterBar
+                data={active?.rows}
+                columns={active?.columns}
+                onFilterChange={(rows) => setGlobalFilteredRows(rows)}
+              />
+            )}
             {currentView === "health" && (
               <DataHealthInspector dataset={active} data={active?.rows} columns={active?.columns} />
             )}
