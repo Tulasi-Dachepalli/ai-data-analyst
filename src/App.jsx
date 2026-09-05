@@ -132,7 +132,7 @@ export default function App() {
     }
 
     // All workspace navigation views (overview, datasets, ai-analyst, dashboards, insights, reports)
-    return <DataAnalystDashboardBot currentView={view} setView={setView} />;
+    return <DataAnalystDashboardBot currentView={view} setView={setView} user={user} />;
   };
 
   return (

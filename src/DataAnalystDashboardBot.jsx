@@ -982,20 +982,27 @@ function trainTestSplitAndFit(rows, columns, stats) {
 }
 
 
-function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete }) {
+function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete, user }) {
   const isMisAnalyst = useMemo(() => {
+    if (user?.role === "mis_analyst") return true;
     try {
       const u = JSON.parse(localStorage.getItem("aida_user") || "{}");
       return u?.role === "mis_analyst";
     } catch {
       return false;
     }
-  }, []);
+  }, [user]);
 
   const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
   const validCols = useMemo(() => (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c)), [columns]);
   const quality = useMemo(() => calculateDataQuality(currentRows, (validCols.length > 0 ? validCols : columns || []).filter(c => c && !c.startsWith("__"))), [currentRows, validCols, columns]);
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  useEffect(() => {
+    if (isMisAnalyst && (activeTab === "ml" || activeTab === "forecast")) {
+      setActiveTab("dashboard");
+    }
+  }, [isMisAnalyst, activeTab]);
   const [dataPage, setDataPage] = useState(0);
   const [sandboxVal, setSandboxVal] = useState("");
   const [sortKey, setSortKey] = useState(null);
@@ -3959,8 +3966,8 @@ const SAMPLE_DATASETS = [
 ];
 
 // ---------------- main component ----------------
-export default function DataAnalystDashboardBot({ currentView }) {
-  const user = JSON.parse(localStorage.getItem("aida_user") || "null");
+export default function DataAnalystDashboardBot({ currentView, user: propUser }) {
+  const user = propUser || JSON.parse(localStorage.getItem("aida_user") || "null");
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -5957,6 +5964,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
               if (m.kind === "dashboard") return (
                 <div key={i} style={{ alignSelf: "stretch", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
                   <DashboardBlock 
+                    user={user}
                     dashboard={active.dashboard} 
                     filteredRows={filteredRows} 
                     columns={active.columns} 
