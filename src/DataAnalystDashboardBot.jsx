@@ -5515,18 +5515,19 @@ export default function DataAnalystDashboardBot({ currentView }) {
         )}
 
         {active && (
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px 0", position: "relative" }}>
-            {/* Quick onboarding guide banner */}
-            <div style={{ display: "flex", gap: 12, alignItems: "center", fontSize: 12, color: "var(--text-secondary)", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "5px 12px" }}>
-              <span style={{ fontWeight: 700, color: "#8B5CF6" }}>💡 3-Step Guide:</span>
-              <span>1️⃣ Upload Data</span>
-              <span>➔</span>
-              <span>2️⃣ View Analysis & Charts</span>
-              <span>➔</span>
-              <span>3️⃣ Ask AI Copilot Chat</span>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 24px", borderBottom: "1px solid var(--border-color)", background: "#FFFFFF", gap: 12, flexWrap: "wrap" }}>
+            {/* Active Workspace Title & Badge */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                📊 {active.fileName || active.name || "Active Workspace"}
+              </div>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: "#10B981", background: "#ECFDF5", padding: "2px 8px", borderRadius: 12, border: "1px solid #A7F3D0" }}>
+                {(active.rows || []).length.toLocaleString()} rows • {(active.columns || []).length} cols
+              </span>
             </div>
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {/* Top Toolbar Action Buttons */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               {active && active.googleSheetUrl && (
                 <button
                   onClick={async () => {
@@ -5567,12 +5568,11 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   style={{
                     fontSize: 12, fontWeight: 700,
                     color: "#FFF", background: "#10B981",
-                    border: "none", borderRadius: 7, padding: "7px 14px",
-                    cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
-                    boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)"
+                    border: "none", borderRadius: 7, padding: "6px 12px",
+                    cursor: "pointer", display: "flex", alignItems: "center", gap: 6
                   }}
                 >
-                  🔄 Sync Google Sheet
+                  🔄 Sync Sheet
                 </button>
               )}
 
@@ -5581,16 +5581,15 @@ export default function DataAnalystDashboardBot({ currentView }) {
                 title={isFullScreen ? "Exit Fullscreen Mode" : "Expand Analysis to Fullscreen"}
                 style={{
                   fontSize: 12, fontWeight: 600,
-                  color: "var(--text-primary)",
+                  color: isFullScreen ? "#FFF" : "var(--text-primary)",
                   background: isFullScreen ? "#8B5CF6" : "var(--bg-secondary)",
                   border: "1px solid var(--border-color)",
-                  borderRadius: 7, padding: "7px 14px",
+                  borderRadius: 7, padding: "6px 12px",
                   cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 6,
-                  boxShadow: isFullScreen ? "0 4px 12px rgba(139,92,246,0.3)" : "none"
+                  display: "flex", alignItems: "center", gap: 6
                 }}
               >
-                {isFullScreen ? "↙ Exit Fullscreen" : "⛶ Fullscreen Mode"}
+                {isFullScreen ? "↙ Exit Fullscreen" : "⛶ Fullscreen"}
               </button>
 
               <ChartThemeSelector onThemeChange={() => setThreads(prev => [...prev])} />
@@ -5609,13 +5608,12 @@ export default function DataAnalystDashboardBot({ currentView }) {
                   color: "#FFF",
                   background: "#0A66C2",
                   border: "none",
-                  borderRadius: 7, padding: "7px 14px",
+                  borderRadius: 7, padding: "6px 12px",
                   cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: 6,
-                  boxShadow: "0 2px 8px rgba(10,102,194,0.3)"
+                  display: "flex", alignItems: "center", gap: 6
                 }}
               >
-                💼 Share on LinkedIn
+                💼 Share
               </button>
 
               <PwaInstallPrompt />
@@ -5629,7 +5627,7 @@ export default function DataAnalystDashboardBot({ currentView }) {
                     color: (active.dashboard && active.rows) ? "var(--text-primary)" : "var(--text-muted)",
                     background: "var(--bg-secondary)",
                     border: "1px solid var(--border-color)",
-                    borderRadius: 7, padding: "7px 14px",
+                    borderRadius: 7, padding: "6px 12px",
                     cursor: (active.dashboard && active.rows) ? "pointer" : "default",
                     opacity: (active.dashboard && active.rows) ? 1 : 0.5,
                     display: "flex", alignItems: "center", gap: 6

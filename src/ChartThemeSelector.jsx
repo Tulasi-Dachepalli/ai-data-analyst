@@ -49,33 +49,30 @@ export default function ChartThemeSelector({ onThemeChange }) {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, #6B7280)", textTransform: "uppercase" }}>
-        🎨 Chart Theme:
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, #6B7280)" }}>
+        🎨 Theme:
       </span>
-      {Object.entries(CHART_THEMES).map(([key, theme]) => (
-        <button
-          key={key}
-          onClick={() => handleSelect(key)}
-          title={theme.name}
-          style={{
-            background: activeKey === key ? `${theme.primary}20` : "#F3F4F6",
-            border: activeKey === key ? `2px solid ${theme.primary}` : "1px solid #E5E7EB",
-            borderRadius: 8,
-            padding: "4px 8px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            transition: "all 0.15s ease"
-          }}
-        >
-          <div style={{ width: 12, height: 12, borderRadius: "50%", backgroundColor: theme.primary }} />
-          <span style={{ fontSize: 11.5, fontWeight: activeKey === key ? 700 : 500, color: activeKey === key ? theme.primary : "#374151" }}>
+      <select
+        value={activeKey}
+        onChange={(e) => handleSelect(e.target.value)}
+        style={{
+          padding: "5px 10px",
+          borderRadius: 6,
+          border: "1px solid var(--border-color, #CBD5E1)",
+          fontSize: 12,
+          fontWeight: 600,
+          backgroundColor: "#FFF",
+          color: "var(--text-primary, #1E293B)",
+          cursor: "pointer"
+        }}
+      >
+        {Object.entries(CHART_THEMES).map(([key, theme]) => (
+          <option key={key} value={key}>
             {theme.name}
-          </span>
-        </button>
-      ))}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
