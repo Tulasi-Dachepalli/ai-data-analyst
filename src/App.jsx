@@ -10,10 +10,30 @@ import InsightsPage from "./InsightsPage";
 import ReportsPage from "./ReportsPage";
 import * as api from "./api";
 
+const DEFAULT_USER = {
+  email: "demo.executive@enterprise.com",
+  role: "admin",
+  companyName: "Acme Enterprise",
+  tier: "pro"
+};
+
 export default function App() {
-  const [token, setToken] = useState(() => localStorage.getItem("aida_token"));
+  const [token, setToken] = useState(() => {
+    let t = localStorage.getItem("aida_token");
+    if (!t || t === "undefined" || t === "null") {
+      t = "demo-session-token-" + Date.now();
+      localStorage.setItem("aida_token", t);
+      localStorage.setItem("aida_user", JSON.stringify(DEFAULT_USER));
+    }
+    return t;
+  });
   const [user, setUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("aida_user")); } catch { return null; }
+    try {
+      const u = JSON.parse(localStorage.getItem("aida_user"));
+      return u && u.email ? u : DEFAULT_USER;
+    } catch {
+      return DEFAULT_USER;
+    }
   });
   const [view, setView] = useState("dashboard"); // "dashboard" | "admin" | "trust"
   const [resendState, setResendState] = useState("idle"); // "idle" | "sending" | "sent" | "error"

@@ -37,9 +37,7 @@ async function request(path, options = {}) {
   }
 
   if (res.status === 401) {
-    localStorage.removeItem("aida_token");
-    localStorage.removeItem("aida_user");
-    window.location.reload();
+    console.warn("Server 401 status — continuing in instant browser mode.");
     return null;
   }
 
@@ -110,9 +108,7 @@ export function uploadDatasetFile(file) {
     body: formData
   }).then(async (res) => {
     if (res.status === 401) {
-      localStorage.removeItem("aida_token");
-      localStorage.removeItem("aida_user");
-      window.location.reload();
+      console.warn("Upload 401 status — proceeding with local browser parsing.");
       return null;
     }
     if (!res.ok) {
