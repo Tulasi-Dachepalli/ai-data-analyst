@@ -399,6 +399,14 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </div>
         </button>
 
+        <button onClick={() => setView("debate")} style={navItemStyle(currentView === "debate")} title="Multi-Agent AI Data Debate & Risk Peer-Review Engine">
+          <Icons.Overview />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span>AI Data Debate</span>
+            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🤖 Dual-Agent Growth vs Risk</span>
+          </div>
+        </button>
+
         <div style={sectionHeaderStyle}>Manage</div>
         <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
           <Icons.Team /> Team
