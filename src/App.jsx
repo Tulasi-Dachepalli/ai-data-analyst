@@ -91,7 +91,7 @@ export default function App() {
   const isMisAnalyst = user?.role === "mis_analyst";
 
   const renderContent = () => {
-    if (isMisAnalyst && ["reports", "clustering", "forecast", "team", "admin-members", "admin-audit"].includes(view)) {
+    if (isMisAnalyst && ["reports", "clustering", "forecast", "ml", "team", "admin-members", "admin-audit"].includes(view)) {
       return (
         <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: 40, textAlign: "center", margin: "40px auto", maxWidth: 640 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>

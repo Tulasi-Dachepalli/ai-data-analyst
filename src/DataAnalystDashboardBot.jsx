@@ -195,7 +195,7 @@ function calculateDataQuality(rows, columns) {
   evalRows.forEach(row => {
     columns.forEach(col => {
       const v = row[col];
-      if (v === null || v === undefined || String(v).trim() !== "") missingCells++;
+      if (v === null || v === undefined || String(v).trim() === "" || String(v).trim() === "null" || String(v).trim() === "undefined" || String(v).trim() === "NaN") missingCells++;
     });
   });
 
