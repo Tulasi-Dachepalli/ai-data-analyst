@@ -4132,30 +4132,36 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
       "anomalies", "search", "forecast", "montecarlo", "cleaner", "abc",
       "benchmarks", "digest", "goalseek", "rfm", "geomap", "webhooks", "debate", "script"
     ];
-    if (aiSuiteViews.includes(currentView) && (!active || !active.rows || active.rows.length === 0)) {
-      const defaultSample = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
-      const stubStats = defaultSample.columns.map(c => computeColumnStats(defaultSample.rows, c));
-      const stubQuality = calculateDataQuality(defaultSample.rows, defaultSample.columns);
-      const stubPlan = pickDashboardPlan(stubStats);
+    if (!active || !active.rows || active.rows.length === 0) {
+      if (threads.length === 0) {
+        const defaultSample = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
+        const stubStats = defaultSample.columns.map(c => computeColumnStats(defaultSample.rows, c));
+        const stubQuality = calculateDataQuality(defaultSample.rows, defaultSample.columns);
+        const stubPlan = pickDashboardPlan(stubStats);
 
-      const sampleThread = {
-        id: `sample-${Date.now()}`,
-        name: defaultSample.name,
-        rows: defaultSample.rows,
-        columns: defaultSample.columns,
-        stats: stubStats,
-        quality: stubQuality,
-        dashboard: {
-          sheetName: defaultSample.name,
-          rawRows: defaultSample.rows,
-          plan: stubPlan,
-          narrative: `Sample dataset loaded automatically.`
-        },
-        messages: []
-      };
+        const sampleThread = {
+          id: `sample-${Date.now()}`,
+          name: defaultSample.name,
+          fileName: defaultSample.name,
+          rows: defaultSample.rows,
+          columns: defaultSample.columns,
+          stats: stubStats,
+          quality: stubQuality,
+          dashboard: {
+            sheetName: defaultSample.name,
+            rawRows: defaultSample.rows,
+            plan: stubPlan,
+            narrative: `Sample dataset loaded automatically.`
+          },
+          messages: [
+            { kind: "file", fileName: defaultSample.name, rowCount: defaultSample.rows.length, colCount: defaultSample.columns.length },
+            { kind: "dashboard" }
+          ]
+        };
 
-      setThreads(prev => [sampleThread, ...prev]);
-      setActiveId(sampleThread.id);
+        setThreads([sampleThread]);
+        setActiveId(sampleThread.id);
+      }
     }
 
     if (currentView === "ai-analyst") {

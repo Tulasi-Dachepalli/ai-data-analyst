@@ -31,11 +31,16 @@ export default function App() {
   });
   const [user, setUser] = useState(() => {
     try {
-      const u = JSON.parse(localStorage.getItem("aida_user"));
-      return u && u.email ? u : DEFAULT_USER;
-    } catch {
-      return DEFAULT_USER;
+      const raw = localStorage.getItem("aida_user");
+      if (raw && raw !== "undefined" && raw !== "null") {
+        const u = JSON.parse(raw);
+        if (u && u.email) return u;
+      }
+    } catch (e) {
+      console.warn("User parse error:", e);
     }
+    localStorage.setItem("aida_user", JSON.stringify(DEFAULT_USER));
+    return DEFAULT_USER;
   });
   const [view, setView] = useState("dashboard"); // "dashboard" | "admin" | "trust"
   const [resendState, setResendState] = useState("idle"); // "idle" | "sending" | "sent" | "error"
