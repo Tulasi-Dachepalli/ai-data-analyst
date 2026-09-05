@@ -42,9 +42,21 @@ export default function App() {
     localStorage.setItem("aida_user", JSON.stringify(DEFAULT_USER));
     return DEFAULT_USER;
   });
-  const [view, setView] = useState("dashboard"); // "dashboard" | "admin" | "trust"
+  const [view, setView] = useState(() => {
+    const hash = window.location.hash.replace(/^#\/?/, "");
+    return hash || "dashboard";
+  });
   const [resendState, setResendState] = useState("idle"); // "idle" | "sending" | "sent" | "error"
   const [isWarmingUp, setIsWarmingUp] = useState(false);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace(/^#\/?/, "");
+      if (hash) setView(hash);
+    };
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
 
   useEffect(() => {
     const pingBackend = async () => {
