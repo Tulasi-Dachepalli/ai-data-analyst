@@ -88,7 +88,7 @@ export default function GlobalFilterBar({ data = [], columns = [], onFilterChang
   if (!data || data.length === 0) return null;
 
   return (
-    <div style={{ position: "sticky", top: 10, zIndex: 100, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "12px 16px", marginBottom: 20, boxShadow: "0 4px 12px rgba(0,0,0,0.06)", fontFamily: "var(--font-sans, sans-serif)" }}>
+    <div style={{ position: "relative", zIndex: 10, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "12px 16px", marginBottom: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.04)", fontFamily: "var(--font-sans, sans-serif)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 10 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", display: "flex", alignItems: "center", gap: 8 }}>
           ⚡ Global Filter Control Bar
