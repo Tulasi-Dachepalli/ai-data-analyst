@@ -171,6 +171,7 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           style={{ width: "100%", padding: "4px 8px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 11.5, fontWeight: 700, background: "#FFF", color: "#333", cursor: "pointer" }}
         >
           <option value="admin">👑 Admin (Full Access)</option>
+          <option value="data_analyst">📈 Data Analyst (ML & BI)</option>
           <option value="mis_analyst">📊 MIS Analyst (Restricted)</option>
           <option value="member">👤 Member</option>
         </select>

@@ -518,6 +518,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                     >
                       <option value="member">Member</option>
                       <option value="mis_analyst">MIS Analyst</option>
+                      <option value="data_analyst">Data Analyst</option>
                       <option value="admin">Admin</option>
                     </select>
                   </div>
