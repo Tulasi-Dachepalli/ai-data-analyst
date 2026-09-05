@@ -983,6 +983,15 @@ function trainTestSplitAndFit(rows, columns, stats) {
 
 
 function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete }) {
+  const isMisAnalyst = useMemo(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("aida_user") || "{}");
+      return u?.role === "mis_analyst";
+    } catch {
+      return false;
+    }
+  }, []);
+
   const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
   const validCols = useMemo(() => (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c)), [columns]);
   const quality = useMemo(() => calculateDataQuality(currentRows, (validCols.length > 0 ? validCols : columns || []).filter(c => c && !c.startsWith("__"))), [currentRows, validCols, columns]);
@@ -1907,31 +1916,33 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
           </div>
 
           {/* Scientist Mode Group */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--bg-primary)", padding: "3px 6px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#8B5CF6", paddingRight: 4 }}>🧠 SCIENTIST:</span>
-            {[
-              { id: "ml", label: "🤖 ML Modeling" },
-              { id: "forecast", label: "📈 Forecasting" }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  background: activeTab === tab.id ? "#8B5CF6" : "none",
-                  color: activeTab === tab.id ? "#FFF" : "var(--text-secondary)",
-                  border: "none",
-                  borderRadius: 4,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease"
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          {!isMisAnalyst && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--bg-primary)", padding: "3px 6px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: "#8B5CF6", paddingRight: 4 }}>🧠 SCIENTIST:</span>
+              {[
+                { id: "ml", label: "🤖 ML Modeling" },
+                { id: "forecast", label: "📈 Forecasting" }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    background: activeTab === tab.id ? "#8B5CF6" : "none",
+                    color: activeTab === tab.id ? "#FFF" : "var(--text-secondary)",
+                    border: "none",
+                    borderRadius: 4,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "4px 8px",
+                    cursor: "pointer",
+                    transition: "all 0.15s ease"
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -2486,7 +2497,24 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       )}
 
       {activeTab === "ml" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        isMisAnalyst ? (
+          <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 12, padding: 40, textAlign: "center", margin: "20px 0" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 8px 0" }}>
+              Access Restricted — MIS Analyst Role
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 16px 0" }}>
+              Machine Learning predictive modeling and target training are restricted for the MIS Analyst role.
+            </p>
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+            >
+              Return to Executive BI Dashboard
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Stage 1: Task and Target Analysis */}
           {mlAnalyzeStage === "loading" && (
             <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "40px 20px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
@@ -3092,10 +3120,28 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
             </div>
           )}
         </div>
-      )}
+      )
+    )}
 
       {activeTab === "forecast" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        isMisAnalyst ? (
+          <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 12, padding: 40, textAlign: "center", margin: "20px 0" }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 8px 0" }}>
+              Access Restricted — MIS Analyst Role
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 16px 0" }}>
+              AI Time-Series Forecasting and predictive trends are restricted for the MIS Analyst role.
+            </p>
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+            >
+              Return to Executive BI Dashboard
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* Progress Navigation Header */}
           <div style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: "var(--radius-lg)", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div style={{ display: "flex", gap: 24, fontSize: 13, fontWeight: 600 }}>
@@ -3528,7 +3574,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
             </div>
           )}
         </div>
-      )}
+      )
+    )}
 
       {activeTab === "insights_tab" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
