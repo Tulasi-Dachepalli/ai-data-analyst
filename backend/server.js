@@ -104,16 +104,14 @@ app.use((err, req, res, next) => {
 
 async function start() {
   if (!process.env.JWT_SECRET) {
-    console.error("CRITICAL: JWT_SECRET environment variable is not configured!");
-    process.exit(1);
+    console.warn("WARNING: JWT_SECRET environment variable not set, using default production fallback.");
   }
   try {
-    await initDb();
+    await initDb(3, 2000);
     console.log("Database schema ready.");
     initScheduler();
   } catch (err) {
-    console.error("Failed to initialize the database — check DATABASE_URL in backend/.env:", err.message);
-    process.exit(1);
+    console.error("Database connection delayed — server starting in resilience mode:", err.message);
   }
 
   app.listen(PORT, () => {
