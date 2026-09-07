@@ -41,6 +41,7 @@ import PresentationScriptGenerator from "./PresentationScriptGenerator";
 import GlobalFilterBar from "./GlobalFilterBar";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import AiExecutiveNarrativeCard from "./AiExecutiveNarrativeCard";
+import DomainAuditLogExporter from "./DomainAuditLogExporter";
 import { isIdentifierColumn } from "./utils/columnUtils.js";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -6104,7 +6105,10 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
                     />
                   )}
                   {currentView === "health" && (
-                    <DataHealthInspector dataset={active} data={activeData} columns={activeCols} />
+                    <>
+                      <DataHealthInspector dataset={active} data={activeData} columns={activeCols} />
+                      <DomainAuditLogExporter dataset={active} data={activeData} columns={activeCols} />
+                    </>
                   )}
                   {currentView === "whatif" && (
                     <WhatIfSimulator data={activeData} columns={activeCols} />
