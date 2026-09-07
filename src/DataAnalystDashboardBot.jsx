@@ -3937,6 +3937,8 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 const SAMPLE_DATASETS = [
   {
     name: "Sales Performance Sample",
+    icon: "🛒",
+    domain: "Retail & E-Commerce",
     rows: [
       { Date: "2026-01-01", Category: "Electronics", Product: "Laptop", Sales: 1200, Quantity: 1, Region: "North" },
       { Date: "2026-01-02", Category: "Electronics", Product: "Phone", Sales: 800, Quantity: 1, Region: "South" },
@@ -3953,6 +3955,8 @@ const SAMPLE_DATASETS = [
   },
   {
     name: "Audit Operations Sample",
+    icon: "🏦",
+    domain: "Financial Audit",
     rows: [
       { Code: "AUD-101", Name: "Inventory Review", Auditor: "Sarah", Region: "North", Risk: "Medium", Status: "Completed", DelayDays: 2, Findings: 3 },
       { Code: "AUD-102", Name: "Tax Compliance", Auditor: "John", Region: "South", Risk: "High", Status: "In Progress", DelayDays: 5, Findings: 1 },
@@ -3962,6 +3966,50 @@ const SAMPLE_DATASETS = [
       { Code: "AUD-106", Name: "Asset Tracking", Auditor: "John", Region: "North", Risk: "Low", Status: "Completed", DelayDays: 0, Findings: 1 }
     ],
     columns: ["Code", "Name", "Auditor", "Region", "Risk", "Status", "DelayDays", "Findings"]
+  },
+  {
+    name: "HR Retention & Payroll Sample",
+    icon: "👥",
+    domain: "HR & Workforce",
+    rows: [
+      { EmpID: "EMP-001", Department: "Engineering", Role: "Senior Dev", Salary: 110000, PerformanceScore: 4.5, YearsAtCompany: 4, Attrition: "No" },
+      { EmpID: "EMP-002", Department: "Sales", Role: "Account Exec", Salary: 75000, PerformanceScore: 3.8, YearsAtCompany: 2, Attrition: "Yes" },
+      { EmpID: "EMP-003", Department: "Marketing", Role: "Growth Lead", Salary: 92000, PerformanceScore: 4.2, YearsAtCompany: 3, Attrition: "No" },
+      { EmpID: "EMP-004", Department: "Engineering", Role: "QA Analyst", Salary: 68000, PerformanceScore: 3.2, YearsAtCompany: 1, Attrition: "Yes" },
+      { EmpID: "EMP-005", Department: "Product", Role: "Product Mgr", Salary: 125000, PerformanceScore: 4.8, YearsAtCompany: 5, Attrition: "No" },
+      { EmpID: "EMP-006", Department: "Sales", Role: "SDR", Salary: 52000, PerformanceScore: 3.5, YearsAtCompany: 1, Attrition: "No" },
+      { EmpID: "EMP-007", Department: "Finance", Role: "Financial Analyst", Salary: 85000, PerformanceScore: 4.0, YearsAtCompany: 3, Attrition: "No" },
+      { EmpID: "EMP-008", Department: "Engineering", Role: "DevOps Engineer", Salary: 115000, PerformanceScore: 4.6, YearsAtCompany: 4, Attrition: "No" }
+    ],
+    columns: ["EmpID", "Department", "Role", "Salary", "PerformanceScore", "YearsAtCompany", "Attrition"]
+  },
+  {
+    name: "Supply Chain Logistics Sample",
+    icon: "📦",
+    domain: "Supply Chain & Logistics",
+    rows: [
+      { ShipmentID: "SHP-801", Carrier: "FedEx Express", Origin: "Chicago", Destination: "Dallas", FreightCost: 1450, DeliveryDays: 2, Status: "Delivered" },
+      { ShipmentID: "SHP-802", Carrier: "DHL Freight", Origin: "Seattle", Destination: "Phoenix", FreightCost: 2200, DeliveryDays: 4, Status: "In Transit" },
+      { ShipmentID: "SHP-803", Carrier: "UPS Freight", Origin: "New York", Destination: "Atlanta", FreightCost: 980, DeliveryDays: 1, Status: "Delivered" },
+      { ShipmentID: "SHP-804", Carrier: "FedEx Ground", Origin: "Los Angeles", Destination: "Denver", FreightCost: 1850, DeliveryDays: 5, Status: "Delayed" },
+      { ShipmentID: "SHP-805", Carrier: "XPO Logistics", Origin: "Miami", Destination: "Houston", FreightCost: 3100, DeliveryDays: 3, Status: "Delivered" },
+      { ShipmentID: "SHP-806", Carrier: "UPS Freight", Origin: "Chicago", Destination: "Seattle", FreightCost: 2400, DeliveryDays: 4, Status: "Delivered" }
+    ],
+    columns: ["ShipmentID", "Carrier", "Origin", "Destination", "FreightCost", "DeliveryDays", "Status"]
+  },
+  {
+    name: "Healthcare Claims Audit Sample",
+    icon: "🏥",
+    domain: "Healthcare Operations",
+    rows: [
+      { ClaimID: "CLM-901", Hospital: "St. Jude Hospital", Specialty: "Cardiology", TreatmentCost: 14500, InsuranceCovered: 12000, LengthOfStay: 4, Readmission: "No" },
+      { ClaimID: "CLM-902", Hospital: "General Health Center", Specialty: "Orthopedics", TreatmentCost: 28000, InsuranceCovered: 24000, LengthOfStay: 7, Readmission: "Yes" },
+      { ClaimID: "CLM-903", Hospital: "City Memorial", Specialty: "Neurology", TreatmentCost: 32000, InsuranceCovered: 30000, LengthOfStay: 8, Readmission: "No" },
+      { ClaimID: "CLM-904", Hospital: "St. Jude Hospital", Specialty: "Oncology", TreatmentCost: 45000, InsuranceCovered: 41000, LengthOfStay: 12, Readmission: "No" },
+      { ClaimID: "CLM-905", Hospital: "General Health Center", Specialty: "Pediatrics", TreatmentCost: 6500, InsuranceCovered: 5800, LengthOfStay: 2, Readmission: "No" },
+      { ClaimID: "CLM-906", Hospital: "Metro Care Clinic", Specialty: "Cardiology", TreatmentCost: 19500, InsuranceCovered: 17000, LengthOfStay: 5, Readmission: "Yes" }
+    ],
+    columns: ["ClaimID", "Hospital", "Specialty", "TreatmentCost", "InsuranceCovered", "LengthOfStay", "Readmission"]
   }
 ];
 
@@ -5619,16 +5667,23 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
           </div>
         )}
         <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 10, marginTop: "auto" }}>
-          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", padding: "0 4px", marginBottom: 6 }}>Samples</div>
+          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", padding: "0 4px", marginBottom: 6 }}>Industry Domain Templates</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {SAMPLE_DATASETS.map((sample, idx) => (
               <button
                 key={idx}
                 onClick={() => handleLoadSample(sample)}
                 disabled={loading}
-                style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, color: "var(--text-primary)", fontWeight: 500, cursor: loading ? "default" : "pointer", textAlign: "left" }}
+                title={`Load ${sample.domain || sample.name} domain template`}
+                style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1, width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, color: "var(--text-primary)", fontWeight: 500, cursor: loading ? "default" : "pointer", textAlign: "left" }}
               >
-                📊 {sample.name.replace(" Sample", "")}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
+                  <span>{sample.icon || "📊"}</span>
+                  <span>{sample.name.replace(" Sample", "")}</span>
+                </div>
+                {sample.domain && (
+                  <span style={{ fontSize: 9.5, color: "var(--text-muted)", paddingLeft: 20 }}>{sample.domain}</span>
+                )}
               </button>
             ))}
           </div>
