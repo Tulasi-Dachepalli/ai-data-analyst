@@ -1738,10 +1738,142 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
 
   const slicerCols = freshStats.filter(s => s.type === "categorical" && s.unique > 1 && s.unique <= 35);
 
-  const kpis = activePlan.kpiCols.map(c => {
+function computeDomainPresetKpis(currentRows, columns, activePlan) {
+  if (!currentRows || currentRows.length === 0 || !columns) return [];
+  const colSet = new Set(columns.map(c => String(c).toLowerCase().trim()));
+
+  // 1. HR & Workforce Analytics
+  if (colSet.has("salary") || colSet.has("attrition") || colSet.has("performancescore") || colSet.has("empid")) {
+    const kpis = [];
+    if (colSet.has("salary")) {
+      const vals = currentRows.map(r => parseFloat(r.Salary || r.salary || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      kpis.push({ label: "Avg Employee Salary", value: `$${Math.round(avg).toLocaleString()}` });
+    }
+    if (colSet.has("attrition")) {
+      const attrCount = currentRows.filter(r => String(r.Attrition || r.attrition).toLowerCase() === "yes").length;
+      const rate = ((attrCount / currentRows.length) * 100).toFixed(1);
+      kpis.push({ label: "Attrition Rate", value: `${rate}%` });
+    }
+    if (colSet.has("performancescore")) {
+      const vals = currentRows.map(r => parseFloat(r.PerformanceScore || r.performancescore || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : "0";
+      kpis.push({ label: "Avg Performance Rating", value: `${avg} ⭐` });
+    }
+    if (colSet.has("yearsatcompany")) {
+      const vals = currentRows.map(r => parseFloat(r.YearsAtCompany || r.yearsatcompany || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : "0";
+      kpis.push({ label: "Avg Tenure", value: `${avg} yrs` });
+    }
+    if (kpis.length > 0) return kpis;
+  }
+
+  // 2. Supply Chain & Freight Logistics
+  if (colSet.has("freightcost") || colSet.has("deliverydays") || colSet.has("shipmentid") || colSet.has("carrier")) {
+    const kpis = [];
+    if (colSet.has("freightcost")) {
+      const vals = currentRows.map(r => parseFloat(r.FreightCost || r.freightcost || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      kpis.push({ label: "Avg Freight Cost", value: `$${Math.round(avg).toLocaleString()}` });
+    }
+    if (colSet.has("deliverydays")) {
+      const vals = currentRows.map(r => parseFloat(r.DeliveryDays || r.deliverydays || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : "0";
+      kpis.push({ label: "Avg Lead Time", value: `${avg} days` });
+    }
+    if (colSet.has("status")) {
+      const delivered = currentRows.filter(r => String(r.Status || r.status).toLowerCase() === "delivered").length;
+      const rate = ((delivered / currentRows.length) * 100).toFixed(1);
+      kpis.push({ label: "On-Time Fulfillment", value: `${rate}%` });
+    }
+    if (colSet.has("carrier")) {
+      const carriers = new Set(currentRows.map(r => String(r.Carrier || r.carrier))).size;
+      kpis.push({ label: "Active Freight Carriers", value: String(carriers) });
+    }
+    if (kpis.length > 0) return kpis;
+  }
+
+  // 3. Healthcare Operations & Claims
+  if (colSet.has("treatmentcost") || colSet.has("insurancecovered") || colSet.has("lengthofstay") || colSet.has("readmission")) {
+    const kpis = [];
+    if (colSet.has("treatmentcost")) {
+      const vals = currentRows.map(r => parseFloat(r.TreatmentCost || r.treatmentcost || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+      kpis.push({ label: "Avg Treatment Cost", value: `$${Math.round(avg).toLocaleString()}` });
+    }
+    if (colSet.has("insurancecovered") && colSet.has("treatmentcost")) {
+      const totalTreat = currentRows.reduce((a, r) => a + (parseFloat(r.TreatmentCost || r.treatmentcost) || 0), 0);
+      const totalCov = currentRows.reduce((a, r) => a + (parseFloat(r.InsuranceCovered || r.insurancecovered) || 0), 0);
+      const pct = totalTreat > 0 ? ((totalCov / totalTreat) * 100).toFixed(1) : "0";
+      kpis.push({ label: "Insurance Coverage Ratio", value: `${pct}%` });
+    }
+    if (colSet.has("lengthofstay")) {
+      const vals = currentRows.map(r => parseFloat(r.LengthOfStay || r.lengthofstay || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : "0";
+      kpis.push({ label: "Avg Length of Stay", value: `${avg} days` });
+    }
+    if (colSet.has("readmission")) {
+      const readm = currentRows.filter(r => String(r.Readmission || r.readmission).toLowerCase() === "yes").length;
+      const rate = ((readm / currentRows.length) * 100).toFixed(1);
+      kpis.push({ label: "30-Day Readmission Risk", value: `${rate}%` });
+    }
+    if (kpis.length > 0) return kpis;
+  }
+
+  // 4. Financial Audit & Operations
+  if (colSet.has("findings") || colSet.has("delaydays") || colSet.has("auditor") || colSet.has("risk")) {
+    const kpis = [];
+    if (colSet.has("findings")) {
+      const total = currentRows.reduce((a, r) => a + (parseFloat(r.Findings || r.findings) || 0), 0);
+      kpis.push({ label: "Total Audit Findings", value: String(total) });
+    }
+    if (colSet.has("delaydays")) {
+      const vals = currentRows.map(r => parseFloat(r.DelayDays || r.delaydays || 0)).filter(v => !isNaN(v));
+      const avg = vals.length > 0 ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : "0";
+      kpis.push({ label: "Avg Delay Days", value: `${avg} days` });
+    }
+    if (colSet.has("risk")) {
+      const highRisk = currentRows.filter(r => String(r.Risk || r.risk).toLowerCase() === "high").length;
+      const pct = ((highRisk / currentRows.length) * 100).toFixed(1);
+      kpis.push({ label: "High Risk Audit Rate", value: `${pct}%` });
+    }
+    if (colSet.has("status")) {
+      const comp = currentRows.filter(r => String(r.Status || r.status).toLowerCase() === "completed").length;
+      const pct = ((comp / currentRows.length) * 100).toFixed(1);
+      kpis.push({ label: "Completion Rate", value: `${pct}%` });
+    }
+    if (kpis.length > 0) return kpis;
+  }
+
+  // 5. Retail & E-Commerce (Sales, Quantity, Price)
+  if (colSet.has("sales") || colSet.has("revenue") || colSet.has("quantity")) {
+    const kpis = [];
+    if (colSet.has("sales") || colSet.has("revenue")) {
+      const colName = colSet.has("sales") ? "Sales" : "Revenue";
+      const total = currentRows.reduce((a, r) => a + (parseFloat(r[colName] || r[colName.toLowerCase()]) || 0), 0);
+      kpis.push({ label: `Total ${colName}`, value: `$${Math.round(total).toLocaleString()}` });
+    }
+    if (colSet.has("quantity")) {
+      const totalUnits = currentRows.reduce((a, r) => a + (parseFloat(r.Quantity || r.quantity) || 0), 0);
+      kpis.push({ label: "Total Units Sold", value: Math.round(totalUnits).toLocaleString() });
+    }
+    if (colSet.has("sales") && colSet.has("quantity")) {
+      const totalSales = currentRows.reduce((a, r) => a + (parseFloat(r.Sales || r.sales) || 0), 0);
+      const totalQty = currentRows.reduce((a, r) => a + (parseFloat(r.Quantity || r.quantity) || 0), 0);
+      const aov = totalQty > 0 ? (totalSales / currentRows.length).toFixed(0) : "0";
+      kpis.push({ label: "Avg Order Value (AOV)", value: `$${Number(aov).toLocaleString()}` });
+    }
+    if (kpis.length > 0) return kpis;
+  }
+
+  // Fallback to activePlan numeric columns
+  return (activePlan.kpiCols || []).map(c => {
     const colStat = computeColumnStats(currentRows, c.name);
     return { label: `Avg ${c.name}`, value: colStat.mean !== undefined ? colStat.mean.toLocaleString() : "0" };
   });
+}
+
+  const kpis = computeDomainPresetKpis(currentRows, columns, activePlan);
 
   let categoryCharts = activePlan.categoryCols.map(c => {
     const isRegion = String(c.name).toLowerCase() === "region";
