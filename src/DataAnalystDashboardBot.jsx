@@ -40,6 +40,7 @@ import AiDataDebate from "./AiDataDebate";
 import PresentationScriptGenerator from "./PresentationScriptGenerator";
 import GlobalFilterBar from "./GlobalFilterBar";
 import PwaInstallPrompt from "./PwaInstallPrompt";
+import AiExecutiveNarrativeCard from "./AiExecutiveNarrativeCard";
 import { isIdentifierColumn } from "./utils/columnUtils.js";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -6109,7 +6110,10 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
                     <WhatIfSimulator data={activeData} columns={activeCols} />
                   )}
                   {currentView === "exec-reports" && (
-                    <ExecutiveReportGenerator dataset={active} data={activeData} columns={activeCols} />
+                    <>
+                      <AiExecutiveNarrativeCard data={activeData} columns={activeCols} dataset={active} />
+                      <ExecutiveReportGenerator dataset={active} data={activeData} columns={activeCols} />
+                    </>
                   )}
                   {currentView === "alerts" && (
                     <ThresholdAlertManager data={activeData} columns={activeCols} />
