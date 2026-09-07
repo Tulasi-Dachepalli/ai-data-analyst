@@ -39,9 +39,9 @@ export default function ThresholdAlertManager({ data = [], columns = [] }) {
   }, [data, activeCol, condition, thresholdVal]);
 
   const handleSendAlert = async () => {
+    const activeWebhook = webhookUrl.trim() || (channelType === "slack" ? "https://hooks.slack.com/services/T0000/B0000/DEMO_SLACK_ALERTS" : "https://api.twilio.com/2010-04-01/Accounts/DEMO_WHATSAPP");
     if (!webhookUrl.trim()) {
-      alert("Please enter a valid Slack or WhatsApp Webhook URL.");
-      return;
+      setWebhookUrl(activeWebhook);
     }
 
     setIsSending(true);
@@ -51,14 +51,14 @@ export default function ThresholdAlertManager({ data = [], columns = [] }) {
 
     try {
       if (channelType === "slack") {
-        await fetch(webhookUrl, {
+        await fetch(activeWebhook, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           mode: "no-cors",
           body: JSON.stringify({ text: alertMessage })
         });
       } else {
-        await fetch(webhookUrl, {
+        await fetch(activeWebhook, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           mode: "no-cors",
@@ -99,6 +99,31 @@ export default function ThresholdAlertManager({ data = [], columns = [] }) {
         <div style={{ color: "#8A8580", fontSize: 13 }}>Please upload or select a dataset with numeric attributes to configure threshold rules.</div>
       ) : (
         <>
+          {/* Quick Preset Buttons */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14, alignItems: "center" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#6B7280" }}>⚡ Quick Threshold Presets:</span>
+            {numericCols.slice(0, 3).map((col) => (
+              <button
+                key={col}
+                type="button"
+                onClick={() => { setSelectedCol(col); setCondition(">"); setThresholdVal("5000"); }}
+                style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #D1D5DB", backgroundColor: "#F3F4F6", fontSize: 12, fontWeight: 600, color: "#374151", cursor: "pointer" }}
+              >
+                {col} &gt; 5000
+              </button>
+            ))}
+            {numericCols.slice(0, 2).map((col) => (
+              <button
+                key={`${col}_low`}
+                type="button"
+                onClick={() => { setSelectedCol(col); setCondition("<"); setThresholdVal("1000"); }}
+                style={{ padding: "4px 10px", borderRadius: 6, border: "1px solid #D1D5DB", backgroundColor: "#F3F4F6", fontSize: 12, fontWeight: 600, color: "#374151", cursor: "pointer" }}
+              >
+                {col} &lt; 1000
+              </button>
+            ))}
+          </div>
+
           {/* Rule Configurator Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, background: "#F9FAFB", padding: 16, borderRadius: 10, marginBottom: 20, border: "1px solid #E5E7EB" }}>
             <div>
@@ -152,9 +177,18 @@ export default function ThresholdAlertManager({ data = [], columns = [] }) {
 
           {/* Webhook Input Box */}
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: "#374151", display: "block", marginBottom: 6 }}>
-              {channelType === "slack" ? "Slack Incoming Webhook URL:" : "WhatsApp API Webhook Endpoint:"}
-            </label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
+                {channelType === "slack" ? "Slack Incoming Webhook URL:" : "WhatsApp API Webhook Endpoint:"}
+              </label>
+              <button
+                type="button"
+                onClick={() => setWebhookUrl(channelType === "slack" ? "https://hooks.slack.com/services/T0000/B0000/DEMO_SLACK_ALERTS" : "https://api.twilio.com/2010-04-01/Accounts/DEMO_WHATSAPP")}
+                style={{ background: "none", border: "none", color: "#3E6F8E", fontSize: 12, fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}
+              >
+                ⚡ Fill Demo Webhook
+              </button>
+            </div>
             <input
               type="text"
               placeholder={channelType === "slack" ? "https://hooks.slack.com/services/T0000/B0000/XXXX" : "https://api.twilio.com/2010-04-01/Accounts/..."}
