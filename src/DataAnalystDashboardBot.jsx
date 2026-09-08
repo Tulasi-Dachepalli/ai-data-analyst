@@ -5250,6 +5250,21 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
 
       // ── Business Intent & Data Availability Protection Check ────────────────
       const activeUserRole = user?.role || "ceo";
+
+      // ── RBAC Security Authorization Guard ───────────────────────────────
+      const rbacCheck = authorizeDataQuery(activeUserRole, question);
+      if (!rbacCheck.authorized) {
+        const unauthorizedMsg = rbacCheck.reason;
+        updateThread(id, t => ({
+          ...t,
+          messages: [...(t.messages || []), { role: "assistant", kind: "grounded_chat", content: unauthorizedMsg, confidence_score: 1.0 }]
+        }));
+        setAnswerToast({ question, answer: unauthorizedMsg });
+        setLoading(false);
+        fetchUsage();
+        return;
+      }
+
       const intentResult = detectBusinessIntent(question, activeUserRole);
 
       if (intentResult.detected && intentResult.domain) {
