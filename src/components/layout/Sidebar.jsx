@@ -184,29 +184,35 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
             const nextRole = e.target.value;
             const updatedUser = { ...(user || {}), role: nextRole };
             localStorage.setItem("aida_user", JSON.stringify(updatedUser));
-            let targetView = "dashboards";
-            if (nextRole === "mis_analyst" || nextRole === "member") {
-              targetView = "dashboards";
-            }
-            setView(targetView);
+            setView("dashboard");
             window.location.reload();
           }}
-          style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 11.5, fontWeight: 700, background: "#FFF", color: "#333", cursor: "pointer", marginBottom: 6 }}
+          style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color, #DDD8CE)", fontSize: 11.5, fontWeight: 700, background: "var(--bg-primary, #FFF)", color: "var(--text-primary, #333)", cursor: "pointer", marginBottom: 6 }}
         >
-          <option value="admin">👑 Admin (Full Access)</option>
-          <option value="data_analyst">📈 Data Analyst (ML & BI)</option>
-          <option value="mis_analyst">📊 MIS Analyst (Core BI Only)</option>
-          <option value="member">👤 Member (Essential View)</option>
+          <option value="ceo">👔 CEO / Executive</option>
+          <option value="hr">👥 HR Manager</option>
+          <option value="recruiter">🎯 Recruiter</option>
+          <option value="finance">💰 Finance</option>
+          <option value="data_analyst">📊 Data Analyst Studio</option>
+          <option value="data_scientist">🤖 Data Scientist</option>
+          <option value="sales">📈 Sales</option>
+          <option value="marketing">📣 Marketing</option>
+          <option value="operations">⚙️ Operations</option>
+          <option value="it">💻 IT / Technology</option>
+          <option value="supply_chain">🚚 Supply Chain</option>
+          <option value="admin">🛡️ Administrator</option>
         </select>
 
         {/* Filter Indicator Badge */}
-        <div style={{ fontSize: "10.5px", fontWeight: 700, color: isMisAnalyst ? "#D97706" : isDataAnalyst ? "#2563EB" : isAdmin ? "#7C3AED" : "#059669", background: "#FFF", border: "1px solid #E5E7EB", borderRadius: 6, padding: "5px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ fontSize: "10.5px", fontWeight: 700, color: "#2563EB", background: "var(--bg-primary, #FFF)", border: "1px solid var(--border-color, #E5E7EB)", borderRadius: 6, padding: "5px 8px", display: "flex", alignItems: "center", gap: 6 }}>
           <span>🎯</span>
           <span>
-            {isMisAnalyst && "Filter: Showing 8 Core BI Tools"}
-            {isDataAnalyst && "Filter: Showing 18 BI & ML Tools"}
-            {isAdmin && "Filter: Full System Access"}
-            {isMember && "Filter: Showing Essential Tools"}
+            {role === "ceo" && "Role: Executive Command Center"}
+            {role === "hr" && "Role: HR Command Center"}
+            {role === "recruiter" && "Role: Recruitment Command Center"}
+            {role === "finance" && "Role: Finance Command Center"}
+            {role === "data_analyst" && "Role: Data Analyst Studio (Full BI)"}
+            {!["ceo", "hr", "recruiter", "finance", "data_analyst"].includes(role) && `Role: ${role.toUpperCase()} Workspace`}
           </span>
         </div>
       </div>

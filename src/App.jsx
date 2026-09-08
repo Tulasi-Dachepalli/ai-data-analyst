@@ -12,7 +12,7 @@ import * as api from "./api";
 
 const DEFAULT_USER = {
   email: "demo.executive@enterprise.com",
-  role: "admin",
+  role: "ceo",
   companyName: "Acme Enterprise",
   tier: "pro"
 };

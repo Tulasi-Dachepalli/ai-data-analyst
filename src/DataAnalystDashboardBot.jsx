@@ -42,6 +42,12 @@ import GlobalFilterBar from "./GlobalFilterBar";
 import PwaInstallPrompt from "./PwaInstallPrompt";
 import AiExecutiveNarrativeCard from "./AiExecutiveNarrativeCard";
 import DomainAuditLogExporter from "./DomainAuditLogExporter";
+import ExecutiveCommandCenter from "./components/workspaces/ExecutiveCommandCenter";
+import HrCommandCenter from "./components/workspaces/HrCommandCenter";
+import RecruitmentCommandCenter from "./components/workspaces/RecruitmentCommandCenter";
+import FinanceCommandCenter from "./components/workspaces/FinanceCommandCenter";
+import RoleSelectionModal from "./components/workspaces/RoleSelectionModal";
+import { getRoleConfig } from "./config/roleConfigs";
 import { isIdentifierColumn } from "./utils/columnUtils.js";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -6328,10 +6334,23 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
                 </>
               );
             })()}
-            {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && currentView !== "correlation" && currentView !== "branding" && currentView !== "stats" && currentView !== "sql" && currentView !== "clustering" && currentView !== "pivot" && currentView !== "cohort" && currentView !== "transform" && currentView !== "pareto" && currentView !== "anomalies" && currentView !== "search" && currentView !== "forecast" && currentView !== "montecarlo" && currentView !== "cleaner" && currentView !== "abc" && currentView !== "benchmarks" && currentView !== "digest" && currentView !== "goalseek" && currentView !== "rfm" && currentView !== "geomap" && currentView !== "webhooks" && currentView !== "debate" && currentView !== "script" && (
-              <div style={{ textAlign: "center", color: "#A6A196", fontSize: 13.5, marginTop: 100, lineHeight: 1.7 }}>
-                <div style={{ fontSize: 17, color: "#2B2A27", fontWeight: 600, marginBottom: 6 }}>Data Analyst</div>
-                Upload your file (csv or excel) - I'll build a dashboard and you can ask follow-up questions.
+            {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
+            {(!active || currentView === "dashboard" || currentView === "overview") && (user?.role === "ceo" || !user?.role) && (
+              <ExecutiveCommandCenter onAskQuestion={(q) => setInput(q)} />
+            )}
+            {(!active || currentView === "dashboard" || currentView === "overview") && user?.role === "hr" && (
+              <HrCommandCenter onAskQuestion={(q) => setInput(q)} />
+            )}
+            {(!active || currentView === "dashboard" || currentView === "overview") && user?.role === "recruiter" && (
+              <RecruitmentCommandCenter onAskQuestion={(q) => setInput(q)} />
+            )}
+            {(!active || currentView === "dashboard" || currentView === "overview") && user?.role === "finance" && (
+              <FinanceCommandCenter onAskQuestion={(q) => setInput(q)} />
+            )}
+            {!active && user?.role === "data_analyst" && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
+              <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 14, marginTop: 60, lineHeight: 1.7 }}>
+                <div style={{ fontSize: 20, color: "var(--text-primary)", fontWeight: 700, marginBottom: 8 }}>📊 Data Analyst Studio</div>
+                Upload your CSV or Excel dataset to build automated BI dashboards, statistical EDA, and ML predictive models.
               </div>
             )}
             {active && (active.messages || []).map((m, i) => {
