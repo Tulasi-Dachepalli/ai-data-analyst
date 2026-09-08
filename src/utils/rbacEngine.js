@@ -45,7 +45,7 @@ export function authorizeDataQuery(roleId, queryText = "") {
   }
 
   // 2. Confidential Payroll / Salary Access Rules
-  if (/(salary|payroll|compensation|wage|remuneration|paycheck|highest-paid|earning)/i.test(normalized)) {
+  if (/(salary|salaries|payroll|compensation|wage|wages|remuneration|paycheck|paychecks|highest-paid|earning|earnings)/i.test(normalized)) {
     const isAuthorized = ["hr", "ceo", "admin"].includes(roleId);
     if (!isAuthorized) {
       return {
