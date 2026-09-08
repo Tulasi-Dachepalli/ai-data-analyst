@@ -51,7 +51,7 @@ import EvidenceAnswerCard from "./components/ui/EvidenceAnswerCard";
 import { getRoleConfig } from "./config/roleConfigs";
 import { checkDataAvailability } from "./utils/dataAvailabilityEngine.js";
 import { detectBusinessIntent } from "./utils/intentEngine.js";
-import { authorizeRoleAction } from "./utils/rbacEngine.js";
+import { authorizeRoleAction, authorizeDataQuery } from "./utils/rbacEngine.js";
 import { isIdentifierColumn } from "./utils/columnUtils.js";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
