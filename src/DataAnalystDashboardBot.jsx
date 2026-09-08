@@ -5075,6 +5075,12 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState("pro");
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.aidaAskQuestion = (q) => handleAskQuestion(q);
+    }
+  });
+
   const handleCheckoutSuccess = async (newTier) => {
     try {
       await api.upgradeSubscription(newTier);
