@@ -1010,6 +1010,46 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState("asc");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(err => console.warn("Fullscreen error:", err));
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+      setIsFullScreen(true);
+      setIsExpanded(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.warn("Exit fullscreen error:", err));
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      setIsFullScreen(false);
+      setIsExpanded(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      const isFs = !!document.fullscreenElement;
+      setIsFullScreen(isFs);
+      setIsExpanded(isFs);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    document.addEventListener("webkitfullscreenchange", handleFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      document.removeEventListener("webkitfullscreenchange", handleFsChange);
+    };
+  }, []);
 
   // Data cleaning state hooks
   const [cleaningStage, setCleaningStage] = useState("idle"); // "idle" | "cleaning" | "preview" | "completed" | "error"
@@ -1995,12 +2035,12 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {/* Fullscreen Expand Toggle Button */}
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
+              onClick={toggleFullScreen}
               style={{
                 fontSize: 11.5,
                 fontWeight: 600,
-                color: isExpanded ? "#FFF" : "var(--accent-color, #0F172A)",
-                background: isExpanded ? "var(--accent-color, #0F172A)" : "var(--bg-primary)",
+                color: (isFullScreen || isExpanded) ? "#FFF" : "var(--accent-color, #0F172A)",
+                background: (isFullScreen || isExpanded) ? "var(--accent-color, #0F172A)" : "var(--bg-primary)",
                 border: "1px solid var(--border-color)",
                 borderRadius: 6,
                 padding: "4px 10px",
@@ -2010,9 +2050,9 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
                 gap: 5,
                 transition: "all 0.15s ease"
               }}
-              title="Toggle spacious full-screen widescreen mode"
+              title="Toggle spacious full-screen browser mode"
             >
-              <span>{isExpanded ? "↙ Exit Fullscreen" : "⛶ Fullscreen View"}</span>
+              <span>{(isFullScreen || isExpanded) ? "↙ Exit Fullscreen" : "⛶ Fullscreen View"}</span>
             </button>
 
             {/* Explicit Ingested Sheet Indicator Badge */}
@@ -5991,7 +6031,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
               )}
 
               <button
-                onClick={() => setIsFullScreen(prev => !prev)}
+                onClick={toggleFullScreen}
                 title={isFullScreen ? "Exit Fullscreen Mode" : "Expand Analysis to Fullscreen"}
                 style={{
                   fontSize: 12, fontWeight: 600,

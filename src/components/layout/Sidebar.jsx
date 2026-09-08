@@ -74,8 +74,26 @@ const Icons = {
 };
 
 export default function Sidebar({ user, currentView, setView, onLogout, isOpen, setIsOpen }) {
-  const isAdmin = user?.role === "admin";
-  const isMisAnalyst = user?.role === "mis_analyst";
+  const role = user?.role || "admin";
+  const isAdmin = role === "admin";
+  const isDataAnalyst = role === "data_analyst";
+  const isMisAnalyst = role === "mis_analyst";
+  const isMember = role === "member";
+
+  // Role-based allowed views matrix
+  const isViewAllowed = (viewId) => {
+    if (isAdmin) return true;
+    if (isDataAnalyst) {
+      return !["admin-members", "admin-audit", "admin-security"].includes(viewId);
+    }
+    if (isMisAnalyst) {
+      return ["dashboard", "datasets", "ai-analyst", "dashboards", "health", "whatif", "exec-reports", "alerts"].includes(viewId);
+    }
+    if (isMember) {
+      return ["dashboard", "datasets", "ai-analyst", "dashboards", "exec-reports"].includes(viewId);
+    }
+    return true;
+  };
 
   const navItemStyle = (isActive) => ({
     display: "flex",
@@ -128,7 +146,7 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
         padding: "20px 16px",
         borderBottom: "1px solid var(--border-color)",
         display: "flex",
-        justifyContent: "space-between",
+        justify: "space-between",
         alignItems: "center"
       }}>
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -154,73 +172,99 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
         )}
       </div>
 
-      {/* Live Role Switcher (1-Click Test Sandbox) */}
-      <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--border-color)", background: "rgba(139, 92, 246, 0.04)" }}>
+      {/* Live Role Switcher & Active Role Scope Banner */}
+      <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border-color)", background: "rgba(139, 92, 246, 0.05)" }}>
         <div style={{ fontSize: "10.5px", fontWeight: 700, color: "#8B5CF6", marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>⚡ Active Role Sandbox:</span>
-          <span style={{ fontSize: 9, background: "#8B5CF6", color: "#FFF", padding: "1px 5px", borderRadius: 4 }}>TEST</span>
+          <span>⚡ Active Role Scope:</span>
+          <span style={{ fontSize: 9, background: "#8B5CF6", color: "#FFF", padding: "1px 5px", borderRadius: 4 }}>SANDBOX</span>
         </div>
         <select
-          value={user?.role || "admin"}
+          value={role}
           onChange={(e) => {
             const nextRole = e.target.value;
             const updatedUser = { ...(user || {}), role: nextRole };
             localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+            let targetView = "dashboards";
+            if (nextRole === "mis_analyst" || nextRole === "member") {
+              targetView = "dashboards";
+            }
+            setView(targetView);
             window.location.reload();
           }}
-          style={{ width: "100%", padding: "4px 8px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 11.5, fontWeight: 700, background: "#FFF", color: "#333", cursor: "pointer" }}
+          style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #DDD8CE", fontSize: 11.5, fontWeight: 700, background: "#FFF", color: "#333", cursor: "pointer", marginBottom: 6 }}
         >
           <option value="admin">👑 Admin (Full Access)</option>
           <option value="data_analyst">📈 Data Analyst (ML & BI)</option>
-          <option value="mis_analyst">📊 MIS Analyst (Restricted)</option>
-          <option value="member">👤 Member</option>
+          <option value="mis_analyst">📊 MIS Analyst (Core BI Only)</option>
+          <option value="member">👤 Member (Essential View)</option>
         </select>
+
+        {/* Filter Indicator Badge */}
+        <div style={{ fontSize: "10.5px", fontWeight: 700, color: isMisAnalyst ? "#D97706" : isDataAnalyst ? "#2563EB" : isAdmin ? "#7C3AED" : "#059669", background: "#FFF", border: "1px solid #E5E7EB", borderRadius: 6, padding: "5px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+          <span>🎯</span>
+          <span>
+            {isMisAnalyst && "Filter: Showing 8 Core BI Tools"}
+            {isDataAnalyst && "Filter: Showing 18 BI & ML Tools"}
+            {isAdmin && "Filter: Full System Access"}
+            {isMember && "Filter: Showing Essential Tools"}
+          </span>
+        </div>
       </div>
 
       {/* Navigation Groups */}
       <div style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
         <div style={sectionHeaderStyle}>Analytics Workspace</div>
-        <button onClick={() => setView("dashboard")} style={navItemStyle(currentView === "dashboard")} title="Upload spreadsheets and view interactive BI analytics">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Workspace Threads</span>
-            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Upload & Interactive Threads</span>
-          </div>
-        </button>
+        {isViewAllowed("dashboard") && (
+          <button onClick={() => setView("dashboard")} style={navItemStyle(currentView === "dashboard")} title="Upload spreadsheets and view interactive BI analytics">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Workspace Threads</span>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Upload & Interactive Threads</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("datasets")} style={navItemStyle(currentView === "datasets")} title="View all ingested spreadsheet tables">
-          <Icons.Datasets />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>My Datasets</span>
-            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Ingested Spreadsheet Files</span>
-          </div>
-        </button>
+        {isViewAllowed("datasets") && (
+          <button onClick={() => setView("datasets")} style={navItemStyle(currentView === "datasets")} title="View all ingested spreadsheet tables">
+            <Icons.Datasets />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>My Datasets</span>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Ingested Spreadsheet Files</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("ai-analyst")} style={navItemStyle(currentView === "ai-analyst")} title="Conversational AI Chatbot to query your data in plain English">
-          <Icons.AIAnalyst />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>AI Copilot Chat</span>
-            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>💬 Conversational Q&A Bot</span>
-          </div>
-        </button>
+        {isViewAllowed("ai-analyst") && (
+          <button onClick={() => setView("ai-analyst")} style={navItemStyle(currentView === "ai-analyst")} title="Conversational AI Chatbot to query your data in plain English">
+            <Icons.AIAnalyst />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>AI Copilot Chat</span>
+              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>💬 Conversational Q&A Bot</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("dashboards")} style={navItemStyle(currentView === "dashboards")} title="Executive BI Dashboards, Pie Charts & Heatmaps">
-          <Icons.Dashboards />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>BI Dashboards</span>
-            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>KPIs, Charts & Heatmaps</span>
-          </div>
-        </button>
+        {isViewAllowed("dashboards") && (
+          <button onClick={() => setView("dashboards")} style={navItemStyle(currentView === "dashboards")} title="Executive BI Dashboards, Pie Charts & Heatmaps">
+            <Icons.Dashboards />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>BI Dashboards</span>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>KPIs, Charts & Heatmaps</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("insights")} style={navItemStyle(currentView === "insights")} title="Automated Exploratory Data Analysis & Statistics">
-          <Icons.Insights />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>EDA & Statistics</span>
-            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Exploratory Shape Profiling</span>
-          </div>
-        </button>
+        {isViewAllowed("insights") && (
+          <button onClick={() => setView("insights")} style={navItemStyle(currentView === "insights")} title="Automated Exploratory Data Analysis & Statistics">
+            <Icons.Insights />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>EDA & Statistics</span>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Exploratory Shape Profiling</span>
+            </div>
+          </button>
+        )}
 
-        {!isMisAnalyst && (
+        {isViewAllowed("reports") && (
           <button onClick={() => setView("reports")} style={navItemStyle(currentView === "reports")} title="Machine Learning Predictions & Time-Series Trend Forecasting">
             <Icons.Reports />
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
@@ -231,71 +275,87 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
         )}
 
         <div style={sectionHeaderStyle}>AI Intelligence Suite</div>
-        <button onClick={() => setView("health")} style={navItemStyle(currentView === "health")} title="Automated Data Quality Scoring & Anomaly Detection">
-          <Icons.Security />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Data Health Inspector</span>
-            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🩺 Quality Score & Outliers</span>
-          </div>
-        </button>
+        {isViewAllowed("health") && (
+          <button onClick={() => setView("health")} style={navItemStyle(currentView === "health")} title="Automated Data Quality Scoring & Anomaly Detection">
+            <Icons.Security />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Data Health Inspector</span>
+              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🩺 Quality Score & Outliers</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("whatif")} style={navItemStyle(currentView === "whatif")} title="Interactive What-If Growth & Revenue Simulator">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>What-If Simulator</span>
-            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Projections & Scenarios</span>
-          </div>
-        </button>
+        {isViewAllowed("whatif") && (
+          <button onClick={() => setView("whatif")} style={navItemStyle(currentView === "whatif")} title="Interactive What-If Growth & Revenue Simulator">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>What-If Simulator</span>
+              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Projections & Scenarios</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("exec-reports")} style={navItemStyle(currentView === "exec-reports")} title="1-Click Executive Summary PDF & HTML Export">
-          <Icons.Reports />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Executive Reports</span>
-            <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>📄 1-Click Executive Export</span>
-          </div>
-        </button>
+        {isViewAllowed("exec-reports") && (
+          <button onClick={() => setView("exec-reports")} style={navItemStyle(currentView === "exec-reports")} title="1-Click Executive Summary PDF & HTML Export">
+            <Icons.Reports />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Executive Reports</span>
+              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>📄 1-Click Executive Export</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("alerts")} style={navItemStyle(currentView === "alerts")} title="Automated Slack & WhatsApp Threshold Notifications">
-          <Icons.Reports />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Threshold Alerts</span>
-            <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>📢 Slack & WhatsApp Webhooks</span>
-          </div>
-        </button>
+        {isViewAllowed("alerts") && (
+          <button onClick={() => setView("alerts")} style={navItemStyle(currentView === "alerts")} title="Automated Slack & WhatsApp Threshold Notifications">
+            <Icons.Reports />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Threshold Alerts</span>
+              <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>📢 Slack & WhatsApp Webhooks</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("correlation")} style={navItemStyle(currentView === "correlation")} title="Pearson Correlation Matrix & Heatmap Grid">
-          <Icons.Insights />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Correlation Matrix</span>
-            <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>📊 Heatmap Grid & Matrix</span>
-          </div>
-        </button>
+        {isViewAllowed("correlation") && (
+          <button onClick={() => setView("correlation")} style={navItemStyle(currentView === "correlation")} title="Pearson Correlation Matrix & Heatmap Grid">
+            <Icons.Insights />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Correlation Matrix</span>
+              <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>📊 Heatmap Grid & Matrix</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("branding")} style={navItemStyle(currentView === "branding")} title="Corporate Logo & Custom PDF Report Header Settings">
-          <Icons.Security />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Corporate Branding</span>
-            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🏢 Custom Logo & Headers</span>
-          </div>
-        </button>
+        {isViewAllowed("branding") && (
+          <button onClick={() => setView("branding")} style={navItemStyle(currentView === "branding")} title="Corporate Logo & Custom PDF Report Header Settings">
+            <Icons.Security />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Corporate Branding</span>
+              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🏢 Custom Logo & Headers</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("stats")} style={navItemStyle(currentView === "stats")} title="Deep Descriptive Statistics, Percentiles & Skewness">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Statistical Profiling</span>
-            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📐 Percentiles & Skewness</span>
-          </div>
-        </button>
+        {isViewAllowed("stats") && (
+          <button onClick={() => setView("stats")} style={navItemStyle(currentView === "stats")} title="Deep Descriptive Statistics, Percentiles & Skewness">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Statistical Profiling</span>
+              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📐 Percentiles & Skewness</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("sql")} style={navItemStyle(currentView === "sql")} title="AI Natural Language to ANSI SQL Translation & Execution">
-          <Icons.Code />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>AI SQL Generator</span>
-            <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Text-to-SQL & Live Execution</span>
-          </div>
-        </button>
+        {isViewAllowed("sql") && (
+          <button onClick={() => setView("sql")} style={navItemStyle(currentView === "sql")} title="AI Natural Language to ANSI SQL Translation & Execution">
+            <Icons.Code />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>AI SQL Generator</span>
+              <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Text-to-SQL & Live Execution</span>
+            </div>
+          </button>
+        )}
 
-        {!isMisAnalyst && (
+        {isViewAllowed("clustering") && (
           <button onClick={() => setView("clustering")} style={navItemStyle(currentView === "clustering")} title="AI K-Means Unsupervised Clustering & Segmentation">
             <Icons.Overview />
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
@@ -305,55 +365,67 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </button>
         )}
 
-        <button onClick={() => setView("pivot")} style={navItemStyle(currentView === "pivot")} title="Interactive 2D Pivot Table & Cross-Tabulation">
-          <Icons.Reports />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>AI Pivot Table</span>
-            <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>🔍 Cross-Tabulation & Matrix</span>
-          </div>
-        </button>
+        {isViewAllowed("pivot") && (
+          <button onClick={() => setView("pivot")} style={navItemStyle(currentView === "pivot")} title="Interactive 2D Pivot Table & Cross-Tabulation">
+            <Icons.Reports />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>AI Pivot Table</span>
+              <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>🔍 Cross-Tabulation & Matrix</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("cohort")} style={navItemStyle(currentView === "cohort")} title="Acquisition Cohort Retention Heatmap Grid">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Cohort Analysis</span>
-            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📊 Retention Heatmap</span>
-          </div>
-        </button>
+        {isViewAllowed("cohort") && (
+          <button onClick={() => setView("cohort")} style={navItemStyle(currentView === "cohort")} title="Acquisition Cohort Retention Heatmap Grid">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Cohort Analysis</span>
+              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📊 Retention Heatmap</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("transform")} style={navItemStyle(currentView === "transform")} title="Data Transformation & Calculated Column Studio">
-          <Icons.Code />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Formula Studio</span>
-            <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Calculated Columns & Filters</span>
-          </div>
-        </button>
+        {isViewAllowed("transform") && (
+          <button onClick={() => setView("transform")} style={navItemStyle(currentView === "transform")} title="Data Transformation & Calculated Column Studio">
+            <Icons.Code />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Formula Studio</span>
+              <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Calculated Columns & Filters</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("pareto")} style={navItemStyle(currentView === "pareto")} title="Pareto 80/20 Cumulative Distribution & Dual-Axis Chart">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Pareto Analysis</span>
-            <span style={{ fontSize: "10px", color: "#6366F1", fontWeight: 600 }}>📊 80/20 Rule Distribution</span>
-          </div>
-        </button>
+        {isViewAllowed("pareto") && (
+          <button onClick={() => setView("pareto")} style={navItemStyle(currentView === "pareto")} title="Pareto 80/20 Cumulative Distribution & Dual-Axis Chart">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Pareto Analysis</span>
+              <span style={{ fontSize: "10px", color: "#6366F1", fontWeight: 600 }}>📊 80/20 Rule Distribution</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("anomalies")} style={navItemStyle(currentView === "anomalies")} title="AI Outlier & Anomaly Root-Cause Investigator">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Anomaly Investigator</span>
-            <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>🚨 Outliers & Root Cause AI</span>
-          </div>
-        </button>
+        {isViewAllowed("anomalies") && (
+          <button onClick={() => setView("anomalies")} style={navItemStyle(currentView === "anomalies")} title="AI Outlier & Anomaly Root-Cause Investigator">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Anomaly Investigator</span>
+              <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>🚨 Outliers & Root Cause AI</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("search")} style={navItemStyle(currentView === "search")} title="Advanced Data Search, Multi-Column Sorting & Excel Exporter">
-          <Icons.Code />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Subset Explorer</span>
-            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🔍 Search, Sort & Excel Export</span>
-          </div>
-        </button>
+        {isViewAllowed("search") && (
+          <button onClick={() => setView("search")} style={navItemStyle(currentView === "search")} title="Advanced Data Search, Multi-Column Sorting & Excel Exporter">
+            <Icons.Code />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Subset Explorer</span>
+              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🔍 Search, Sort & Excel Export</span>
+            </div>
+          </button>
+        )}
 
-        {!isMisAnalyst && (
+        {isViewAllowed("forecast") && (
           <button onClick={() => setView("forecast")} style={navItemStyle(currentView === "forecast")} title="AI Predictive Time-Series Forecasting & 95% Confidence Bounds">
             <Icons.Overview />
             <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
@@ -363,95 +435,117 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           </button>
         )}
 
-        <button onClick={() => setView("montecarlo")} style={navItemStyle(currentView === "montecarlo")} title="Monte Carlo Risk & Financial Scenario Simulator">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Monte Carlo Risk</span>
-            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎲 1,000 Stochastic Runs</span>
-          </div>
-        </button>
+        {isViewAllowed("montecarlo") && (
+          <button onClick={() => setView("montecarlo")} style={navItemStyle(currentView === "montecarlo")} title="Monte Carlo Risk & Financial Scenario Simulator">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Monte Carlo Risk</span>
+              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎲 1,000 Stochastic Runs</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("cleaner")} style={navItemStyle(currentView === "cleaner")} title="1-Click Automated Missing Value Imputation & Data Cleaner">
-          <Icons.Code />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Data Auto-Cleaner</span>
-            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🧹 Impute & Clean Data</span>
-          </div>
-        </button>
+        {isViewAllowed("cleaner") && (
+          <button onClick={() => setView("cleaner")} style={navItemStyle(currentView === "cleaner")} title="1-Click Automated Missing Value Imputation & Data Cleaner">
+            <Icons.Code />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Data Auto-Cleaner</span>
+              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🧹 Impute & Clean Data</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("abc")} style={navItemStyle(currentView === "abc")} title="ABC Inventory & Revenue Categorization Matrix">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>ABC Classification</span>
-            <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>📦 Class A / B / C Matrix</span>
-          </div>
-        </button>
+        {isViewAllowed("abc") && (
+          <button onClick={() => setView("abc")} style={navItemStyle(currentView === "abc")} title="ABC Inventory & Revenue Categorization Matrix">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>ABC Classification</span>
+              <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>📦 Class A / B / C Matrix</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("benchmarks")} style={navItemStyle(currentView === "benchmarks")} title="Industry KPI Benchmarking & Performance Variance Scorecard">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>KPI Benchmarking</span>
-            <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>🎯 Industry Profile Variance</span>
-          </div>
-        </button>
+        {isViewAllowed("benchmarks") && (
+          <button onClick={() => setView("benchmarks")} style={navItemStyle(currentView === "benchmarks")} title="Industry KPI Benchmarking & Performance Variance Scorecard">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>KPI Benchmarking</span>
+              <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>🎯 Industry Profile Variance</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("digest")} style={navItemStyle(currentView === "digest")} title="Scheduled Automated Daily/Weekly Email Digest Dispatcher">
-          <Icons.Code />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Email Digest</span>
-            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📅 Daily/Weekly Dispatches</span>
-          </div>
-        </button>
+        {isViewAllowed("digest") && (
+          <button onClick={() => setView("digest")} style={navItemStyle(currentView === "digest")} title="Scheduled Automated Daily/Weekly Email Digest Dispatcher">
+            <Icons.Code />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Email Digest</span>
+              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📅 Daily/Weekly Dispatches</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("goalseek")} style={navItemStyle(currentView === "goalseek")} title="Interactive Metric Goal Seek & Target Solver">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Goal Seek Solver</span>
-            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>📊 Metric Target Solver</span>
-          </div>
-        </button>
+        {isViewAllowed("goalseek") && (
+          <button onClick={() => setView("goalseek")} style={navItemStyle(currentView === "goalseek")} title="Interactive Metric Goal Seek & Target Solver">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Goal Seek Solver</span>
+              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>📊 Metric Target Solver</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("rfm")} style={navItemStyle(currentView === "rfm")} title="AI RFM Customer Loyalty & Churn Risk Segmentation">
-          <Icons.Team />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>RFM Segmentation</span>
-            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🏷️ Churn & Loyalty Matrix</span>
-          </div>
-        </button>
+        {isViewAllowed("rfm") && (
+          <button onClick={() => setView("rfm")} style={navItemStyle(currentView === "rfm")} title="AI RFM Customer Loyalty & Churn Risk Segmentation">
+            <Icons.Team />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>RFM Segmentation</span>
+              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🏷️ Churn & Loyalty Matrix</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("geomap")} style={navItemStyle(currentView === "geomap")} title="Interactive Regional Geo-Map Heatmap Visualizer">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Geo-Map Visualizer</span>
-            <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🗺️ Regional Density Heatmap</span>
-          </div>
-        </button>
+        {isViewAllowed("geomap") && (
+          <button onClick={() => setView("geomap")} style={navItemStyle(currentView === "geomap")} title="Interactive Regional Geo-Map Heatmap Visualizer">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Geo-Map Visualizer</span>
+              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🗺️ Regional Density Heatmap</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("webhooks")} style={navItemStyle(currentView === "webhooks")} title="Real-Time Slack & Webhook Anomaly Alert Dispatcher">
-          <Icons.Code />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Slack & Webhooks</span>
-            <span style={{ fontSize: "10px", color: "#4A154B", fontWeight: 600 }}>⚡ Real-Time Anomaly Alerts</span>
-          </div>
-        </button>
+        {isViewAllowed("webhooks") && (
+          <button onClick={() => setView("webhooks")} style={navItemStyle(currentView === "webhooks")} title="Real-Time Slack & Webhook Anomaly Alert Dispatcher">
+            <Icons.Code />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Slack & Webhooks</span>
+              <span style={{ fontSize: "10px", color: "#4A154B", fontWeight: 600 }}>⚡ Real-Time Anomaly Alerts</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("debate")} style={navItemStyle(currentView === "debate")} title="Multi-Agent AI Data Debate & Risk Peer-Review Engine">
-          <Icons.Overview />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>AI Data Debate</span>
-            <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🤖 Dual-Agent Growth vs Risk</span>
-          </div>
-        </button>
+        {isViewAllowed("debate") && (
+          <button onClick={() => setView("debate")} style={navItemStyle(currentView === "debate")} title="Multi-Agent AI Data Debate & Risk Peer-Review Engine">
+            <Icons.Overview />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>AI Data Debate</span>
+              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🤖 Dual-Agent Growth vs Risk</span>
+            </div>
+          </button>
+        )}
 
-        <button onClick={() => setView("script")} style={navItemStyle(currentView === "script")} title="AI Executive Presentation Speech & Slide Script Generator">
-          <Icons.Reports />
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-            <span>Presentation Script</span>
-            <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎬 3-Min Executive Speech</span>
-          </div>
-        </button>
+        {isViewAllowed("script") && (
+          <button onClick={() => setView("script")} style={navItemStyle(currentView === "script")} title="AI Executive Presentation Speech & Slide Script Generator">
+            <Icons.Reports />
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+              <span>Presentation Script</span>
+              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎬 3-Min Executive Speech</span>
+            </div>
+          </button>
+        )}
 
-        {!isMisAnalyst && (
+        {isViewAllowed("team") && (
           <>
             <div style={sectionHeaderStyle}>Manage</div>
             <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
