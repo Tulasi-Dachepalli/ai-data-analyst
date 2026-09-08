@@ -5128,6 +5128,9 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
 
   const handleSend = async (overrideQuestion) => {
     const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : (typeof input === "string" ? input : "");
+    const question = (rawQuestion || "").replace(/^[💡⚡❓]\s*/, "").trim();
+    if (!question) return;
+
     // Attach window helper for deterministic E2E test execution
     if (typeof window !== "undefined") {
       window.aidaAskQuestion = (q) => handleSend(q);
