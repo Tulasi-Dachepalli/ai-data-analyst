@@ -190,8 +190,13 @@ export default function App() {
     return <DataAnalystDashboardBot currentView={view} setView={setView} user={user} />;
   };
 
+  const handleUserChange = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+  };
+
   return (
-    <AppShell user={user} currentView={view} setView={setView} onLogout={handleLogout}>
+    <AppShell user={user} currentView={view} setView={setView} onLogout={handleLogout} onUserChange={handleUserChange}>
       {showVerifyBanner && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, background: "#FBF3E3", border: "1px solid #E9D9AE", borderRadius: 8, padding: "10px 14px", marginBottom: 16, fontSize: 12.5, color: "#7A5C1E" }}>
           <span>📧 Please verify your email ({user?.email || "user@example.com"}). Didn't receive the verification email?</span>

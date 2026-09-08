@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 
-export default function AppShell({ user, currentView, setView, onLogout, children }) {
+export default function AppShell({ user, currentView, setView, onLogout, onUserChange, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   
@@ -62,6 +62,7 @@ export default function AppShell({ user, currentView, setView, onLogout, childre
         currentView={currentView}
         setView={setView}
         onLogout={onLogout}
+        onUserChange={onUserChange}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
       />

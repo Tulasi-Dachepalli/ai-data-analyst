@@ -73,26 +73,36 @@ const Icons = {
   )
 };
 
-export default function Sidebar({ user, currentView, setView, onLogout, isOpen, setIsOpen }) {
+export default function Sidebar({ user, currentView, setView, onLogout, onUserChange, isOpen, setIsOpen }) {
   const role = user?.role || "admin";
   const isAdmin = role === "admin";
   const isDataAnalyst = role === "data_analyst";
   const isMisAnalyst = role === "mis_analyst";
   const isMember = role === "member";
 
-  // Role-based allowed views matrix
+  // Role-based allowed views matrix (Filters sidebar options based on active role)
   const isViewAllowed = (viewId) => {
-    if (isAdmin) return true;
-    if (isDataAnalyst) {
-      return !["admin-members", "admin-audit", "admin-security"].includes(viewId);
+    // Technical analytics roles get full suite access
+    if (["admin", "data_analyst", "data_scientist"].includes(role)) {
+      return true;
     }
-    if (isMisAnalyst) {
-      return ["dashboard", "datasets", "ai-analyst", "dashboards", "health", "whatif", "exec-reports", "alerts"].includes(viewId);
+    
+    // Core workspace links available to all business roles
+    if (["dashboard", "datasets", "ai-analyst", "dashboards", "exec-reports", "alerts"].includes(viewId)) {
+      return true;
     }
-    if (isMember) {
-      return ["dashboard", "datasets", "ai-analyst", "dashboards", "exec-reports"].includes(viewId);
-    }
-    return true;
+
+    // Role-specific feature allocations
+    if (role === "ceo" && ["whatif", "branding", "forecast", "montecarlo", "goalseek", "benchmarks", "digest"].includes(viewId)) return true;
+    if (role === "hr" && ["benchmarks"].includes(viewId)) return true;
+    if (role === "recruiter" && ["benchmarks"].includes(viewId)) return true;
+    if (role === "finance" && ["whatif", "anomalies", "pivot", "forecast", "montecarlo", "abc", "goalseek", "benchmarks"].includes(viewId)) return true;
+    if (role === "marketing" && ["cohort", "forecast", "benchmarks"].includes(viewId)) return true;
+    if (role === "operations" && ["pareto", "abc", "benchmarks"].includes(viewId)) return true;
+    if (role === "supply_chain" && ["pareto", "abc", "benchmarks"].includes(viewId)) return true;
+    if (role === "sales" && ["forecast", "benchmarks"].includes(viewId)) return true;
+
+    return false;
   };
 
   const navItemStyle = (isActive) => ({
@@ -183,9 +193,13 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           onChange={(e) => {
             const nextRole = e.target.value;
             const updatedUser = { ...(user || {}), role: nextRole };
-            localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+            if (onUserChange) {
+              onUserChange(updatedUser);
+            } else {
+              localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+              window.location.reload();
+            }
             setView("dashboard");
-            window.location.reload();
           }}
           style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color, #DDD8CE)", fontSize: 11.5, fontWeight: 700, background: "var(--bg-primary, #FFF)", color: "var(--text-primary, #333)", cursor: "pointer", marginBottom: 6 }}
         >
@@ -203,18 +217,40 @@ export default function Sidebar({ user, currentView, setView, onLogout, isOpen, 
           <option value="admin">🛡️ Administrator</option>
         </select>
 
-        {/* Filter Indicator Badge */}
-        <div style={{ fontSize: "10.5px", fontWeight: 700, color: "#2563EB", background: "var(--bg-primary, #FFF)", border: "1px solid var(--border-color, #E5E7EB)", borderRadius: 6, padding: "5px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+        {/* Active Role Command Center Pill Trigger Button */}
+        <button
+          onClick={() => setView("dashboard")}
+          style={{
+            width: "100%",
+            fontSize: "11.5px",
+            fontWeight: 700,
+            color: "#2563EB",
+            background: "var(--bg-primary, #FFFFFF)",
+            border: "1px solid #BFDBFE",
+            borderRadius: "8px",
+            padding: "7px 10px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "6px",
+            cursor: "pointer",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+            transition: "all 0.15s ease",
+            textAlign: "center"
+          }}
+          title="Click to launch active Role Command Center"
+        >
           <span>🎯</span>
           <span>
             {role === "ceo" && "Role: Executive Command Center"}
             {role === "hr" && "Role: HR Command Center"}
             {role === "recruiter" && "Role: Recruitment Command Center"}
             {role === "finance" && "Role: Finance Command Center"}
-            {role === "data_analyst" && "Role: Data Analyst Studio (Full BI)"}
-            {!["ceo", "hr", "recruiter", "finance", "data_analyst"].includes(role) && `Role: ${role.toUpperCase()} Workspace`}
+            {role === "data_analyst" && "Role: Data Analyst Studio"}
+            {role === "data_scientist" && "Role: Data Science Studio"}
+            {!["ceo", "hr", "recruiter", "finance", "data_analyst", "data_scientist"].includes(role) && `Role: ${role.toUpperCase()} Command Center`}
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Navigation Groups */}
