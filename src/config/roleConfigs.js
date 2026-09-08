@@ -162,7 +162,8 @@ export const ROLE_CONFIGS = {
       "Which positions are taking the longest to fill?",
       "Which candidates are stuck in the interview stage?",
       "Which recruitment source produces the most hires?",
-      "Which jobs are at risk of missing hiring deadlines?"
+      "Which jobs are at risk of missing hiring deadlines?",
+      "Show me employee salaries and payroll data"
     ]
   },
 
