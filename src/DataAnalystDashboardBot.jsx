@@ -4226,7 +4226,6 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
     tier: "free",
     nextResetTime: getNextResetTime()
   });
-  const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
     const handleCreditUpdate = (e) => {
@@ -4284,6 +4283,42 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
   const [chartTypes, setChartTypes] = useState({});
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [globalFilteredRows, setGlobalFilteredRows] = useState(null);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      const docEl = document.documentElement;
+      if (docEl.requestFullscreen) {
+        docEl.requestFullscreen().catch(err => console.warn("Fullscreen error:", err));
+      } else if (docEl.webkitRequestFullscreen) {
+        docEl.webkitRequestFullscreen();
+      } else if (docEl.msRequestFullscreen) {
+        docEl.msRequestFullscreen();
+      }
+      setIsFullScreen(true);
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(err => console.warn("Exit fullscreen error:", err));
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+      setIsFullScreen(false);
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    document.addEventListener("webkitfullscreenchange", handleFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      document.removeEventListener("webkitfullscreenchange", handleFsChange);
+    };
+  }, []);
 
   const active = threads.find(t => t.id === activeId) || threads[0] || null;
 
