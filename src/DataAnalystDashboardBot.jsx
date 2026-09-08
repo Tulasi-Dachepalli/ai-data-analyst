@@ -6355,8 +6355,11 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
             )}
             {active && (active.messages || []).map((m, i) => {
               if (m.kind === "file") return <div key={i} style={{ alignSelf: "flex-end" }}><FileChip name={m.fileName} rows={m.rowCount} cols={m.colCount} /></div>;
-              if (m.kind === "dashboard") return (
-                <div key={i} style={{ alignSelf: "stretch", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
+              if (m.kind === "dashboard") {
+                const isTechnicalUser = ["data_analyst", "data_scientist", "admin"].includes(user?.role);
+                if (!isTechnicalUser) return null;
+                return (
+                  <div key={i} style={{ alignSelf: "stretch", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
                   <DashboardBlock 
                     user={user}
                     dashboard={active.dashboard} 
@@ -6382,6 +6385,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
                   />
                 </div>
               );
+              }
               if (m.role === "user") return (
                 <div key={i} style={{ alignSelf: "flex-end", display: "flex", gap: 8, alignItems: "flex-start", maxWidth: "80%" }}>
                   <div style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", borderRadius: "14px 14px 3px 14px", padding: "10px 15px", fontSize: 14, lineHeight: 1.55 }}>
