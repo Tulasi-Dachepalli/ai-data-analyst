@@ -47,7 +47,11 @@ import HrCommandCenter from "./components/workspaces/HrCommandCenter";
 import RecruitmentCommandCenter from "./components/workspaces/RecruitmentCommandCenter";
 import FinanceCommandCenter from "./components/workspaces/FinanceCommandCenter";
 import RoleSelectionModal from "./components/workspaces/RoleSelectionModal";
+import EvidenceAnswerCard from "./components/ui/EvidenceAnswerCard";
 import { getRoleConfig } from "./config/roleConfigs";
+import { checkDataAvailability } from "./utils/dataAvailabilityEngine.js";
+import { detectBusinessIntent } from "./utils/intentEngine.js";
+import { authorizeRoleAction } from "./utils/rbacEngine.js";
 import { isIdentifierColumn } from "./utils/columnUtils.js";
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -5242,6 +5246,25 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
           if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }, 50);
         return;
+      }
+
+      // ── Business Intent & Data Availability Protection Check ────────────────
+      const activeUserRole = user?.role || "ceo";
+      const intentResult = detectBusinessIntent(question, activeUserRole);
+
+      if (intentResult.detected && intentResult.domain) {
+        const availability = checkDataAvailability(effectiveRows, currentActive?.columns || [], intentResult.domain);
+        if (!availability.isAvailable) {
+          const missingMsg = availability.missingReason;
+          updateThread(id, t => ({
+            ...t,
+            messages: [...(t.messages || []), { role: "assistant", kind: "grounded_chat", content: missingMsg, confidence_score: 1.0 }]
+          }));
+          setAnswerToast({ question, answer: missingMsg });
+          setLoading(false);
+          fetchUsage();
+          return;
+        }
       }
 
       // ── Local grounded answer (always computed — never returns null) ────────
