@@ -50,6 +50,23 @@ export default function App() {
   const [isWarmingUp, setIsWarmingUp] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && !window.toggleFullScreen) {
+      window.toggleFullScreen = () => {
+        if (!document.fullscreenElement) {
+          const docEl = document.documentElement;
+          if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+          else if (docEl.webkitRequestFullscreen) docEl.webkitRequestFullscreen();
+          else if (docEl.msRequestFullscreen) docEl.msRequestFullscreen();
+        } else {
+          if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+          else if (document.msExitFullscreen) document.msExitFullscreen();
+        }
+      };
+    }
+  }, []);
+
+  useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace(/^#\/?/, "");
       if (hash) setView(hash);

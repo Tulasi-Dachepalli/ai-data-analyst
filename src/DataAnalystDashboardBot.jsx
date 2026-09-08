@@ -4309,6 +4309,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
   };
 
   useEffect(() => {
+    window.toggleFullScreen = toggleFullScreen;
     const handleFsChange = () => {
       setIsFullScreen(!!document.fullscreenElement);
     };
