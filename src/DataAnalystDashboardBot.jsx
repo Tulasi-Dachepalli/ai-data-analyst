@@ -6385,6 +6385,17 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
               <FinanceCommandCenter onAskQuestion={(q) => handleAskQuestion(q)} />
             )}
+            {answerToast && (
+              <div style={{ marginTop: 20, marginBottom: 20 }}>
+                <EvidenceAnswerCard
+                  answer={answerToast.answer}
+                  why={`Question: "${answerToast.question}"`}
+                  evidence={answerToast.answer.includes("Unauthorized") ? "Enterprise RBAC Authorization Policy Guard" : "Role Context & Verified Workspace Dataset"}
+                  recommendedAction={answerToast.answer.includes("Unauthorized") ? "Switch to an authorized enterprise role (e.g. HR or Executive) to request restricted compensation data." : "Review evidence metrics and adjust business targets."}
+                  dataFreshness="Evaluated Live"
+                />
+              </div>
+            )}
             {!active && user?.role === "data_analyst" && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
               <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 14, marginTop: 60, lineHeight: 1.7 }}>
                 <div style={{ fontSize: 20, color: "var(--text-primary)", fontWeight: 700, marginBottom: 8 }}>📊 Data Analyst Studio</div>
