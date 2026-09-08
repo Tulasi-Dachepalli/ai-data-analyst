@@ -5142,7 +5142,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
 
     // ── RBAC Security Authorization Guard (Instant Synchronous Enforcement) ──
     const liveStorageUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("aida_user") || "{}") : {};
-    const activeUserRole = user?.role || liveStorageUser.role || "ceo";
+    const activeUserRole = liveStorageUser.role || user?.role || "ceo";
     const rbacCheck = authorizeDataQuery(activeUserRole, question);
     if (!rbacCheck.authorized) {
       const unauthorizedMsg = rbacCheck.reason;
