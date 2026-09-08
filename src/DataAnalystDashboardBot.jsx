@@ -5077,7 +5077,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      window.aidaAskQuestion = (q) => handleAskQuestion(q);
+      window.aidaAskQuestion = (q) => handleSend(q);
     }
   });
 
@@ -5130,7 +5130,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
     const rawQuestion = typeof overrideQuestion === "string" ? overrideQuestion : (typeof input === "string" ? input : "");
     // Attach window helper for deterministic E2E test execution
     if (typeof window !== "undefined") {
-      window.aidaAskQuestion = (q) => handleAskQuestion(q);
+      window.aidaAskQuestion = (q) => handleSend(q);
     }
 
     // Immediately clear input box in 0ms so user sees draft cleared instantly
@@ -6392,16 +6392,16 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
             })()}
             {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
-              <ExecutiveCommandCenter onAskQuestion={(q) => handleAskQuestion(q)} />
+              <ExecutiveCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "hr" && (
-              <HrCommandCenter onAskQuestion={(q) => handleAskQuestion(q)} />
+              <HrCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "recruiter" && (
-              <RecruitmentCommandCenter onAskQuestion={(q) => handleAskQuestion(q)} />
+              <RecruitmentCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
-              <FinanceCommandCenter onAskQuestion={(q) => handleAskQuestion(q)} />
+              <FinanceCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
             {answerToast && (
               <div style={{ marginTop: 20, marginBottom: 20 }}>
