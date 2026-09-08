@@ -6335,16 +6335,16 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
               );
             })()}
             {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
-            {(!active || currentView === "dashboard" || currentView === "overview") && (user?.role === "ceo" || !user?.role) && (
+            {(["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
               <ExecutiveCommandCenter onAskQuestion={(q) => setInput(q)} />
             )}
-            {(!active || currentView === "dashboard" || currentView === "overview") && user?.role === "hr" && (
+            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "hr" && (
               <HrCommandCenter onAskQuestion={(q) => setInput(q)} />
             )}
-            {(!active || currentView === "dashboard" || currentView === "overview") && user?.role === "recruiter" && (
+            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "recruiter" && (
               <RecruitmentCommandCenter onAskQuestion={(q) => setInput(q)} />
             )}
-            {(!active || currentView === "dashboard" || currentView === "overview") && user?.role === "finance" && (
+            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
               <FinanceCommandCenter onAskQuestion={(q) => setInput(q)} />
             )}
             {!active && user?.role === "data_analyst" && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
