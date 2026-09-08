@@ -5129,6 +5129,16 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
     setInput("");
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
+    // ── RBAC Security Authorization Guard (Instant Synchronous Enforcement) ──
+    const activeUserRole = user?.role || "ceo";
+    const rbacCheck = authorizeDataQuery(activeUserRole, question);
+    if (!rbacCheck.authorized) {
+      const unauthorizedMsg = rbacCheck.reason;
+      setAnswerToast({ question, answer: unauthorizedMsg });
+      setLoading(false);
+      return;
+    }
+
     let currentActive = active || (threads && threads[0]);
 
     // ── Case A: No active thread at all → auto-load sample dataset ──────────
