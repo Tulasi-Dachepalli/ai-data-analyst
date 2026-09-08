@@ -5141,7 +5141,8 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
     if (textareaRef.current) textareaRef.current.style.height = "auto";
 
     // ── RBAC Security Authorization Guard (Instant Synchronous Enforcement) ──
-    const activeUserRole = user?.role || "ceo";
+    const liveStorageUser = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("aida_user") || "{}") : {};
+    const activeUserRole = user?.role || liveStorageUser.role || "ceo";
     const rbacCheck = authorizeDataQuery(activeUserRole, question);
     if (!rbacCheck.authorized) {
       const unauthorizedMsg = rbacCheck.reason;
