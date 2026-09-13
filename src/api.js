@@ -102,11 +102,16 @@ export function uploadDatasetFile(file) {
   const token = localStorage.getItem("aida_token");
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
   
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+
   return fetch(`${base()}/api/datasets/upload`, {
     method: "POST",
     headers,
-    body: formData
+    body: formData,
+    signal: controller.signal
   }).then(async (res) => {
+    clearTimeout(timer);
     if (res.status === 401) {
       console.warn("Upload 401 status — proceeding with local browser parsing.");
       return null;
@@ -116,9 +121,13 @@ export function uploadDatasetFile(file) {
       if (res.status === 402 || body.error === "TOKEN_QUOTA_EXCEEDED") {
         window.dispatchEvent(new CustomEvent("aida_quota_exceeded", { detail: body }));
       }
-      throw new Error(body.error || `Upload failed (${res.status})`);
+      return null;
     }
     return res.json();
+  }).catch((err) => {
+    clearTimeout(timer);
+    console.warn("Backend dataset upload unavailable or timed out — using resilient client-side parser fallback:", err);
+    return null;
   });
 }
 

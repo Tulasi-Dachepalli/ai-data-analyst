@@ -406,27 +406,35 @@ async function callClaude(system, userText, { requestType, datasetId } = {}) {
     ? `${system}\n\nIMPORTANT INSTRUCTION: Please generate your entire output natively in the ${targetLang.name} language.`
     : system;
 
-  const res = await fetch(`${base}/api/analyze`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    },
-    body: JSON.stringify({ system: langSystem, userText, requestType, datasetId })
-  });
-  if (res.status === 401) {
-    // Session expired or invalid — send back to the login screen.
-    localStorage.removeItem("aida_token");
-    localStorage.removeItem("aida_user");
-    window.location.reload();
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    const res = await fetch(`${base}/api/analyze`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({ system: langSystem, userText, requestType, datasetId }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (res.status === 401) {
+      localStorage.removeItem("aida_token");
+      localStorage.removeItem("aida_user");
+      window.location.reload();
+      return "";
+    }
+    if (!res.ok) {
+      console.error("Backend error:", res.status, await res.text().catch(() => ""));
+      return "";
+    }
+    const data = await res.json();
+    return data.text || "";
+  } catch (err) {
+    console.warn("callClaude request timed out or failed — proceeding with local synthesis fallback:", err);
     return "";
   }
-  if (!res.ok) {
-    console.error("Backend error:", res.status, await res.text().catch(() => ""));
-    return "";
-  }
-  const data = await res.json();
-  return data.text || "";
 }
 
 function renderFormattedText(text) {
@@ -554,9 +562,25 @@ function parseFile(file) {
     
     if (ext === "csv" || ext === "tsv") {
       Papa.parse(file, {
-        header: true, dynamicTyping: true, skipEmptyLines: true,
-        complete: (res) => resolve({ rows: res.data, columns: res.meta.fields || [] }),
-        error: reject
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: "greedy",
+        transformHeader: (h) => (h ? h.replace(/^\uFEFF/, "").trim() : ""),
+        complete: (res) => {
+          let rows = (res.data || []).filter(r => r && typeof r === "object" && Object.keys(r).some(k => r[k] !== null && r[k] !== undefined && String(r[k]).trim() !== ""));
+          let columns = (res.meta.fields || []).map(f => (f ? f.replace(/^\uFEFF/, "").trim() : "")).filter(Boolean);
+          if (columns.length === 0 && rows.length > 0) {
+            columns = Object.keys(rows[0]).filter(k => k && !k.startsWith("__"));
+          }
+          resolve({ rows, columns });
+        },
+        error: (err) => {
+          console.warn("PapaParse error — attempting plain text fallback:", err);
+          const reader = new FileReader();
+          reader.onload = (evt) => resolve({ rows: [], columns: [], isRawText: true, rawText: evt.target.result });
+          reader.onerror = () => reject(err);
+          reader.readAsText(file);
+        }
       });
     } else if (ext === "json") {
       const reader = new FileReader();
@@ -580,16 +604,19 @@ function parseFile(file) {
       reader.onerror = reject;
       reader.readAsText(file);
     } else {
-      // Excel with intelligent worksheet detection
+      // Excel (.xlsx, .xls) parsing using standards-compliant ArrayBuffer
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target.result, { type: "binary", cellDates: true });
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: "array", cellDates: true });
           const best = selectBestExcelSheet(wb);
-          if (!best) throw new Error("No data sheet found in workbook.");
+          if (!best || !best.rows || best.rows.length === 0) {
+            throw new Error("No data sheet found in Excel workbook.");
+          }
           resolve({ rows: best.rows, columns: best.columns });
         } catch (err) {
-          // If Excel parsing fails, read it as plain text fallback
+          console.warn("Excel parsing failed — falling back to plain text:", err);
           const txtReader = new FileReader();
           txtReader.onload = (evt) => {
             resolve({ rows: [], columns: [], isRawText: true, rawText: evt.target.result });
@@ -599,7 +626,7 @@ function parseFile(file) {
         }
       };
       reader.onerror = reject;
-      reader.readAsBinaryString(file);
+      reader.readAsArrayBuffer(file);
     }
   });
 }
@@ -5970,7 +5997,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
             <span style={{ fontSize: 14 }}>🔗</span> Import Google Sheet
           </button>
         </div>
-        <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" multiple style={{ display: "none" }} onChange={(e) => e.target.files && handleFiles(e.target.files)} />
+        <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.tsv,.json,.txt,.md,.log,.xml,.html" multiple style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files.length) { handleFiles(e.target.files); e.target.value = ""; } }} />
         <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 6, padding: "0 4px" }}>Recent</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: 1 }}>
           {threads.length === 0 && <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "6px 4px" }}>No recent files</div>}
