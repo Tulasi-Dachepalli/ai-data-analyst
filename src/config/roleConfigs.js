@@ -281,12 +281,68 @@ export const ROLE_CONFIGS = {
   // Future Extensible Roles Matrix
   data_scientist: {
     id: "data_scientist",
-    title: "🤖 Data Scientist",
-    shortName: "Data Scientist",
-    commandCenterTitle: "Data Science Studio",
-    tagline: "Feature engineering, ML modeling, clustering & time-series forecasting",
+    title: "🧪 Data Scientist",
+    shortName: "Data Scientist Studio",
+    commandCenterTitle: "Automated Data Science Studio",
+    tagline: "Automated ML modeling, feature engineering, statistical EDA & time-series forecasting",
     terminology: "ml",
-    allowedTools: ["overview", "datasets", "ml", "forecast", "stats", "ai_copilot"]
+    maxVisibleKPIs: 7,
+    allowedTools: [
+      "overview",
+      "datasets",
+      "quality",
+      "eda",
+      "stats",
+      "sql",
+      "feature_eng",
+      "ml",
+      "forecast",
+      "anomalies",
+      "whatif",
+      "reports",
+      "ai_copilot"
+    ],
+    navigation: [
+      { id: "overview", label: "Studio Overview", icon: "🧪" },
+      { id: "quality", label: "Data Quality Audit", icon: "🛡️" },
+      { id: "eda", label: "Automated EDA", icon: "🔍" },
+      { id: "stats", label: "Statistical Engine", icon: "📈" },
+      { id: "ml", label: "AutoML & Clustering", icon: "⚡" },
+      { id: "forecast", label: "Forecasting Copilot", icon: "🔮" },
+      { id: "anomalies", label: "Anomaly Hunter", icon: "⚠️" },
+      { id: "sql", label: "SQL & Formulas", icon: "💻" },
+      { id: "whatif", label: "What-If Simulator", icon: "🎯" },
+      { id: "exec-reports", label: "Executive Reports", icon: "📑" }
+    ],
+    kpiCards: [
+      { title: "Dataset Profiling Status", value: "Automated", trend: "360° Scan Ready", status: "positive", detail: "Semantic Column Mapping" },
+      { title: "Data Quality Score", value: "98.6%", trend: "+1.2%", status: "positive", detail: "0 critical missing values" },
+      { title: "Best Model F1-Score", value: "0.942", trend: "Random Forest", status: "positive", detail: "10-Fold CV Verified" },
+      { title: "Forecast Confidence", value: "95.4%", trend: "Narrow Band", status: "positive", detail: "Double Holt Exponential" },
+      { title: "Anomalies Flagged", value: "14", trend: "Z-Score > 3.0", status: "warning", detail: "Outlier Hunter Active" },
+      { title: "Feature Importance Top", value: "Revenue", trend: "38.4% Weight", status: "positive", detail: "Gini Impurity Metric" }
+    ],
+    aiBrief: {
+      greeting: "Welcome to Data Scientist Studio. Automated dataset discovery & predictive pipeline ready.",
+      highlights: [
+        { type: "positive", text: "Automated dataset profiler initialized. High dimensional features parsed." },
+        { type: "positive", text: "AutoML algorithms evaluated across Logistic Regression, Random Forest & Gradient Boosting." },
+        { type: "warning", text: "14 anomalous data points flagged for root-cause inspection." }
+      ],
+      recommendedAction: "Click '🔬 Investigate My Data' to trigger a complete end-to-end dataset audit, EDA, model evaluation, and executive report generation."
+    },
+    needsAttention: [
+      { area: "Data Quality", metric: "3 missing values in Tenure", urgency: "Low", action: "Apply AI Auto-imputer" },
+      { area: "Model Variance", metric: "Class Imbalance Ratio 1:4", urgency: "Medium", action: "Enable SMOTE / Class reweighting" }
+    ],
+    sampleQuestions: [
+      "Investigate my dataset automatically",
+      "Which feature is the strongest predictor of customer churn?",
+      "Train AutoML models and show the performance comparison leaderboard",
+      "Run statistical significance tests and ANOVA across categories",
+      "Detect transaction anomalies and show high-risk outliers",
+      "Forecast sales revenue for the next 6 months with 95% confidence intervals"
+    ]
   },
   sales: {
     id: "sales",

@@ -46,6 +46,7 @@ import ExecutiveCommandCenter from "./components/workspaces/ExecutiveCommandCent
 import HrCommandCenter from "./components/workspaces/HrCommandCenter";
 import RecruitmentCommandCenter from "./components/workspaces/RecruitmentCommandCenter";
 import FinanceCommandCenter from "./components/workspaces/FinanceCommandCenter";
+import DataScientistStudio from "./components/workspaces/DataScientistStudio";
 import RoleSelectionModal from "./components/workspaces/RoleSelectionModal";
 import EvidenceAnswerCard from "./components/ui/EvidenceAnswerCard";
 import { getRoleConfig } from "./config/roleConfigs";
@@ -6437,6 +6438,9 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
             )}
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
               <FinanceCommandCenter onAskQuestion={(q) => handleSend(q)} />
+            )}
+            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "data_scientist" && (
+              <DataScientistStudio active={active} activeData={activeData} activeCols={activeCols} onAskQuestion={(q) => handleSend(q)} />
             )}
             {answerToast && (
               <div style={{ marginTop: 20, marginBottom: 20 }}>
