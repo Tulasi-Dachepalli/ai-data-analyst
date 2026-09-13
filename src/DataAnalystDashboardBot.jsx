@@ -4225,7 +4225,7 @@ const SAMPLE_DATASETS = [
 ];
 
 // ---------------- main component ----------------
-export default function DataAnalystDashboardBot({ currentView, user: propUser }) {
+export default function DataAnalystDashboardBot({ currentView, setView, user: propUser }) {
   const user = propUser || JSON.parse(localStorage.getItem("aida_user") || "null");
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -4259,8 +4259,8 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
 
   const [usageStats, setUsageStats] = useState({
     usedTokens: getLocalUsedTokens(),
-    limit: 50000,
-    tier: "free",
+    limit: 1000000,
+    tier: user?.tier || "pro",
     nextResetTime: getNextResetTime()
   });
 
@@ -4711,6 +4711,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
         };
         setThreads(prev => [thread, ...prev]);
         setActiveId(id);
+        if (typeof setView === "function") setView("dashboard");
 
         let serverId = null;
         try {
@@ -4749,6 +4750,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
       };
       setThreads(prev => [thread, ...prev]);
       setActiveId(id);
+      if (typeof setView === "function") setView("dashboard");
 
       let serverId = null;
       try {
@@ -5151,6 +5153,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
 
     setThreads(prev => [newThread, ...prev]);
     setActiveId(newId);
+    if (typeof setView === "function") setView("dashboard");
   };
 
   const handleSend = async (overrideQuestion) => {
@@ -5385,6 +5388,7 @@ export default function DataAnalystDashboardBot({ currentView, user: propUser })
   // messages from the backend on demand, instead of loading everything up front.
   const handleSelectThread = async (t) => {
     setActiveId(t.id);
+    if (typeof setView === "function") setView("dashboard");
     if (t.loaded || !t.serverId) return;
     setLoading(true);
     setLoadingLabel("Loading previous analysis…");
