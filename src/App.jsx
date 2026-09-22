@@ -3,6 +3,7 @@ import DataAnalystDashboardBot from "./DataAnalystDashboardBot";
 import AuthPage from "./AuthPage";
 import AdminPage from "./AdminPage";
 import TrustPage from "./TrustPage";
+import SettingsPage from "./SettingsPage";
 import AppShell from "./components/layout/AppShell";
 import DatasetsPage from "./DatasetsPage";
 import DashboardsPage from "./DashboardsPage";
@@ -175,8 +176,8 @@ export default function App() {
     if (view === "admin-security" || view === "security") {
       return <TrustPage onBack={() => setView("dashboard")} />;
     }
-    if (view === "settings" || view === "security") {
-      return <TrustPage onBack={() => setView("dashboard")} />;
+    if (view === "settings") {
+      return <SettingsPage user={user} onUserChange={handleUserChange} onBack={() => setView("dashboard")} />;
     }
     if (view === "trust") {
       return <TrustPage onBack={() => setView("dashboard")} />;

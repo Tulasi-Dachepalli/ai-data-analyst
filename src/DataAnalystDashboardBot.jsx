@@ -6034,28 +6034,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
             <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Unlimited tokens unlocked</span>
           </div>
         )}
-        <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 10, marginTop: "auto" }}>
-          <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", padding: "0 4px", marginBottom: 6 }}>Industry Domain Templates</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {SAMPLE_DATASETS.map((sample, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleLoadSample(sample)}
-                disabled={loading}
-                title={`Load ${sample.domain || sample.name} domain template`}
-                style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1, width: "100%", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, color: "var(--text-primary)", fontWeight: 500, cursor: loading ? "default" : "pointer", textAlign: "left" }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 600 }}>
-                  <span>{sample.icon || "📊"}</span>
-                  <span>{sample.name.replace(" Sample", "")}</span>
-                </div>
-                {sample.domain && (
-                  <span style={{ fontSize: 9.5, color: "var(--text-muted)", paddingLeft: 20 }}>{sample.domain}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
+
       </div>
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", background: dragOver ? "var(--bg-hover)" : "var(--bg-secondary)", height: "100%", overflow: "hidden" }}>
