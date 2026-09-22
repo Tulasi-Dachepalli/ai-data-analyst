@@ -4324,6 +4324,10 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
   const active = threads.find(t => t.id === activeId) || threads[0] || null;
 
+  const sampleFallback = useMemo(() => SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0], []);
+  const activeData = useMemo(() => (active?.rows && active.rows.length > 0) ? active.rows : sampleFallback.rows, [active, sampleFallback]);
+  const activeCols = useMemo(() => (active?.columns && active.columns.length > 0) ? active.columns : sampleFallback.columns, [active, sampleFallback]);
+
   const suggestedQuestions = useMemo(() => {
     if (!active || !Array.isArray(active.columns) || !Array.isArray(active.stats)) return [];
     const safeStats = active.stats || [];
@@ -6206,13 +6210,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 0 24px" }}>
           <div style={{ maxWidth: "100%", width: "100%", margin: "0 auto", padding: "0 20px", display: "flex", flexDirection: "column", gap: 18 }}>
-            {(() => {
-              const sampleFallback = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
-              const activeData = (active?.rows && active.rows.length > 0) ? active.rows : sampleFallback.rows;
-              const activeCols = (active?.columns && active.columns.length > 0) ? active.columns : sampleFallback.columns;
-
-              return (
-                <>
+            <>
                   {active && (
                     <GlobalFilterBar
                       data={activeData}
@@ -6366,8 +6364,6 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     <PresentationScriptGenerator data={activeData} columns={activeCols} datasetName={active?.fileName || "Active Workspace Dataset"} />
                   )}
                 </>
-              );
-            })()}
             {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
               <ExecutiveCommandCenter onAskQuestion={(q) => handleSend(q)} />
