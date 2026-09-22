@@ -1798,7 +1798,10 @@ function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters
       stats: cleanStats,
       quality: cleanQuality,
       dashboard: cleanDashboard,
-      messages: [{ role: "assistant", kind: "text", content: `Cleaned dataset created with ${cleanRows.length.toLocaleString()} rows and ${cleanCols.length} columns.` }],
+      messages: [
+        { role: "assistant", kind: "text", content: `Cleaned dataset created with ${cleanRows.length.toLocaleString()} rows and ${cleanCols.length} columns.` },
+        { role: "assistant", kind: "dashboard" }
+      ],
       loaded: true
     };
 
@@ -6422,8 +6425,6 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
             {active && (active.messages || []).map((m, i) => {
               if (m.kind === "file") return <div key={i} style={{ alignSelf: "flex-end" }}><FileChip name={m.fileName} rows={m.rowCount} cols={m.colCount} /></div>;
               if (m.kind === "dashboard") {
-                const isTechnicalUser = ["data_analyst", "data_scientist", "admin"].includes(user?.role);
-                if (!isTechnicalUser) return null;
                 return (
                   <div key={i} style={{ alignSelf: "stretch", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
                   <DashboardBlock 
