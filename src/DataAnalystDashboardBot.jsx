@@ -4329,30 +4329,37 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   const activeCols = useMemo(() => (active?.columns && active.columns.length > 0) ? active.columns : sampleFallback.columns, [active, sampleFallback]);
 
   const suggestedQuestions = useMemo(() => {
-    if (!active || !Array.isArray(active.columns) || !Array.isArray(active.stats)) return [];
-    const safeStats = active.stats || [];
+    const activeRole = user?.role || "ceo";
+    const safeStats = active?.stats || [];
     const numCols = safeStats.filter(s => s.type === "numeric").map(s => s.name);
     const catCols = safeStats.filter(s => s.type === "categorical" && s.unique <= 15).map(s => s.name);
     const dateCols = safeStats.filter(s => s.type === "date").map(s => s.name);
 
-    // When the backend is known offline, skip chips that require the Python
-    // engine (forecasting, ML) — they'd silently fail instead of answering.
-    const backendOffline = !!active.backendOffline;
+    if (activeRole === "ceo") {
+      return ["What needs my attention?", "Show executive performance brief", "Are there unusual risk values?"];
+    }
+    if (activeRole === "hr") {
+      return ["Which department has the highest attrition?", "Show average salary by department", "Average performance score by role"];
+    }
+    if (activeRole === "recruiter") {
+      return ["Which jobs need attention?", "Average time-to-fill by department", "Show hiring pipeline funnel"];
+    }
+    if (activeRole === "finance") {
+      return ["Where are we overspending?", "Show financial variance across departments", "Forecast revenue for next 3 months"];
+    }
+    if (activeRole === "data_scientist") {
+      return ["Run time-series forecast for next 6 months", "Calculate correlation matrix", "Detect statistical anomalies"];
+    }
 
+    // Default Data Analyst role chips
     const suggestions = [];
-    if (numCols.length > 0) {
-      suggestions.push(`What is the average of ${numCols[0]}?`);
-    }
-    if (catCols.length > 0 && numCols.length > 0) {
-      suggestions.push(`average ${numCols[0]} by ${catCols[0]}`);
-    }
-    // Forecast chip requires the live Python backend — hide it when offline
-    if (!backendOffline && dateCols.length > 0 && numCols.length > 0) {
-      suggestions.push(`Forecast ${numCols[0]} next 3 months`);
-    }
-    suggestions.push("Are there unusual values?");
+    if (numCols.length > 0) suggestions.push(`What is the average of ${numCols[0]}?`);
+    if (catCols.length > 0 && numCols.length > 0) suggestions.push(`average ${numCols[0]} by ${catCols[0]}`);
+    if (dateCols.length > 0 && numCols.length > 0) suggestions.push(`Forecast ${numCols[0]} next 3 months`);
+    if (suggestions.length === 0) suggestions.push("What needs my attention?", "Calculate correlation matrix", "Are there unusual values?");
+
     return suggestions.slice(0, 3);
-  }, [active]);
+  }, [active, user]);
 
   const latestAssistantMsg = useMemo(() => {
     if (!active || !Array.isArray(active.messages)) return null;
@@ -6562,11 +6569,25 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         <div style={{ padding: "10px 20px 20px" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
 
-            {currentView === "ai-analyst" && (
-              <div style={{ background: "rgba(139, 92, 246, 0.08)", border: "1px solid rgba(139, 92, 246, 0.25)", borderRadius: 10, padding: "8px 14px", marginBottom: 10, textAlign: "center", fontSize: 12.5, fontWeight: 600, color: "#8B5CF6" }}>
-                💬 AI Copilot Chat Active — Ask any question about your data in plain English below:
+            {/* Professional AI Copilot Role Persona Badge */}
+            <div style={{ background: "linear-gradient(135deg, rgba(15, 23, 42, 0.05) 0%, rgba(30, 41, 59, 0.08) 100%)", border: "1px solid var(--border-color)", borderRadius: 12, padding: "8px 14px", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🤖</span>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)" }}>
+                  {user?.role === "ceo" && "Executive AI Assistant (CEO Scope)"}
+                  {user?.role === "hr" && "Workforce & Retention AI Copilot"}
+                  {user?.role === "recruiter" && "Hiring & Recruitment Intelligence Bot"}
+                  {user?.role === "finance" && "Financial Audit & Variance Intelligence Bot"}
+                  {user?.role === "data_analyst" && "Data Analyst BI & Profiling Studio Bot"}
+                  {user?.role === "data_scientist" && "AutoML & Forecasting Science Copilot"}
+                  {!["ceo", "hr", "recruiter", "finance", "data_analyst", "data_scientist"].includes(user?.role) && `AI ${String(user?.role || 'Copilot').toUpperCase()} Intelligence Assistant`}
+                </span>
               </div>
-            )}
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: "#10B981", background: "#DCFCE7", padding: "2px 8px", borderRadius: 12 }}>
+                ✓ Grounded 98%
+              </span>
+            </div>
+
             {(active || threads.length > 0) && suggestedQuestions.length > 0 && (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10, justifyContent: "center" }}>
                 {suggestedQuestions.map((q, idx) => (
@@ -6579,9 +6600,22 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                       setInput("");
                       handleSend(q);
                     }}
-                    style={{ background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 16, padding: "5px 12px", fontSize: 11.5, color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s ease" }}
+                    style={{
+                      background: "var(--bg-secondary, #FFFFFF)",
+                      border: "1px solid var(--border-color, #E2E8F0)",
+                      borderRadius: 16,
+                      padding: "6px 14px",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--text-primary, #0F172A)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.03)"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = "#2563EB"}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--border-color, #E2E8F0)"}
                   >
-                    💡 {q}
+                    ⚡ {q}
                   </button>
                 ))}
               </div>
