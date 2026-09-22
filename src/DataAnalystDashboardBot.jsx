@@ -2058,20 +2058,19 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
       flexDirection: "column",
       gap: 14
     } : { display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Dynamic Tab Bar with Copilot Role Badges & Ingested Sheet Indicator */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid var(--border-color)", paddingBottom: 6 }}>
+      {/* Linear Dataset Progress Stepper Navigation Bar */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, borderBottom: "1px solid var(--border-color)", paddingBottom: 10 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", background: "var(--bg-hover)", padding: "2px 8px", borderRadius: 4 }}>
-              🤖 AI Copilot Mode
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
+              {dashboard?.sheetName || active?.fileName || "Active Dataset"}
             </span>
-            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-              {["dashboard", "cleaning", "eda", "stats", "insights_tab", "data"].includes(activeTab) ? "📊 Data Analyst Mode — Business KPIs, EDA & Reports" : "🧠 Data Scientist Mode — ML Predictive Models & Forecasting"}
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", backgroundColor: "#DCFCE7", padding: "3px 8px", borderRadius: 12 }}>
+              {validCols.length} Cols × {currentRows.length} Rows
             </span>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Fullscreen Expand Toggle Button */}
             <button
               onClick={toggleFullScreen}
               style={{
@@ -2082,86 +2081,47 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
                 border: "1px solid var(--border-color)",
                 borderRadius: 6,
                 padding: "4px 10px",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                transition: "all 0.15s ease"
+                cursor: "pointer"
               }}
-              title="Toggle spacious full-screen browser mode"
             >
-              <span>{(isFullScreen || isExpanded) ? "↙ Exit Fullscreen" : "⛶ Fullscreen View"}</span>
+              <span>{(isFullScreen || isExpanded) ? "↙ Exit Fullscreen" : "⛶ Fullscreen"}</span>
             </button>
-
-            {/* Explicit Ingested Sheet Indicator Badge */}
-            <span style={{ fontSize: 11, fontWeight: 600, color: "#3E6F8E", background: "rgba(62, 111, 142, 0.08)", padding: "3px 10px", borderRadius: 12, border: "1px solid rgba(62, 111, 142, 0.2)", display: "flex", alignItems: "center", gap: 5 }}>
-              <span>📄 Ingested Sheet:</span>
-              <strong style={{ color: "var(--text-primary)" }}>{dashboard?.sheetName || "Cleaned Data"}</strong>
-              <span>({validCols.length} cols × {currentRows.length} rows)</span>
-            </span>
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          {/* Analyst Mode Group */}
-          <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--bg-primary)", padding: "3px 6px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: "#3E6F8E", paddingRight: 4 }}>📊 ANALYST:</span>
-            {[
-              { id: "dashboard", label: "Dashboard" },
-              { id: "cleaning", label: "Cleaning" },
-              { id: "eda", label: "EDA Insights" },
-              { id: "stats", label: "Stats Report" },
-              { id: "insights_tab", label: "AI Insights" },
-              { id: "data", label: "Raw Data" }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => { setActiveTab(tab.id); if (tab.id === "data") setDataPage(0); }}
-                style={{
-                  background: activeTab === tab.id ? "var(--accent-color, #0F172A)" : "none",
-                  color: activeTab === tab.id ? "#FFF" : "var(--text-secondary)",
-                  border: "none",
-                  borderRadius: 4,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease"
-                }}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Scientist Mode Group */}
-          {!isMisAnalyst && (
-            <div style={{ display: "flex", gap: 8, alignItems: "center", background: "var(--bg-primary)", padding: "3px 6px", borderRadius: 6, border: "1px solid var(--border-color)" }}>
-              <span style={{ fontSize: 10.5, fontWeight: 700, color: "#8B5CF6", paddingRight: 4 }}>🧠 SCIENTIST:</span>
-              {[
-                { id: "ml", label: "🤖 ML Modeling" },
-                { id: "forecast", label: "📈 Forecasting" }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  style={{
-                    background: activeTab === tab.id ? "#8B5CF6" : "none",
-                    color: activeTab === tab.id ? "#FFF" : "var(--text-secondary)",
-                    border: "none",
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    padding: "4px 8px",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease"
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Clean Linear Workflow Stepper Bar */}
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "4px 0" }}>
+          {[
+            { id: "data", label: "01 Raw Data", icon: "📁" },
+            { id: "cleaning", label: "02 Data Cleaning", icon: "🧹" },
+            { id: "eda", label: "03 EDA", icon: "🔍" },
+            { id: "insights_tab", label: "04 Insights", icon: "💡" },
+            { id: "ml", label: "05 Modeling", icon: "🤖" },
+            { id: "forecast", label: "06 Forecasting", icon: "🔮" },
+            { id: "stats", label: "07 Executive Report", icon: "📑" }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); if (tab.id === "data") setDataPage(0); }}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "none",
+                fontSize: 12,
+                fontWeight: activeTab === tab.id ? 800 : 600,
+                backgroundColor: activeTab === tab.id ? "#0F172A" : "var(--bg-hover, #F1F5F9)",
+                color: activeTab === tab.id ? "#FFFFFF" : "var(--text-secondary, #475569)",
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                transition: "all 0.15s ease"
+              }}
+            >
+              <span>{tab.icon}</span> {tab.label}
+            </button>
+          ))}
         </div>
       </div>
 
