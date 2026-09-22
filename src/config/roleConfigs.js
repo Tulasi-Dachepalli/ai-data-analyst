@@ -303,16 +303,22 @@ export const ROLE_CONFIGS = {
       "ai_copilot"
     ],
     navigation: [
-      { id: "overview", label: "Studio Overview", icon: "🧪" },
-      { id: "quality", label: "Data Quality Audit", icon: "🛡️" },
-      { id: "eda", label: "Automated EDA", icon: "🔍" },
-      { id: "stats", label: "Statistical Engine", icon: "📈" },
-      { id: "ml", label: "AutoML & Clustering", icon: "⚡" },
-      { id: "forecast", label: "Forecasting Copilot", icon: "🔮" },
-      { id: "anomalies", label: "Anomaly Hunter", icon: "⚠️" },
-      { id: "sql", label: "SQL & Formulas", icon: "💻" },
-      { id: "whatif", label: "What-If Simulator", icon: "🎯" },
-      { id: "exec-reports", label: "Executive Reports", icon: "📑" }
+      { id: "raw_data", label: "01 Raw Data", icon: "📁" },
+      { id: "profile", label: "02 Profile", icon: "🧪" },
+      { id: "cleaning", label: "03 Cleaning", icon: "🛡️" },
+      { id: "cleaned_data", label: "04 Cleaned Data", icon: "✨" },
+      { id: "eda", label: "05 EDA & Relationships", icon: "🔍" },
+      { id: "feature_eng", label: "06 Feature Engineering", icon: "⚡" },
+      { id: "stats", label: "07 Statistics", icon: "📈" },
+      { id: "visual_studio", label: "08 Visual Studio", icon: "📊" },
+      { id: "ml", label: "09 ML Modeling", icon: "🤖" },
+      { id: "evaluation", label: "10 Evaluation", icon: "📐" },
+      { id: "predictions", label: "11 Predictions", icon: "🎯" },
+      { id: "forecast", label: "12 Forecasting", icon: "🔮" },
+      { id: "anomalies", label: "13 Anomaly Hunter", icon: "⚠️" },
+      { id: "whatif", label: "14 What-If Simulator", icon: "🎛️" },
+      { id: "investigate", label: "15 AI Discovery", icon: "🔬" },
+      { id: "reports", label: "16 Executive Reports", icon: "📑" }
     ],
     kpiCards: [
       { title: "Dataset Profiling Status", value: "Automated", trend: "360° Scan Ready", status: "positive", detail: "Semantic Column Mapping" },
