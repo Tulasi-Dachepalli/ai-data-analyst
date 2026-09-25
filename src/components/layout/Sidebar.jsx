@@ -1,669 +1,128 @@
+// src/components/layout/Sidebar.jsx
 import React from "react";
+import { useRole } from "../../context/RoleContext";
 
-// Reusable SVG Icon paths for clean and zero-dependency rendering
-const Icons = {
-  Overview: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-      <polyline points="9 22 9 12 15 12 15 22" />
-    </svg>
-  ),
-  Datasets: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-    </svg>
-  ),
-  AIAnalyst: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="10" rx="2" />
-      <circle cx="12" cy="5" r="2" />
-      <path d="M12 7v4" />
-      <line x1="8" y1="16" x2="8" y2="16" />
-      <line x1="16" y1="16" x2="16" y2="16" />
-    </svg>
-  ),
-  Dashboards: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="7" height="9" />
-      <rect x="14" y="3" width="7" height="5" />
-      <rect x="14" y="12" width="7" height="9" />
-      <rect x="3" y="16" width="7" height="5" />
-    </svg>
-  ),
-  Insights: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
-  ),
-  Reports: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
-      <polyline points="10 9 9 9 8 9" />
-    </svg>
-  ),
-  Team: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-    </svg>
-  ),
-  Admin: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.5 1z" />
-    </svg>
-  ),
-  Security: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  ),
-  Code: () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="16 18 22 12 16 6" />
-      <polyline points="8 6 2 12 8 18" />
-    </svg>
-  )
-};
-
-export default function Sidebar({ user, currentView, setView, onLogout, onUserChange, isOpen, setIsOpen }) {
-  const role = user?.role || "admin";
-  const isAdmin = role === "admin";
-  const isDataAnalyst = role === "data_analyst";
-  const isMisAnalyst = role === "mis_analyst";
-  const isMember = role === "member";
-
-  // Role-based allowed views matrix (Filters sidebar options based on active role)
-  const isViewAllowed = (viewId) => {
-    // Technical analytics roles get full suite access
-    if (["admin", "data_analyst", "data_scientist"].includes(role)) {
-      return true;
-    }
-    
-    // Core workspace links available to all business roles
-    if (["dashboard", "datasets", "ai-analyst", "dashboards", "exec-reports", "alerts"].includes(viewId)) {
-      return true;
-    }
-
-    // Role-specific feature allocations
-    if (role === "ceo" && ["whatif", "branding", "forecast", "montecarlo", "goalseek", "benchmarks", "digest"].includes(viewId)) return true;
-    if (role === "hr" && ["benchmarks"].includes(viewId)) return true;
-    if (role === "recruiter" && ["benchmarks"].includes(viewId)) return true;
-    if (role === "finance" && ["whatif", "anomalies", "pivot", "forecast", "montecarlo", "abc", "goalseek", "benchmarks"].includes(viewId)) return true;
-    if (role === "marketing" && ["cohort", "forecast", "benchmarks"].includes(viewId)) return true;
-    if (role === "operations" && ["pareto", "abc", "benchmarks"].includes(viewId)) return true;
-    if (role === "supply_chain" && ["pareto", "abc", "benchmarks"].includes(viewId)) return true;
-    if (role === "sales" && ["forecast", "benchmarks"].includes(viewId)) return true;
-
-    return false;
-  };
-
-  const navItemStyle = (isActive) => ({
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-    padding: "8px 12px",
-    fontSize: "13.5px",
-    fontWeight: isActive ? 600 : 500,
-    color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-    backgroundColor: isActive ? "var(--bg-hover)" : "transparent",
-    borderRadius: "var(--radius-sm)",
-    border: "none",
-    width: "100%",
-    textAlign: "left",
-    cursor: "pointer",
-    transition: "background-color 0.15s ease, color 0.15s ease",
-    fontFamily: "inherit",
-    boxSizing: "border-box"
-  });
-
-  const sectionHeaderStyle = {
-    fontSize: "11px",
-    fontWeight: 700,
-    color: "var(--text-muted)",
-    letterSpacing: "0.05em",
-    padding: "16px 12px 6px 12px",
-    textTransform: "uppercase"
-  };
+export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
+  const { roleConfig } = useRole();
+  const navItems = roleConfig?.navigation || [
+    { id: "overview", label: "Executive Overview", icon: "🏠" },
+    { id: "datasets", label: "Datasets", icon: "📂" },
+    { id: "ai-analyst", label: "AI Copilot Chat", icon: "🤖" },
+    { id: "exec-reports", label: "Reports", icon: "📄" },
+    { id: "settings", label: "Settings", icon: "⚙" }
+  ];
 
   return (
-    <div style={{
-      width: "240px",
+    <aside style={{
+      width: 240,
+      background: "var(--bg-secondary, #FFFFFF)",
+      borderRight: "1px solid var(--border-color, #E2E8F0)",
       height: "100vh",
-      backgroundColor: "var(--bg-secondary)",
-      borderRight: "1px solid var(--border-color)",
+      position: "fixed",
+      top: 0,
+      left: 0,
+      zIndex: 90,
       display: "flex",
       flexDirection: "column",
-      position: "fixed",
-      left: 0,
-      top: 0,
-      zIndex: 100,
       transform: isOpen ? "translateX(0)" : "translateX(-100%)",
       transition: "transform 0.2s ease-in-out",
-      boxSizing: "border-box",
-      fontFamily: "var(--font-sans)"
-    }} className="sidebar-container">
-      
-      {/* Workspace Header */}
+      boxSizing: "border-box"
+    }}>
+      {/* Brand Header */}
       <div style={{
-        padding: "20px 16px",
-        borderBottom: "1px solid var(--border-color)",
+        height: 56,
+        padding: "0 20px",
         display: "flex",
+        alignItems: "center",
         justify: "space-between",
-        alignItems: "center"
+        borderBottom: "1px solid var(--border-color, #E2E8F0)"
       }}>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>
-            💼 {user?.companyName || "My Workspace"}
-          </span>
-          <span style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "2px" }}>
-            {user?.email}
-          </span>
-        </div>
-        {user?.tier === "pro" && (
-          <span style={{
-            background: "linear-gradient(135deg, #F59E0B, #D97706)",
-            color: "#fff",
-            fontSize: "9px",
-            fontWeight: 700,
-            padding: "2px 6px",
-            borderRadius: "4px",
-            textTransform: "uppercase"
-          }}>
-            PRO
-          </span>
-        )}
-      </div>
-
-      {/* Live Role Switcher & Active Role Scope Banner */}
-      <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--border-color)", background: "rgba(139, 92, 246, 0.05)" }}>
-        <div style={{ fontSize: "10.5px", fontWeight: 700, color: "#8B5CF6", marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>⚡ Active Role Scope:</span>
-          <span style={{ fontSize: 9, background: "#8B5CF6", color: "#FFF", padding: "1px 5px", borderRadius: 4 }}>SANDBOX</span>
-        </div>
-        <select
-          value={role}
-          onChange={(e) => {
-            const nextRole = e.target.value;
-            const updatedUser = { ...(user || {}), role: nextRole };
-            if (onUserChange) {
-              onUserChange(updatedUser);
-            } else {
-              localStorage.setItem("aida_user", JSON.stringify(updatedUser));
-              window.location.reload();
-            }
-            setView("dashboard");
-          }}
-          style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid var(--border-color, #DDD8CE)", fontSize: 11.5, fontWeight: 700, background: "var(--bg-primary, #FFF)", color: "var(--text-primary, #333)", cursor: "pointer", marginBottom: 6 }}
-        >
-          <option value="ceo">👔 CEO / Executive</option>
-          <option value="hr">👥 HR Manager</option>
-          <option value="recruiter">🎯 Recruiter</option>
-          <option value="finance">💰 Finance</option>
-          <option value="data_analyst">📊 Data Analyst Studio</option>
-          <option value="data_scientist">🤖 Data Scientist</option>
-          <option value="sales">📈 Sales</option>
-          <option value="marketing">📣 Marketing</option>
-          <option value="operations">⚙️ Operations</option>
-          <option value="it">💻 IT / Technology</option>
-          <option value="supply_chain">🚚 Supply Chain</option>
-          <option value="admin">🛡️ Administrator</option>
-        </select>
-
-        {/* Active Role Command Center Pill Trigger Button */}
-        <button
-          onClick={() => setView("dashboard")}
-          style={{
-            width: "100%",
-            fontSize: "11.5px",
-            fontWeight: 700,
-            color: "#2563EB",
-            background: "var(--bg-primary, #FFFFFF)",
-            border: "1px solid #BFDBFE",
-            borderRadius: "8px",
-            padding: "7px 10px",
+        <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800, fontSize: 15, color: "var(--text-primary, #0F172A)" }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+            color: "#FFF",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            gap: "6px",
-            cursor: "pointer",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-            transition: "all 0.15s ease",
-            textAlign: "center"
-          }}
-          title="Click to launch active Role Command Center"
-        >
-          <span>🎯</span>
-          <span>
-            {role === "ceo" && "Role: Executive Command Center"}
-            {role === "hr" && "Role: HR Command Center"}
-            {role === "recruiter" && "Role: Recruitment Command Center"}
-            {role === "finance" && "Role: Finance Command Center"}
-            {role === "data_analyst" && "Role: Data Analyst Studio"}
-            {role === "data_scientist" && "Role: Data Science Studio"}
-            {!["ceo", "hr", "recruiter", "finance", "data_analyst", "data_scientist"].includes(role) && `Role: ${role.toUpperCase()} Command Center`}
-          </span>
-        </button>
-      </div>
-
-      {/* Navigation Groups */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "12px 8px" }}>
-        <div style={sectionHeaderStyle}>Analytics Workspace</div>
-        {isViewAllowed("dashboard") && (
-          <button onClick={() => setView("dashboard")} style={navItemStyle(currentView === "dashboard")} title="Upload spreadsheets and view interactive BI analytics">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Workspace Threads</span>
-              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Upload & Interactive Threads</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("datasets") && (
-          <button onClick={() => setView("datasets")} style={navItemStyle(currentView === "datasets")} title="View all ingested spreadsheet tables">
-            <Icons.Datasets />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>My Datasets</span>
-              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Ingested Spreadsheet Files</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("ai-analyst") && (
-          <button onClick={() => setView("ai-analyst")} style={navItemStyle(currentView === "ai-analyst")} title="Conversational AI Chatbot to query your data in plain English">
-            <Icons.AIAnalyst />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>AI Copilot Chat</span>
-              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>💬 Conversational Q&A Bot</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("dashboards") && (
-          <button onClick={() => setView("dashboards")} style={navItemStyle(currentView === "dashboards")} title="Executive BI Dashboards, Pie Charts & Heatmaps">
-            <Icons.Dashboards />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>BI Dashboards</span>
-              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>KPIs, Charts & Heatmaps</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("insights") && (
-          <button onClick={() => setView("insights")} style={navItemStyle(currentView === "insights")} title="Automated Exploratory Data Analysis & Statistics">
-            <Icons.Insights />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>EDA & Statistics</span>
-              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Exploratory Shape Profiling</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("reports") && (
-          <button onClick={() => setView("reports")} style={navItemStyle(currentView === "reports")} title="Machine Learning Predictions & Time-Series Trend Forecasting">
-            <Icons.Reports />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>ML & Forecasting</span>
-              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>Predictive Models & Trends</span>
-            </div>
-          </button>
-        )}
-
-        <div style={sectionHeaderStyle}>AI Intelligence Suite</div>
-        {isViewAllowed("health") && (
-          <button onClick={() => setView("health")} style={navItemStyle(currentView === "health")} title="Automated Data Quality Scoring & Anomaly Detection">
-            <Icons.Security />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Data Health Inspector</span>
-              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🩺 Quality Score & Outliers</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("whatif") && (
-          <button onClick={() => setView("whatif")} style={navItemStyle(currentView === "whatif")} title="Interactive What-If Growth & Revenue Simulator">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>What-If Simulator</span>
-              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Projections & Scenarios</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("exec-reports") && (
-          <button onClick={() => setView("exec-reports")} style={navItemStyle(currentView === "exec-reports")} title="1-Click Executive Summary PDF & HTML Export">
-            <Icons.Reports />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Executive Reports</span>
-              <span style={{ fontSize: "10px", color: "var(--text-muted)", fontWeight: 400 }}>📄 1-Click Executive Export</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("alerts") && (
-          <button onClick={() => setView("alerts")} style={navItemStyle(currentView === "alerts")} title="Automated Slack & WhatsApp Threshold Notifications">
-            <Icons.Reports />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Threshold Alerts</span>
-              <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>📢 Slack & WhatsApp Webhooks</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("correlation") && (
-          <button onClick={() => setView("correlation")} style={navItemStyle(currentView === "correlation")} title="Pearson Correlation Matrix & Heatmap Grid">
-            <Icons.Insights />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Correlation Matrix</span>
-              <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>📊 Heatmap Grid & Matrix</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("branding") && (
-          <button onClick={() => setView("branding")} style={navItemStyle(currentView === "branding")} title="Corporate Logo & Custom PDF Report Header Settings">
-            <Icons.Security />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Corporate Branding</span>
-              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🏢 Custom Logo & Headers</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("stats") && (
-          <button onClick={() => setView("stats")} style={navItemStyle(currentView === "stats")} title="Deep Descriptive Statistics, Percentiles & Skewness">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Statistical Profiling</span>
-              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📐 Percentiles & Skewness</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("sql") && (
-          <button onClick={() => setView("sql")} style={navItemStyle(currentView === "sql")} title="AI Natural Language to ANSI SQL Translation & Execution">
-            <Icons.Code />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>AI SQL Generator</span>
-              <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Text-to-SQL & Live Execution</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("clustering") && (
-          <button onClick={() => setView("clustering")} style={navItemStyle(currentView === "clustering")} title="AI K-Means Unsupervised Clustering & Segmentation">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Cluster Segmentation</span>
-              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🤖 K-Means ML Clustering</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("pivot") && (
-          <button onClick={() => setView("pivot")} style={navItemStyle(currentView === "pivot")} title="Interactive 2D Pivot Table & Cross-Tabulation">
-            <Icons.Reports />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>AI Pivot Table</span>
-              <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>🔍 Cross-Tabulation & Matrix</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("cohort") && (
-          <button onClick={() => setView("cohort")} style={navItemStyle(currentView === "cohort")} title="Acquisition Cohort Retention Heatmap Grid">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Cohort Analysis</span>
-              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📊 Retention Heatmap</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("transform") && (
-          <button onClick={() => setView("transform")} style={navItemStyle(currentView === "transform")} title="Data Transformation & Calculated Column Studio">
-            <Icons.Code />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Formula Studio</span>
-              <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>⚡ Calculated Columns & Filters</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("pareto") && (
-          <button onClick={() => setView("pareto")} style={navItemStyle(currentView === "pareto")} title="Pareto 80/20 Cumulative Distribution & Dual-Axis Chart">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Pareto Analysis</span>
-              <span style={{ fontSize: "10px", color: "#6366F1", fontWeight: 600 }}>📊 80/20 Rule Distribution</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("anomalies") && (
-          <button onClick={() => setView("anomalies")} style={navItemStyle(currentView === "anomalies")} title="AI Outlier & Anomaly Root-Cause Investigator">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Anomaly Investigator</span>
-              <span style={{ fontSize: "10px", color: "#EF4444", fontWeight: 600 }}>🚨 Outliers & Root Cause AI</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("search") && (
-          <button onClick={() => setView("search")} style={navItemStyle(currentView === "search")} title="Advanced Data Search, Multi-Column Sorting & Excel Exporter">
-            <Icons.Code />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Subset Explorer</span>
-              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🔍 Search, Sort & Excel Export</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("forecast") && (
-          <button onClick={() => setView("forecast")} style={navItemStyle(currentView === "forecast")} title="AI Predictive Time-Series Forecasting & 95% Confidence Bounds">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>AI Forecast</span>
-              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🔮 Time-Series Trends</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("montecarlo") && (
-          <button onClick={() => setView("montecarlo")} style={navItemStyle(currentView === "montecarlo")} title="Monte Carlo Risk & Financial Scenario Simulator">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Monte Carlo Risk</span>
-              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎲 1,000 Stochastic Runs</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("cleaner") && (
-          <button onClick={() => setView("cleaner")} style={navItemStyle(currentView === "cleaner")} title="1-Click Automated Missing Value Imputation & Data Cleaner">
-            <Icons.Code />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Data Auto-Cleaner</span>
-              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🧹 Impute & Clean Data</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("abc") && (
-          <button onClick={() => setView("abc")} style={navItemStyle(currentView === "abc")} title="ABC Inventory & Revenue Categorization Matrix">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>ABC Classification</span>
-              <span style={{ fontSize: "10px", color: "#F59E0B", fontWeight: 600 }}>📦 Class A / B / C Matrix</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("benchmarks") && (
-          <button onClick={() => setView("benchmarks")} style={navItemStyle(currentView === "benchmarks")} title="Industry KPI Benchmarking & Performance Variance Scorecard">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>KPI Benchmarking</span>
-              <span style={{ fontSize: "10px", color: "#3B82F6", fontWeight: 600 }}>🎯 Industry Profile Variance</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("digest") && (
-          <button onClick={() => setView("digest")} style={navItemStyle(currentView === "digest")} title="Scheduled Automated Daily/Weekly Email Digest Dispatcher">
-            <Icons.Code />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Email Digest</span>
-              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>📅 Daily/Weekly Dispatches</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("goalseek") && (
-          <button onClick={() => setView("goalseek")} style={navItemStyle(currentView === "goalseek")} title="Interactive Metric Goal Seek & Target Solver">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Goal Seek Solver</span>
-              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>📊 Metric Target Solver</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("rfm") && (
-          <button onClick={() => setView("rfm")} style={navItemStyle(currentView === "rfm")} title="AI RFM Customer Loyalty & Churn Risk Segmentation">
-            <Icons.Team />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>RFM Segmentation</span>
-              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🏷️ Churn & Loyalty Matrix</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("geomap") && (
-          <button onClick={() => setView("geomap")} style={navItemStyle(currentView === "geomap")} title="Interactive Regional Geo-Map Heatmap Visualizer">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Geo-Map Visualizer</span>
-              <span style={{ fontSize: "10px", color: "#10B981", fontWeight: 600 }}>🗺️ Regional Density Heatmap</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("webhooks") && (
-          <button onClick={() => setView("webhooks")} style={navItemStyle(currentView === "webhooks")} title="Real-Time Slack & Webhook Anomaly Alert Dispatcher">
-            <Icons.Code />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Slack & Webhooks</span>
-              <span style={{ fontSize: "10px", color: "#4A154B", fontWeight: 600 }}>⚡ Real-Time Anomaly Alerts</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("debate") && (
-          <button onClick={() => setView("debate")} style={navItemStyle(currentView === "debate")} title="Multi-Agent AI Data Debate & Risk Peer-Review Engine">
-            <Icons.Overview />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>AI Data Debate</span>
-              <span style={{ fontSize: "10px", color: "#8B5CF6", fontWeight: 600 }}>🤖 Dual-Agent Growth vs Risk</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("script") && (
-          <button onClick={() => setView("script")} style={navItemStyle(currentView === "script")} title="AI Executive Presentation Speech & Slide Script Generator">
-            <Icons.Reports />
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
-              <span>Presentation Script</span>
-              <span style={{ fontSize: "10px", color: "#EC4899", fontWeight: 600 }}>🎬 3-Min Executive Speech</span>
-            </div>
-          </button>
-        )}
-
-        {isViewAllowed("team") && (
-          <>
-            <div style={sectionHeaderStyle}>Manage</div>
-            <button onClick={() => setView("team")} style={navItemStyle(currentView === "team")}>
-              <Icons.Team /> Team
-            </button>
-          </>
-        )}
-
-        {isAdmin && (
-          <>
-            <div style={sectionHeaderStyle}>Administration</div>
-            <button onClick={() => setView("admin-members")} style={navItemStyle(currentView === "admin-members")}>
-              <Icons.Team /> User Management
-            </button>
-            <button onClick={() => setView("admin-audit")} style={navItemStyle(currentView === "admin-audit")}>
-              <Icons.Overview /> Audit Logs
-            </button>
-            <button onClick={() => setView("admin-security")} style={navItemStyle(currentView === "admin-security")}>
-              <Icons.Security /> Security Settings
-            </button>
-          </>
-        )}
-
-        <div style={sectionHeaderStyle}>Settings</div>
-        <button onClick={() => setView("settings")} style={navItemStyle(currentView === "settings")}>
-          <Icons.Security /> Profile & Preferences
-        </button>
-      </div>
-
-      {/* Security Badge & Logout Footer */}
-      <div style={{
-        padding: "14px 16px",
-        borderTop: "1px solid var(--border-color)",
-        display: "flex",
-        flexDirection: "column",
-        gap: "10px",
-        background: "var(--bg-secondary)"
-      }}>
-        <div style={{
-          fontSize: "10.5px",
-          color: "var(--text-muted)",
-          textAlign: "center",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "4px",
-          fontWeight: 600,
-          background: "var(--bg-hover)",
-          padding: "6px",
-          borderRadius: "6px",
-          border: "1px solid var(--border-color)"
-        }}>
-          <span>🔒 256-Bit Encrypted</span>
-          <span>•</span>
-          <span>SOC2 Ready</span>
+            justify: "center",
+            fontSize: 14,
+            fontWeight: 800
+          }}>
+            ✦
+          </div>
+          <span>AI Data Copilot</span>
         </div>
+      </div>
 
-        <button onClick={onLogout} style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-          width: "100%",
-          padding: "8px 12px",
-          background: "none",
-          border: "1px solid var(--border-color)",
-          borderRadius: "var(--radius-sm)",
-          fontSize: "12.5px",
-          fontWeight: 600,
-          color: "var(--text-secondary)",
-          cursor: "pointer",
-          justifyContent: "center",
-          fontFamily: "inherit"
-        }}>
-          🚪 Log Out
+      {/* Role Scope Badge */}
+      <div style={{ padding: "12px 16px 8px" }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: "#64748B", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>
+          Role Scope
+        </div>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary, #0F172A)", background: "var(--bg-primary, #F8FAFC)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 6, padding: "5px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+          <span>{roleConfig.title}</span>
+        </div>
+      </div>
+
+      {/* Navigation List */}
+      <nav style={{ flex: 1, padding: "8px 12px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 2 }}>
+        {navItems.map(item => {
+          const isActive = currentView === item.id || (item.id === "overview" && currentView === "dashboard");
+          return (
+            <button
+              key={item.id}
+              onClick={() => setView(item.id)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                width: "100%",
+                textAlign: "left",
+                padding: "9px 12px",
+                fontSize: 13,
+                fontWeight: isActive ? 700 : 500,
+                color: isActive ? "#2563EB" : "var(--text-primary, #475569)",
+                background: isActive ? "rgba(37, 99, 235, 0.08)" : "transparent",
+                border: "none",
+                borderRadius: 8,
+                cursor: "pointer",
+                transition: "all 0.15s ease"
+              }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-hover, #F1F5F9)"; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ fontSize: 16 }}>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* System Footer Link */}
+      <div style={{ padding: 12, borderTop: "1px solid var(--border-color, #E2E8F0)" }}>
+        <button
+          onClick={() => setView("settings")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            width: "100%",
+            padding: "8px 12px",
+            fontSize: 13,
+            fontWeight: currentView === "settings" ? 700 : 500,
+            color: currentView === "settings" ? "#2563EB" : "var(--text-primary, #475569)",
+            background: currentView === "settings" ? "rgba(37, 99, 235, 0.08)" : "transparent",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer"
+          }}
+        >
+          <span style={{ fontSize: 16 }}>⚙</span>
+          <span>Role & System Settings</span>
         </button>
       </div>
-    </div>
+    </aside>
   );
 }

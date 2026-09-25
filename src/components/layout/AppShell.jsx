@@ -1,8 +1,12 @@
+// src/components/layout/AppShell.jsx
 import React, { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
+import { RoleProvider } from "../../context/RoleContext";
+import { DatasetProvider } from "../../context/DatasetContext";
+import { CopilotProvider } from "../../context/CopilotContext";
 
-export default function AppShell({ user, currentView, setView, onLogout, onUserChange, children }) {
+export function AppShellContent({ user, currentView, setView, onLogout, onUserChange, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   
@@ -15,14 +19,12 @@ export default function AppShell({ user, currentView, setView, onLogout, onUserC
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
-      // Automatically close drawer on mobile entry, keep open on desktop
       setSidebarOpen(!mobile);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Update theme token class name on dark mode changes
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add("theme-dark");
@@ -58,11 +60,8 @@ export default function AppShell({ user, currentView, setView, onLogout, onUserC
 
       {/* Navigation Sidebar Panel */}
       <Sidebar
-        user={user}
         currentView={currentView}
         setView={setView}
-        onLogout={onLogout}
-        onUserChange={onUserChange}
         isOpen={sidebarOpen}
         setIsOpen={setSidebarOpen}
       />
@@ -79,11 +78,12 @@ export default function AppShell({ user, currentView, setView, onLogout, onUserC
       }}>
         {/* Topbar Utility Controls */}
         <Topbar
-          user={user}
           darkMode={darkMode}
           setDarkMode={setDarkMode}
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
+          onLogout={onLogout}
+          setView={setView}
         />
 
         {/* View content slot */}
@@ -97,5 +97,17 @@ export default function AppShell({ user, currentView, setView, onLogout, onUserC
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AppShell(props) {
+  return (
+    <RoleProvider initialUser={props.user}>
+      <DatasetProvider>
+        <CopilotProvider>
+          <AppShellContent {...props} />
+        </CopilotProvider>
+      </DatasetProvider>
+    </RoleProvider>
   );
 }
