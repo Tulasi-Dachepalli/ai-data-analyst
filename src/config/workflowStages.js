@@ -109,19 +109,25 @@ export function getVisibleStagesForRole(roleId = "ceo") {
 }
 
 /**
- * Computes explicit stage lock state:
+ * Computes final UI stage state:
  * - "completed" (✓)
  * - "current" (●)
  * - "available" (○)
- * - "locked" (🔒)
+ * - "locked" (🔒) — Prerequisites not yet met
+ * - "restricted" (⛔) — Role lacks RBAC permission
  */
-export function getStageLockState(stageId, currentStageId, completedStages = ["raw", "quality"]) {
-  if (stageId === currentStageId) return "current";
-  if (completedStages.includes(stageId)) return "completed";
+export function getStageLockState(stageId, currentStageId, completedStages = ["raw", "quality"], roleId = "ceo") {
+  const allowedForRole = ROLE_STAGE_VISIBILITY[roleId] || [];
+  if (!allowedForRole.includes(stageId) && !["data_analyst", "data_scientist"].includes(roleId)) {
+    return "restricted"; // ⛔ Restricted by Role RBAC
+  }
+
+  if (stageId === currentStageId) return "current"; // ● Current
+  if (completedStages.includes(stageId)) return "completed"; // ✓ Completed
   
   const stage = WORKFLOW_STAGES.find(s => s.id === stageId);
   if (!stage) return "available";
 
   const allReqsMet = stage.requires.every(req => completedStages.includes(req) || req === currentStageId);
-  return allReqsMet ? "available" : "locked";
+  return allReqsMet ? "available" : "locked"; // ○ Available or 🔒 Locked
 }
