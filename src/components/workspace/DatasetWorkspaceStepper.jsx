@@ -1,6 +1,6 @@
 // src/components/workspace/DatasetWorkspaceStepper.jsx
 import React from "react";
-import { getVisibleStagesForRole } from "../../config/workflowStages";
+import { getVisibleStagesForRole, getStageLockState } from "../../config/workflowStages";
 import { useRole } from "../../context/RoleContext";
 import { useDataset } from "../../context/DatasetContext";
 
@@ -8,6 +8,8 @@ export default function DatasetWorkspaceStepper() {
   const { activeRole } = useRole();
   const { currentStage, setCurrentStage } = useDataset();
   const stages = getVisibleStagesForRole(activeRole);
+
+  const completedStages = ["raw", "quality"]; // Mocked completed stages sequence
 
   return (
     <div style={{
@@ -21,52 +23,53 @@ export default function DatasetWorkspaceStepper() {
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: "max-content" }}>
         {stages.map((st, idx) => {
-          const isActive = currentStage === st.id;
-          const isPast = stages.findIndex(s => s.id === currentStage) > idx;
+          const lockState = getStageLockState(st.id, currentStage, completedStages);
+          const isCurrent = lockState === "current";
+          const isCompleted = lockState === "completed";
+          const isLocked = lockState === "locked";
 
           return (
             <React.Fragment key={st.id}>
               <button
                 type="button"
-                onClick={() => setCurrentStage(st.id)}
+                disabled={isLocked}
+                onClick={() => !isLocked && setCurrentStage(st.id)}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  background: isActive
+                  background: isCurrent
                     ? "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)"
-                    : isPast
+                    : isCompleted
                     ? "rgba(16, 185, 129, 0.08)"
-                    : "var(--bg-primary, #F8FAFC)",
-                  border: isActive
+                    : isLocked
+                    ? "var(--bg-primary, #F8FAFC)"
+                    : "var(--bg-secondary, #FFFFFF)",
+                  border: isCurrent
                     ? "1px solid #0F172A"
-                    : isPast
+                    : isCompleted
                     ? "1px solid rgba(16, 185, 129, 0.3)"
-                    : "1px solid var(--border-color, #E2E8F0)",
+                    : isLocked
+                    ? "1px solid var(--border-color, #E2E8F0)"
+                    : "1px solid var(--border-color, #CBD5E1)",
                   borderRadius: 10,
                   padding: "6px 12px",
                   fontSize: 12,
-                  fontWeight: isActive ? 700 : 600,
-                  color: isActive ? "#FFFFFF" : isPast ? "#059669" : "var(--text-primary, #475569)",
-                  cursor: "pointer",
+                  fontWeight: isCurrent ? 700 : 600,
+                  color: isCurrent ? "#FFFFFF" : isCompleted ? "#059669" : isLocked ? "#94A3B8" : "var(--text-primary, #475569)",
+                  cursor: isLocked ? "not-allowed" : "pointer",
+                  opacity: isLocked ? 0.6 : 1,
                   transition: "all 0.15s ease"
                 }}
               >
                 <span style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: 800,
-                  background: isActive ? "rgba(255,255,255,0.2)" : isPast ? "#10B981" : "#94A3B8",
-                  color: isActive ? "#FFF" : isPast ? "#FFF" : "#FFF",
-                  borderRadius: "50%",
-                  width: 18,
-                  height: 18,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justify: "center"
+                  color: isCurrent ? "#FFF" : isCompleted ? "#10B981" : isLocked ? "#94A3B8" : "#2563EB"
                 }}>
-                  {st.number}
+                  {isCompleted ? "✓" : isCurrent ? "●" : isLocked ? "🔒" : "○"}
                 </span>
-                <span>{st.label}</span>
+                <span>{st.number}. {st.label}</span>
               </button>
 
               {idx < stages.length - 1 && (

@@ -8,8 +8,9 @@ export const WORKFLOW_STAGES = [
     label: "Raw Data",
     shortLabel: "Raw",
     icon: "🔒",
-    description: "Immutable original dataset locked for audit integrity",
-    badge: "Original v1"
+    requires: [],
+    produces: "rawDataset",
+    description: "Immutable original dataset locked for audit integrity"
   },
   {
     id: "quality",
@@ -17,8 +18,9 @@ export const WORKFLOW_STAGES = [
     label: "Data Quality",
     shortLabel: "Quality",
     icon: "📊",
-    description: "Data health score, missing values, duplicates, and anomaly assessment",
-    badge: "Health Score"
+    requires: ["raw"],
+    produces: "qualityReport",
+    description: "Data health score, missing values, duplicates, and anomaly assessment"
   },
   {
     id: "cleaning",
@@ -26,8 +28,9 @@ export const WORKFLOW_STAGES = [
     label: "Data Cleaning",
     shortLabel: "Cleaning",
     icon: "🧹",
-    description: "Transactional cleaning operations with before/after previews",
-    badge: "Transactional"
+    requires: ["quality"],
+    produces: "transformation",
+    description: "Transactional cleaning operations with before/after previews"
   },
   {
     id: "cleaned",
@@ -35,8 +38,9 @@ export const WORKFLOW_STAGES = [
     label: "Cleaned Data",
     shortLabel: "Cleaned",
     icon: "✨",
-    description: "Verified clean dataset ready for downstream exploration and modeling",
-    badge: "Verified Clean"
+    requires: ["cleaning"],
+    produces: "cleanedDataset",
+    description: "Verified clean dataset ready for downstream exploration and modeling"
   },
   {
     id: "explore",
@@ -44,8 +48,9 @@ export const WORKFLOW_STAGES = [
     label: "Explore",
     shortLabel: "Explore",
     icon: "🔍",
-    description: "Exploratory data analysis, distributions, and correlation matrices",
-    badge: "EDA Studio"
+    requires: ["cleaned"],
+    produces: "edaResults",
+    description: "Exploratory data analysis, distributions, and correlation matrices"
   },
   {
     id: "insights",
@@ -53,8 +58,9 @@ export const WORKFLOW_STAGES = [
     label: "Insights",
     shortLabel: "Insights",
     icon: "💡",
-    description: "AI-generated executive findings, pattern extraction, and anomalies",
-    badge: "AI Brief"
+    requires: ["explore"],
+    produces: "insightResults",
+    description: "AI-generated executive findings, pattern extraction, and anomalies"
   },
   {
     id: "modeling",
@@ -62,8 +68,9 @@ export const WORKFLOW_STAGES = [
     label: "Modeling",
     shortLabel: "Model",
     icon: "🤖",
-    description: "AutoML model training, feature importance, and performance benchmarks",
-    badge: "AutoML Engine"
+    requires: ["cleaned"],
+    produces: "modelResults",
+    description: "AutoML model training, feature importance, and performance benchmarks"
   },
   {
     id: "forecast",
@@ -71,8 +78,9 @@ export const WORKFLOW_STAGES = [
     label: "Forecast",
     shortLabel: "Forecast",
     icon: "📈",
-    description: "Time-series projections, confidence intervals, and scenario models",
-    badge: "Projections"
+    requires: ["modeling"],
+    produces: "forecastResults",
+    description: "Time-series projections, confidence intervals, and scenario models"
   },
   {
     id: "report",
@@ -80,13 +88,12 @@ export const WORKFLOW_STAGES = [
     label: "Executive Report",
     shortLabel: "Report",
     icon: "📄",
-    description: "Automated executive summary deck builder and PDF/Excel exporter",
-    badge: "Final Deck"
+    requires: ["insights"],
+    produces: "report",
+    description: "Automated executive summary deck builder and PDF/Excel exporter"
   }
 ];
 
-// Role-specific stage visibility mapping
-// Determines which stages are prominently displayed in the navigation header per role
 export const ROLE_STAGE_VISIBILITY = {
   ceo: ["explore", "insights", "forecast", "report"],
   hr: ["quality", "cleaning", "explore", "insights", "report"],
@@ -99,4 +106,22 @@ export const ROLE_STAGE_VISIBILITY = {
 export function getVisibleStagesForRole(roleId = "ceo") {
   const allowed = ROLE_STAGE_VISIBILITY[roleId] || ROLE_STAGE_VISIBILITY.ceo;
   return WORKFLOW_STAGES.filter(stage => allowed.includes(stage.id));
+}
+
+/**
+ * Computes explicit stage lock state:
+ * - "completed" (✓)
+ * - "current" (●)
+ * - "available" (○)
+ * - "locked" (🔒)
+ */
+export function getStageLockState(stageId, currentStageId, completedStages = ["raw", "quality"]) {
+  if (stageId === currentStageId) return "current";
+  if (completedStages.includes(stageId)) return "completed";
+  
+  const stage = WORKFLOW_STAGES.find(s => s.id === stageId);
+  if (!stage) return "available";
+
+  const allReqsMet = stage.requires.every(req => completedStages.includes(req) || req === currentStageId);
+  return allReqsMet ? "available" : "locked";
 }

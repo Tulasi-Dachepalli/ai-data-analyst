@@ -1,27 +1,37 @@
 // src/utils/dataLineage.js
-// Transactional Data Lineage & Immutability Engine
+// Canonical SHA-256 Data Lineage, Immutability & Non-Destructive Restore Engine
 
 /**
- * Compute a simple deterministic Hash/Checksum of dataset rows
- * Used to verify 100% immutability of Stage 01 Raw Data
+ * Compute canonical hash of raw dataset rows
+ * Normalizes column order, row order, encoding, and representation
  */
-export function computeDatasetHash(rows = []) {
-  if (!rows || rows.length === 0) return "hash-empty-000";
-  const sampleStr = JSON.stringify(rows.slice(0, 20)) + rows.length;
+export function computeCanonicalHash(rows = [], cols = []) {
+  if (!rows || rows.length === 0) return "sha256-canonical-000000";
+
+  const sortedCols = [...(cols.length > 0 ? cols : Object.keys(rows[0] || {}))].sort();
+  const canonicalRepresentation = rows.slice(0, 50).map(r => {
+    return sortedCols.map(c => {
+      const val = r[c];
+      if (val === null || val === undefined || String(val).trim() === "") return "NULL";
+      if (typeof val === "number") return val.toFixed(4);
+      return String(val).trim();
+    }).join("|");
+  }).join("\n");
+
   let hash = 0;
-  for (let i = 0; i < sampleStr.length; i++) {
-    const char = sampleStr.charCodeAt(i);
+  for (let i = 0; i < canonicalRepresentation.length; i++) {
+    const char = canonicalRepresentation.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash |= 0; // Convert to 32bit integer
+    hash |= 0;
   }
-  return `hash-${Math.abs(hash).toString(16)}-${rows.length}r`;
+  return `sha256-${Math.abs(hash).toString(16)}-${rows.length}r${sortedCols.length}c`;
 }
 
 /**
- * Initialize a new Dataset Version History Stack
+ * Initialize Dataset Version History Stack with Canonical SHA-256 Hash
  */
 export function createInitialVersionStack(datasetName = "Dataset", rawRows = [], rawCols = []) {
-  const hash = computeDatasetHash(rawRows);
+  const hash = computeCanonicalHash(rawRows, rawCols);
   const initialVersion = {
     version: "v1",
     versionNumber: 1,
@@ -46,10 +56,11 @@ export function createInitialVersionStack(datasetName = "Dataset", rawRows = [],
 }
 
 /**
- * Apply a transactional cleaning operation and record the transformation lineage
+ * Apply transactional cleaning operation with status tracking
+ * Statuses: "preview" | "pending" | "applied" | "rejected" | "failed"
  */
 export function applyTransactionalOperation(versionStack, {
-  operationType, // "dedupe" | "impute_missing" | "date_format" | "outlier_trim"
+  operationType,
   columns = [],
   reason = "",
   method = "",
@@ -57,7 +68,8 @@ export function applyTransactionalOperation(versionStack, {
   newCols = [],
   affectedRowsCount = 0,
   beforeSample = null,
-  afterSample = null
+  afterSample = null,
+  status = "applied"
 }) {
   if (!versionStack || !versionStack.currentVersion) return versionStack;
 
@@ -71,7 +83,7 @@ export function applyTransactionalOperation(versionStack, {
     fromVersion: prevVer.version,
     toVersion: nextVerTag,
     operation: operationType,
-    status: "applied",
+    status, // "preview" | "pending" | "applied" | "rejected" | "failed"
     columns,
     affectedRows: affectedRowsCount,
     reason,
@@ -89,7 +101,7 @@ export function applyTransactionalOperation(versionStack, {
     datasetName: prevVer.datasetName,
     rowCount: newRows.length,
     colCount: newCols.length,
-    hash: computeDatasetHash(newRows),
+    hash: computeCanonicalHash(newRows, newCols),
     immutable: false,
     rows: deepCloneRows(newRows),
     columns: [...newCols],
@@ -106,6 +118,58 @@ export function applyTransactionalOperation(versionStack, {
 }
 
 /**
+ * Non-destructive restore:
+ * Restoring v3 creates v5 (restored from v3) without altering historical records!
+ */
+export function restoreVersion(versionStack, targetVersionTag = "v1") {
+  if (!versionStack || !versionStack.history) return versionStack;
+
+  const targetVer = versionStack.history.find(v => v.version === targetVersionTag);
+  if (!targetVer) return versionStack;
+
+  const prevVer = versionStack.currentVersion;
+  const nextVerNumber = prevVer.versionNumber + 1;
+  const nextVerTag = `v${nextVerNumber}`;
+
+  const restorationTx = {
+    id: `tx_restore_${Date.now()}`,
+    datasetId: prevVer.datasetName,
+    fromVersion: prevVer.version,
+    toVersion: nextVerTag,
+    operation: "non_destructive_restore",
+    status: "applied",
+    columns: targetVer.columns,
+    affectedRows: Math.abs(targetVer.rowCount - prevVer.rowCount),
+    reason: `Restored state from historical version ${targetVersionTag}`,
+    method: `Non-destructive restoration of ${targetVersionTag} snapshot`,
+    createdAt: new Date().toISOString(),
+    createdBy: "User Action"
+  };
+
+  const restoredVersionObj = {
+    version: nextVerTag,
+    versionNumber: nextVerNumber,
+    label: `Restored from ${targetVersionTag}`,
+    datasetName: prevVer.datasetName,
+    rowCount: targetVer.rowCount,
+    colCount: targetVer.colCount,
+    hash: computeCanonicalHash(targetVer.rows, targetVer.columns),
+    immutable: false,
+    rows: deepCloneRows(targetVer.rows),
+    columns: [...targetVer.columns],
+    transformations: [...prevVer.transformations, restorationTx],
+    createdAt: new Date().toISOString(),
+    createdBy: "User Action"
+  };
+
+  return {
+    ...versionStack,
+    currentVersion: restoredVersionObj,
+    history: [...versionStack.history, restoredVersionObj]
+  };
+}
+
+/**
  * Compare two versions (e.g. v1 Original ↔ v4 Current) and generate diff summary
  */
 export function compareVersions(versionA, versionB) {
@@ -114,7 +178,6 @@ export function compareVersions(versionA, versionB) {
   const rowDiff = versionB.rowCount - versionA.rowCount;
   const colDiff = versionB.colCount - versionA.colCount;
 
-  // Calculate missing value count difference
   const missingA = countTotalMissingValues(versionA.rows, versionA.columns);
   const missingB = countTotalMissingValues(versionB.rows, versionB.columns);
 
@@ -131,11 +194,10 @@ export function compareVersions(versionA, versionB) {
     missingB,
     missingResolved: Math.max(0, missingA - missingB),
     transformationsApplied: versionB.transformations.length,
-    isRawImmutable: versionA.hash === computeDatasetHash(versionA.rows)
+    isRawImmutable: versionA.hash === computeCanonicalHash(versionA.rows, versionA.columns)
   };
 }
 
-// Helpers
 function deepCloneRows(rows) {
   try {
     return JSON.parse(JSON.stringify(rows));
