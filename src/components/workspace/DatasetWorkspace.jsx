@@ -1,5 +1,6 @@
 // src/components/workspace/DatasetWorkspace.jsx
 import React from "react";
+import DatasetHeader from "./DatasetHeader";
 import DatasetWorkspaceStepper from "./DatasetWorkspaceStepper";
 import StageRawData from "../stages/StageRawData";
 import StageDataQuality from "../stages/StageDataQuality";
@@ -32,6 +33,9 @@ export default function DatasetWorkspace() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Dataset Header Bar */}
+      <DatasetHeader />
+
       {/* 9-Stage Progress Stepper Header */}
       <DatasetWorkspaceStepper />
 
