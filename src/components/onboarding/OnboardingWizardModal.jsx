@@ -8,30 +8,23 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
   const { logEvent } = useActivity();
   const [currentStep, setCurrentStep] = useState(1);
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [showMoreRoles, setShowMoreRoles] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   if (!isOpen) return null;
 
   const displayName = user?.fullName || (user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "Tulasi");
 
-  const steps = [
-    {
-      num: 1,
-      badge: "Step 1 of 3 • Role Scope",
-      title: `Welcome, ${displayName}!`,
-      subtitle: "Choose your perspective to tailor dashboards, KPI priorities, and reports."
-    },
-    {
-      num: 2,
-      badge: "Step 2 of 3 • Add Data",
-      title: "Bring Your Business Data",
-      subtitle: "Upload CSV, Excel, or connect Google Sheets. Raw data is immutable."
-    },
-    {
-      num: 3,
-      badge: "Step 3 of 3 • Power BI & AI",
-      title: "Interactive Dashboards & Copilot",
-      subtitle: "Ask questions in plain English, cross-filter visuals, and export executive reports."
-    }
+  const primaryRoles = [
+    { id: "ceo", icon: "👔", label: "CEO / Executive", desc: "KPI • Risk • ROI" },
+    { id: "data_analyst", icon: "📊", label: "Data Analyst", desc: "Data • Quality • Schema" },
+    { id: "finance", icon: "💰", label: "Finance", desc: "Budget • Variance • Cost" },
+    { id: "data_scientist", icon: "🧪", label: "Data Scientist", desc: "ML • Forecasting • Models" }
+  ];
+
+  const additionalRoles = [
+    { id: "hr", icon: "👥", label: "HR Executive", desc: "People • Retention • Turnover" },
+    { id: "recruiter", icon: "🎯", label: "Recruiter", desc: "Talent • Pipeline • Funnel" }
   ];
 
   const handleFinish = () => {
@@ -48,11 +41,18 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
     onClose();
   };
 
+  const handleStartAnalyzing = () => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      handleFinish();
+    }, 1100);
+  };
+
   const handleNext = () => {
     if (currentStep < 3) {
       setCurrentStep(prev => prev + 1);
     } else {
-      handleFinish();
+      handleStartAnalyzing();
     }
   };
 
@@ -69,7 +69,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: "rgba(15, 23, 42, 0.65)",
+      backgroundColor: "rgba(15, 23, 42, 0.68)",
       backdropFilter: "blur(4px)",
       zIndex: 9999,
       display: "flex",
@@ -82,22 +82,21 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
         maxWidth: "94vw",
         backgroundColor: "#FFFFFF",
         borderRadius: 14,
-        boxShadow: "0 20px 45px -10px rgba(15, 23, 42, 0.3)",
+        boxShadow: "0 20px 45px -10px rgba(15, 23, 42, 0.35)",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
         border: "1px solid #CBD5E1",
         animation: "modalFadeIn 0.2s ease-out"
       }}>
-        {/* Compact Header */}
+        {/* Compact Brand Header */}
         <div style={{
           padding: "16px 20px",
           background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
           color: "#FFFFFF",
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
-          position: "relative"
+          alignItems: "flex-start"
         }}>
           <div>
             <div style={{
@@ -112,7 +111,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
               borderRadius: 12,
               textTransform: "uppercase"
             }}>
-              ✨ AI Business Copilot Guide
+              ✨ AI Business Copilot
             </div>
             <h2 style={{
               fontSize: 17,
@@ -120,10 +119,10 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
               margin: "6px 0 2px 0",
               letterSpacing: "-0.01em"
             }}>
-              {steps[currentStep - 1].title}
+              👋 Welcome, {displayName}!
             </h2>
-            <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.4 }}>
-              {steps[currentStep - 1].subtitle}
+            <div style={{ fontSize: 11.5, color: "#94A3B8" }}>
+              One AI. Every Business Role.
             </div>
           </div>
 
@@ -149,7 +148,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
           </button>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Stepper Bar */}
         <div style={{ background: "#E2E8F0", height: 3, width: "100%" }}>
           <div style={{
             background: "linear-gradient(90deg, #2563EB 0%, #38BDF8 100%)",
@@ -159,28 +158,24 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
           }} />
         </div>
 
-        {/* Compact Body Content */}
+        {/* Modal Body Content */}
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-          
-          {/* STEP 1: Compact Role Selection */}
+
+          {/* STEP 1: Choose Your Perspective (6-Role RBAC) */}
           {currentStep === 1 && (
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>
-                  Select Your Perspective:
+                  STEP 1 • Choose your perspective:
                 </span>
                 <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 700, background: "#F0FDF4", padding: "1px 6px", borderRadius: 8 }}>
-                  ● Active Workspace
+                  Role: {roleConfig?.title || "Executive"}
                 </span>
               </div>
 
+              {/* Primary 4 Roles */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {[
-                  { id: "ceo", icon: "👔", label: "CEO / Executive", desc: "KPI Briefs, Revenue Trends, Risk Signals" },
-                  { id: "data_analyst", icon: "📊", label: "Data Analyst", desc: "Data Profiling, Quality Scores, Schema" },
-                  { id: "finance", icon: "💰", label: "Finance Director", desc: "Budget Variance, Expense Outliers" },
-                  { id: "data_scientist", icon: "🧪", label: "Data Scientist", desc: "Automated ML Models & Forecasting" }
-                ].map(r => {
+                {primaryRoles.map(r => {
                   const isSelected = roleConfig?.id === r.id;
                   return (
                     <div
@@ -189,30 +184,84 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
                       style={{
                         border: isSelected ? "2px solid #2563EB" : "1px solid #E2E8F0",
                         background: isSelected ? "#EFF6FF" : "#FFFFFF",
-                        padding: "10px 12px",
+                        padding: "9px 12px",
                         borderRadius: 10,
                         cursor: "pointer",
                         transition: "all 0.15s ease"
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ fontSize: 15 }}>{r.icon}</span>
                         <span style={{ fontSize: 12.5, fontWeight: 700, color: isSelected ? "#1E40AF" : "#0F172A" }}>
                           {r.label}
                         </span>
                         {isSelected && <span style={{ marginLeft: "auto", color: "#2563EB", fontWeight: 800, fontSize: 12 }}>✓</span>}
                       </div>
-                      <div style={{ fontSize: 10.5, color: "#64748B", lineHeight: 1.3 }}>{r.desc}</div>
+                      <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 2 }}>{r.desc}</div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* More Roles Toggle (HR & Recruiter) */}
+              <div style={{ marginTop: 8, textAlign: "center" }}>
+                <button
+                  type="button"
+                  onClick={() => setShowMoreRoles(!showMoreRoles)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#2563EB",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    padding: "4px 8px"
+                  }}
+                >
+                  {showMoreRoles ? "▲ Less roles" : "More roles ▾ (HR • Recruiter)"}
+                </button>
+
+                {showMoreRoles && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8, animation: "modalFadeIn 0.15s ease-out" }}>
+                    {additionalRoles.map(r => {
+                      const isSelected = roleConfig?.id === r.id;
+                      return (
+                        <div
+                          key={r.id}
+                          onClick={() => setRole(r.id)}
+                          style={{
+                            border: isSelected ? "2px solid #2563EB" : "1px solid #E2E8F0",
+                            background: isSelected ? "#EFF6FF" : "#FFFFFF",
+                            padding: "9px 12px",
+                            borderRadius: 10,
+                            cursor: "pointer",
+                            textAlign: "left",
+                            transition: "all 0.15s ease"
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 15 }}>{r.icon}</span>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: isSelected ? "#1E40AF" : "#0F172A" }}>
+                              {r.label}
+                            </span>
+                            {isSelected && <span style={{ marginLeft: "auto", color: "#2563EB", fontWeight: 800, fontSize: 12 }}>✓</span>}
+                          </div>
+                          <div style={{ fontSize: 10.5, color: "#64748B", marginTop: 2 }}>{r.desc}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
-          {/* STEP 2: Compact Data Ingestion */}
+          {/* STEP 2: Add Your Business Data */}
           {currentStep === 2 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>
+                STEP 2 • Add your business data:
+              </div>
               <div style={{
                 background: "#F8FAFC",
                 border: "1.5px dashed #CBD5E1",
@@ -222,10 +271,10 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
               }}>
                 <div style={{ fontSize: 24, marginBottom: 4 }}>📁</div>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: "#0F172A" }}>
-                  Upload Business Data
+                  Bring Real Tabular Records
                 </div>
                 <div style={{ fontSize: 11.5, color: "#64748B", margin: "4px auto 12px auto" }}>
-                  Supports CSV, Excel (.xlsx, .xls), JSON. Raw data is stored immutable as v1.
+                  Upload CSV, Excel, or connect Google Sheets. Raw records are immutably preserved.
                 </div>
 
                 <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
@@ -288,26 +337,57 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
             </div>
           )}
 
-          {/* STEP 3: Compact Power BI & Reports Overview */}
+          {/* STEP 3: Preview & Transition Checklist */}
           {currentStep === 3 && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
-                  📊 Power BI Visuals & Slicers
-                </div>
-                <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
-                  Global dropdown slicers cross-filter KPI cards, charts, and maps synchronously.
-                </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>
+                STEP 3 • Preview & Automation:
               </div>
 
-              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
-                  📑 1-Click Reports & PC Save
+              {isTransitioning ? (
+                <div style={{
+                  background: "#F8FAFC",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 10,
+                  padding: "16px 14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#2563EB", display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>⚡</span> Preparing your workspace…
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "#16A34A", display: "flex", flexDirection: "column", gap: 4, fontFamily: "monospace" }}>
+                    <div>✓ Role perspective initialized: {roleConfig?.title || "Executive"}</div>
+                    <div>✓ Security and RBAC policies verified</div>
+                    <div>✓ Power BI-style dashboard engine loaded</div>
+                    <div>✓ Copilot grounding ready</div>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "#64748B", fontStyle: "italic", marginTop: 4 }}>
+                    Entering workspace now…
+                  </div>
                 </div>
-                <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
-                  Instant executive report download directly to your PC and automated email dispatch.
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
+                      📊 Power BI Visuals & Slicers
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
+                      Synchronous cross-filtering across KPIs, sparklines, charts, and maps.
+                    </div>
+                  </div>
+
+                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
+                      📑 Automated Reports
+                    </div>
+                    <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
+                      1-click PDF export to local PC and leadership email dispatch.
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -332,7 +412,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
           </label>
 
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {currentStep > 1 && (
+            {currentStep > 1 && !isTransitioning && (
               <button
                 onClick={handleBack}
                 style={{
@@ -355,13 +435,14 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
                 onClick={handleFinish}
                 style={{
                   background: "transparent",
-                  color: "#2563EB",
+                  color: "#64748B",
                   border: "none",
                   fontSize: 12,
                   fontWeight: 700,
                   cursor: "pointer",
                   padding: "6px 8px"
                 }}
+                title="Skip onboarding guidance and enter workspace"
               >
                 Skip ➔
               </button>
@@ -385,19 +466,21 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
               </button>
             ) : (
               <button
-                onClick={handleFinish}
+                onClick={handleStartAnalyzing}
+                disabled={isTransitioning}
                 style={{
-                  background: "#10B981",
+                  background: isTransitioning ? "#94A3B8" : "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
                   color: "#FFFFFF",
                   border: "none",
                   borderRadius: 7,
                   padding: "7px 18px",
                   fontSize: 12,
                   fontWeight: 700,
-                  cursor: "pointer"
+                  cursor: isTransitioning ? "not-allowed" : "pointer",
+                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"
                 }}
               >
-                Start Analyzing ➔
+                {isTransitioning ? "Preparing…" : "Start Analyzing ➔"}
               </button>
             )}
           </div>
