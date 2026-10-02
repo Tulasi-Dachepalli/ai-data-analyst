@@ -59,6 +59,7 @@ import ScenarioLibrary from "./components/forecast/ScenarioLibrary";
 import AuditCenter from "./components/audit/AuditCenter";
 import CommentsPanel from "./components/collaboration/CommentsPanel";
 import DatasetWorkspace from "./components/workspace/DatasetWorkspace";
+import PowerBiDashboard from "./components/dashboard/PowerBiDashboard";
 import { useDataset } from "./context/DatasetContext";
 import { getRoleConfig } from "./config/roleConfigs";
 import { checkDataAvailability } from "./utils/dataAvailabilityEngine.js";
@@ -2150,119 +2151,16 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
               </div>
             </div>
           ) : (
-            <>
-              {/* Slicers Section */}
-          {slicerCols.length > 0 && (
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap", background: "#FDFCFA", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--border-color)" }}>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-muted)", alignSelf: "center" }}>🔍 Slicers:</div>
-              {slicerCols.map(col => {
-                const uniqueVals = Array.from(new Set(dashboard.rawRows ? dashboard.rawRows.map(r => String(r[col.name])) : currentRows.map(r => String(r[col.name])))).filter(v => v && v !== "undefined");
-                return (
-                  <div key={col.name} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontSize: 11.5, fontWeight: 500, color: "var(--text-secondary)" }}>{col.name}:</span>
-                    <select
-                      value={slicerFilters[col.name] || ""}
-                      onChange={(e) => setSlicerFilters(prev => ({ ...prev, [col.name]: e.target.value }))}
-                      style={{ padding: "3px 6px", borderRadius: 5, border: "1px solid #DDD8CE", background: "var(--bg-secondary)", fontSize: 11.5, color: "var(--text-primary)" }}
-                    >
-                      <option value="">All</option>
-                      {uniqueVals.map(val => <option key={val} value={val}>{val}</option>)}
-                    </select>
-                  </div>
-                );
-              })}
-              {Object.values(slicerFilters).some(Boolean) && (
-                <button
-                  onClick={() => setSlicerFilters({})}
-                  style={{ background: "none", border: "none", color: "#B85C5C", fontSize: 11.5, cursor: "pointer", fontWeight: 600, padding: 0 }}
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-          )}
-
-          <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, lineHeight: 1.6, color: "var(--text-primary)" }}>{dashboard.narrative}</div>
-          
-          {(kpis.length > 0 || quality) && (
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <QualityCard quality={quality} />
-              {kpis.map((k, i) => <KpiCard key={i} label={k.label} value={k.value} />)}
-            </div>
-          )}
-
-          <div style={{ display: "grid", gridTemplateColumns: categoryCharts.length > 1 ? "1fr 1fr" : "1fr", gap: 12 }}>
-            {categoryCharts.map((c, i) => (
-              <div key={i} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)" }}>{c.title}</div>
-                  <button
-                    onClick={() => toggleChartType(c.columnName, c.chartType)}
-                    style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", borderRadius: 4, padding: "2px 6px", fontSize: 9.5, fontWeight: 600, cursor: "pointer", color: "var(--text-secondary)" }}
-                  >
-                    🔀 Style: {c.chartType.toUpperCase()}
-                  </button>
-                </div>
-                <ChartBlock chartType={c.chartType} data={c.data} metricLabel={c.metricLabel} />
-              </div>
-            ))}
-          </div>
-
-          {trend && (
-            <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>{trend.title}</div>
-              <ChartBlock chartType="line" data={trend.data} metricLabel={trend.metricLabel} height={200} />
-            </div>
-          )}
-
-          {distributions && distributions.length > 0 && (
-            <div style={{ display: "grid", gridTemplateColumns: distributions.length > 1 ? "1fr 1fr" : "1fr", gap: 12 }}>
-              {distributions.map((d, i) => (
-                <div key={i} style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 10 }}>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 4 }}>{d.title}</div>
-                  <ChartBlock chartType="histogram" data={d.data} metricLabel={d.metricLabel} />
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div style={{ display: "grid", gridTemplateColumns: correlations && correlations.length ? "1fr 1fr" : "1fr", gap: 12 }}>
-            <OutlierBlock outliers={outliers} />
-            <CorrelationBlock correlations={correlations} />
-          </div>
-
-          {stats && stats.filter(s => s.type === "numeric").length >= 2 && (
-            <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: 12 }}>
-              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>📊 Numeric Correlations Heatmap</div>
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 11, background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
-                  <thead>
-                    <tr>
-                      <th style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", padding: 6 }}></th>
-                      {stats.filter(s => s.type === "numeric").map(s => <th key={s.name} style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", padding: 6 }}>{s.name}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.filter(s => s.type === "numeric").map(rowCol => (
-                      <tr key={rowCol.name}>
-                        <td style={{ background: "var(--bg-hover)", border: "1px solid var(--border-color)", padding: 6, fontWeight: 600 }}>{rowCol.name}</td>
-                        {stats.filter(s => s.type === "numeric").map(colCol => {
-                          const r = rowCol.name === colCol.name ? 1 : correlation(currentRows, rowCol.name, colCol.name);
-                          const color = r === 1 ? "var(--bg-secondary)" : (r > 0 ? `rgba(110, 143, 99, ${Math.abs(r) * 0.45})` : `rgba(184, 92, 92, ${Math.abs(r) * 0.45})`);
-                          return (
-                            <td key={colCol.name} style={{ border: "1px solid var(--border-color)", padding: 6, textAlign: "center", background: color, fontWeight: 600 }}>
-                              {r !== null ? r.toFixed(2) : "-"}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-            </>
+            <PowerBiDashboard
+              active={active}
+              user={user}
+              setView={setView}
+              onAskQuestion={(q) => {
+                if (typeof window !== "undefined" && window.aidaAskQuestion) {
+                  window.aidaAskQuestion(q);
+                }
+              }}
+            />
           )}
         </>
       )}
