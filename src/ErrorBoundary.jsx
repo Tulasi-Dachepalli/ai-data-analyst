@@ -17,18 +17,22 @@ export default class ErrorBoundary extends React.Component {
       category: ERROR_CATEGORIES.SYSTEM_ERROR,
       service: "frontend-workspace",
       stage: "UI Presentation Layer",
-      userTitle: "We couldn't render this view",
-      whatHappened: "A visual component encountered an unexpected formatting condition while rendering.",
-      whatYouCanDo: "Click Auto-Recover to refresh your workspace state safely without losing your dataset."
+      userTitle: "We couldn't open your workspace",
+      whatHappened: "A dashboard navigation or rendering component encountered an unexpected error.",
+      whatYouCanDo: "Your uploaded dataset is safe. We did not delete or replace your data. Click 'Try Again' or 'Return to Datasets' below."
     });
     return { hasError: true, explainableError: expErr };
   }
 
   componentDidCatch(error, errorInfo) {
-    // In production, send strictly sanitized telemetry to monitoring service
-    if (console && console.error) {
-      console.error("[Enterprise ErrorBoundary] Contained UI Exception:", {
-        id: this.state.explainableError?.id,
+    // Retain structured telemetry for engineers/SOC without leaking to regular UI
+    if (console && console.warn) {
+      console.warn("[Enterprise Telemetry] Workspace Render Intercepted:", {
+        requestId: `req_${Date.now().toString(36)}`,
+        errorId: this.state.explainableError?.id,
+        component: "DataAnalystDashboardBot / Workspace",
+        errorType: error?.name || "RenderError",
+        timestamp: new Date().toISOString(),
         componentStack: errorInfo?.componentStack?.slice(0, 300)
       });
     }

@@ -1036,7 +1036,7 @@ function trainTestSplitAndFit(rows, columns, stats) {
 }
 
 
-function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete, user }) {
+function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete, user, setView }) {
   const isMisAnalyst = useMemo(() => {
     if (user?.role === "mis_analyst") return true;
     try {
@@ -2156,7 +2156,7 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
             <PowerBiDashboard
               active={active}
               user={user}
-              setView={setView}
+              setView={setView || (() => {})}
               onAskQuestion={(q) => {
                 if (typeof window !== "undefined" && window.aidaAskQuestion) {
                   window.aidaAskQuestion(q);
@@ -6546,6 +6546,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   <DashboardBlock 
                     active={active}
                     user={user}
+                    setView={setView}
                     dashboard={active.dashboard} 
                     filteredRows={filteredRows} 
                     columns={active.columns} 
