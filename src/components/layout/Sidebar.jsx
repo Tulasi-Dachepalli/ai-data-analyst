@@ -52,7 +52,10 @@ export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
           }}>
             ✦
           </div>
-          <span>AI Data Copilot</span>
+          <div>
+            <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--text-primary, #0F172A)", lineHeight: 1.1 }}>AI Business Copilot</div>
+            <div style={{ fontSize: 10, color: "var(--text-secondary, #64748B)", fontWeight: 500 }}>One AI. Every Business Role.</div>
+          </div>
         </div>
       </div>
 
