@@ -2085,6 +2085,27 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
             <span style={{ fontSize: 11, fontWeight: 700, color: "#15803D", backgroundColor: "#DCFCE7", padding: "3px 8px", borderRadius: 12 }}>
               {validCols.length} Cols × {currentRows.length} Rows
             </span>
+            {activeTab !== "dashboard" && (
+              <button
+                onClick={() => setActiveTab("dashboard")}
+                style={{
+                  background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"
+                }}
+              >
+                📊 Go to Power BI Dashboard
+              </button>
+            )}
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2107,8 +2128,9 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
         </div>
 
         {/* Clean Linear Workflow Stepper Bar */}
-        <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "4px 0" }}>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "4px 0", alignItems: "center" }}>
           {[
+            { id: "dashboard", label: "📊 Power BI Dashboard", icon: "📊", isPrimary: true },
             { id: "data", label: "01 Raw Data", icon: "📁" },
             { id: "cleaning", label: "02 Data Cleaning", icon: "🧹" },
             { id: "eda", label: "03 EDA", icon: "🔍" },
@@ -2116,29 +2138,38 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
             { id: "ml", label: "05 Modeling", icon: "🤖" },
             { id: "forecast", label: "06 Forecasting", icon: "🔮" },
             { id: "stats", label: "07 Executive Report", icon: "📑" }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { setActiveTab(tab.id); if (tab.id === "data") setDataPage(0); }}
-              style={{
-                padding: "6px 12px",
-                borderRadius: 6,
-                border: "none",
-                fontSize: 12,
-                fontWeight: activeTab === tab.id ? 800 : 600,
-                backgroundColor: activeTab === tab.id ? "#0F172A" : "var(--bg-hover, #F1F5F9)",
-                color: activeTab === tab.id ? "#FFFFFF" : "var(--text-secondary, #475569)",
-                cursor: "pointer",
-                whiteSpace: "nowrap",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                transition: "all 0.15s ease"
-              }}
-            >
-              <span>{tab.icon}</span> {tab.label}
-            </button>
-          ))}
+          ].map(tab => {
+            const isDash = tab.id === "dashboard";
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => { setActiveTab(tab.id); if (tab.id === "data") setDataPage(0); }}
+                style={{
+                  padding: isDash ? "7px 14px" : "6px 12px",
+                  borderRadius: 7,
+                  border: isDash ? (isActive ? "1px solid #1D4ED8" : "1px solid rgba(37, 99, 235, 0.3)") : "none",
+                  fontSize: 12,
+                  fontWeight: isActive ? 800 : (isDash ? 700 : 600),
+                  backgroundColor: isDash
+                    ? (isActive ? "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)" : "rgba(37, 99, 235, 0.08)")
+                    : (isActive ? "#0F172A" : "var(--bg-hover, #F1F5F9)"),
+                  color: isDash
+                    ? (isActive ? "#FFFFFF" : "#2563EB")
+                    : (isActive ? "#FFFFFF" : "var(--text-secondary, #475569)"),
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  boxShadow: isDash && isActive ? "0 2px 6px rgba(37, 99, 235, 0.25)" : "none",
+                  transition: "all 0.15s ease"
+                }}
+              >
+                <span>{tab.icon}</span> {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
