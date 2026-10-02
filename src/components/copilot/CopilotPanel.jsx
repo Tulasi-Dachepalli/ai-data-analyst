@@ -102,8 +102,28 @@ export default function CopilotPanel({ onAskQuestion }) {
 
       {/* Stage-Aware Prompt Chips */}
       <div>
-        <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase", marginBottom: 6 }}>
-          Suggested Stage Queries
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>
+            Suggested Stage Queries
+          </div>
+          <button
+            onClick={() => handleSend("Why did this happen?")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#2563EB",
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: "pointer",
+              padding: "0 2px",
+              display: "flex",
+              alignItems: "center",
+              gap: 4
+            }}
+            title="Truthfully explain recent error or operation status from verified telemetry"
+          >
+            🔍 Why did this happen?
+          </button>
         </div>
         <CopilotPromptChips onSelectPrompt={(q) => handleSend(q)} />
       </div>

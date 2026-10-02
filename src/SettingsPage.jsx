@@ -44,7 +44,7 @@ export default function SettingsPage({ user, onUserChange, onBack }) {
           { id: "ai", label: "🤖 AI Copilot Rules", icon: "🤖" },
           { id: "data", label: "📥 Data Import & Retention", icon: "📥" },
           { id: "notifications", label: "🔔 Alerts & Notifications", icon: "🔔" },
-          { id: "security", label: "🔐 Security & Privacy", icon: "🔐" },
+          { id: "security", label: "🔐 Security & SOC (OWASP 2025)", icon: "🔐" },
           { id: "export", label: "💳 Export Deck Rules", icon: "💳" }
         ].map(t => (
           <button

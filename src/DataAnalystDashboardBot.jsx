@@ -60,6 +60,8 @@ import AuditCenter from "./components/audit/AuditCenter";
 import CommentsPanel from "./components/collaboration/CommentsPanel";
 import DatasetWorkspace from "./components/workspace/DatasetWorkspace";
 import PowerBiDashboard from "./components/dashboard/PowerBiDashboard";
+import ExplainableErrorCard from "./components/common/ExplainableErrorCard";
+import { explainErrorForCopilot, createExplainableError, ERROR_CATEGORIES } from "./utils/errorExplainer.js";
 import { useDataset } from "./context/DatasetContext";
 import { getRoleConfig } from "./config/roleConfigs";
 import { checkDataAvailability } from "./utils/dataAvailabilityEngine.js";
@@ -4027,6 +4029,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [currentExplainableError, setCurrentExplainableError] = useState(null);
 
   // Synchronize threads and activeId when activeDataset in DatasetContext updates (e.g. from DatasetImportCenter or Library)
   useEffect(() => {
@@ -4531,6 +4534,15 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         generateOverview(id, stats, rows.length, rows, quality, serverId, isRawText, rawText);
       } catch (err) { 
         console.error("Resilient upload handling error:", err);
+        const expErr = createExplainableError(err, {
+          category: ERROR_CATEGORIES.DATA_ERROR,
+          service: "file-upload-pipeline",
+          stage: "01 Raw Ingestion",
+          userTitle: "We couldn't process this dataset file",
+          whatHappened: `The file "${file.name}" could not be parsed as a structured tabular dataset (${err.message || "parsing error"}).`,
+          whatYouCanDo: "Check that the file contains comma or tab-delimited columns with valid header rows."
+        });
+        setCurrentExplainableError(expErr);
         setLoading(false);
       }
     }
@@ -5019,7 +5031,26 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
       return;
     }
 
-    let currentActive = active || (threads && threads[0]);
+    // ── Truthful Error Explanation Bot ("Why did this happen?") ──
+    const lowerQ = question.toLowerCase();
+    if (
+      lowerQ.includes("why did this happen") ||
+      lowerQ.includes("why couldn't") ||
+      lowerQ.includes("why did it fail") ||
+      lowerQ.includes("what went wrong") ||
+      lowerQ.includes("explain error") ||
+      lowerQ.includes("why failed")
+    ) {
+      const expl = explainErrorForCopilot();
+      setAnswerToast({
+        question,
+        answer: expl.explanation
+      });
+      setLoading(false);
+      return;
+    }
+
+    let currentActive = active;
 
     // ── Case A: No active dataset loaded ──────────
     if (!currentActive) {
@@ -5898,6 +5929,29 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         {dragOver && (
           <div style={{ position: "absolute", inset: 8, border: "2px dashed #3E6F8E", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#3E6F8E", background: "rgba(255,255,255,0.85)", zIndex: 5, fontWeight: 600 }}>
             Drop file to analyze
+          </div>
+        )}
+
+        {currentExplainableError && (
+          <div style={{ padding: "12px 24px 0", zIndex: 10 }}>
+            <ExplainableErrorCard
+              error={currentExplainableError}
+              onDismiss={() => setCurrentExplainableError(null)}
+              onRetry={() => {
+                setCurrentExplainableError(null);
+                if (fileInputRef.current) fileInputRef.current.click();
+              }}
+              onReviewData={() => {
+                setCurrentExplainableError(null);
+                setActiveTab("overview");
+              }}
+              onGetHelp={() => {
+                if (typeof window !== "undefined" && window.aidaAskQuestion) {
+                  window.aidaAskQuestion("Why did this happen?");
+                }
+              }}
+              userRole={user?.role || "user"}
+            />
           </div>
         )}
 
