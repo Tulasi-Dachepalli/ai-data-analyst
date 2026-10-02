@@ -4293,7 +4293,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     };
   }, []);
 
-  const active = threads.find(t => t.id === activeId) || threads[0] || null;
+  const active = activeId ? (threads.find(t => t.id === activeId) || null) : null;
 
   const activeData = useMemo(() => (active?.rows && active.rows.length > 0) ? active.rows : [], [active]);
   const activeCols = useMemo(() => (active?.columns && active.columns.length > 0) ? active.columns : [], [active]);
@@ -5002,11 +5002,16 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     const handleTriggerSheets = () => {
       setShowGoogleSheetsModal(true);
     };
+    const handleTriggerDemo = () => {
+      handleLoadDemoData();
+    };
     window.addEventListener("trigger-file-upload", handleTriggerUpload);
     window.addEventListener("trigger-google-sheets", handleTriggerSheets);
+    window.addEventListener("trigger-explore-demo", handleTriggerDemo);
     return () => {
       window.removeEventListener("trigger-file-upload", handleTriggerUpload);
       window.removeEventListener("trigger-google-sheets", handleTriggerSheets);
+      window.removeEventListener("trigger-explore-demo", handleTriggerDemo);
     };
   }, []);
 
@@ -5053,6 +5058,41 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
     setThreads(prev => [newThread, ...prev]);
     setActiveId(newId);
+    if (typeof setView === "function") setView("dashboard");
+  };
+
+  const handleLoadDemoData = () => {
+    const demoRows = [
+      { Order_ID: "CA-2024-1001", Order_Date: "2024-01-15", Region: "East", Category: "Technology", Sales: 1250, Profit: 340, Quantity: 3, Discount: 0.1 },
+      { Order_ID: "CA-2024-1002", Order_Date: "2024-01-18", Region: "West", Category: "Furniture", Sales: 850, Profit: 120, Quantity: 2, Discount: 0.15 },
+      { Order_ID: "CA-2024-1003", Order_Date: "2024-01-22", Region: "Central", Category: "Office Supplies", Sales: 320, Profit: 85, Quantity: 5, Discount: 0.05 },
+      { Order_ID: "CA-2024-1004", Order_Date: "2024-02-05", Region: "South", Category: "Technology", Sales: 2400, Profit: 620, Quantity: 4, Discount: 0.1 },
+      { Order_ID: "CA-2024-1005", Order_Date: "2024-02-12", Region: "East", Category: "Furniture", Sales: 980, Profit: -45, Quantity: 3, Discount: 0.25 },
+      { Order_ID: "CA-2024-1006", Order_Date: "2024-02-20", Region: "West", Category: "Office Supplies", Sales: 450, Profit: 110, Quantity: 6, Discount: 0.0 },
+      { Order_ID: "CA-2024-1007", Order_Date: "2024-03-02", Region: "North", Category: "Technology", Sales: 1890, Profit: 490, Quantity: 2, Discount: 0.05 },
+      { Order_ID: "CA-2024-1008", Order_Date: "2024-03-10", Region: "South", Category: "Furniture", Sales: 720, Profit: 65, Quantity: 1, Discount: 0.1 },
+      { Order_ID: "CA-2024-1009", Order_Date: "2024-03-18", Region: "East", Category: "Technology", Sales: 3100, Profit: 840, Quantity: 5, Discount: 0.15 },
+      { Order_ID: "CA-2024-1010", Order_Date: "2024-03-25", Region: "West", Category: "Office Supplies", Sales: 210, Profit: 45, Quantity: 4, Discount: 0.0 }
+    ];
+    const demoCols = ["Order_ID", "Order_Date", "Region", "Category", "Sales", "Profit", "Quantity", "Discount"];
+    const demoStats = demoCols.map(c => computeColumnStats(demoRows, c));
+    const demoQuality = calculateDataQuality(demoRows, demoCols);
+    const demoId = "demo-superstore-sales";
+    const demoThread = {
+      id: demoId,
+      name: "Superstore_Retail_Sales.csv",
+      fileName: "Superstore_Retail_Sales.csv",
+      rows: demoRows,
+      columns: demoCols,
+      stats: demoStats,
+      quality: demoQuality,
+      isDemo: true,
+      isUserExplicit: true,
+      messages: [{ kind: "file", fileName: "Superstore_Retail_Sales.csv (Demo Mode)", rowCount: demoRows.length, colCount: demoCols.length }]
+    };
+    setThreads(prev => [demoThread, ...prev.filter(t => t.id !== demoId)]);
+    setActiveId(demoId);
+    loadDataset("Superstore_Retail_Sales.csv", demoRows, demoCols, { isDemo: true, isUserExplicit: true });
     if (typeof setView === "function") setView("dashboard");
   };
 
@@ -6300,27 +6340,89 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     <DatasetWorkspace />
                   )}
                 </>
-            {/* Workspace Command Center & AI 4-Area Decision Center */}
-            {(["dashboard", "overview", "dashboards"].includes(currentView)) && (
+            {/* Active Dataset Status Banner */}
+            {active && (
+              <div style={{
+                background: active.isDemo ? "#FFFBEB" : "var(--bg-secondary, #FFFFFF)",
+                border: `1px solid ${active.isDemo ? "#FCD34D" : "var(--border-color, #E2E8F0)"}`,
+                borderRadius: 14,
+                padding: "16px 20px",
+                marginBottom: 20,
+                boxShadow: "var(--shadow-sm)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12
+              }}>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>{active.isDemo ? "⚠️" : "📄"}</span>
+                    <span style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary, #0F172A)", fontFamily: "var(--font-heading, 'Manrope', sans-serif)" }}>
+                      {active.name}
+                    </span>
+                    {active.isDemo && (
+                      <span style={{ background: "#FEF3C7", color: "#92400E", fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12, border: "1px solid #FDE68A" }}>
+                        Demo Mode — Sample data
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--text-secondary, #64748B)", marginTop: 2 }}>
+                    {(active.rows || []).length.toLocaleString()} rows • {(active.columns || []).length} columns
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>✓</span> Data received
+                  </span>
+                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>✓</span> Quality checked
+                  </span>
+                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>✓</span> AI analysis ready
+                  </span>
+                  {active.isDemo && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      style={{
+                        background: "#2563EB",
+                        color: "#FFF",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer"
+                      }}
+                    >
+                      ＋ Upload My Real Data
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Workspace Command Center & AI 4-Area Decision Center (Rendered ONLY when data is active) */}
+            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && (
               <div style={{ display: "flex", flexDirection: "column", gap: 24, marginBottom: 24 }}>
                 <WorkspaceCommandCenter setView={setView} />
                 <AIDecisionCenter setView={setView} />
               </div>
             )}
             {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
-            {(["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
+            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
               <ExecutiveCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
-            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "hr" && (
+            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "hr" && (
               <HrCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
-            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "recruiter" && (
+            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "recruiter" && (
               <RecruitmentCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
-            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
+            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
               <FinanceCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
-            {(["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "data_scientist" && (
+            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "data_scientist" && (
               <DataScientistStudio active={active} activeData={activeData} activeCols={activeCols} onAskQuestion={(q) => handleSend(q)} />
             )}
             {answerToast && (
@@ -6334,282 +6436,153 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                 />
               </div>
             )}
+            {/* First-Time Dashboard Empty State (When no dataset has been uploaded or activated) */}
             {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
               <div style={{
-                maxWidth: 920,
-                margin: "40px auto 60px auto",
-                padding: "0 16px",
+                maxWidth: 680,
+                margin: "60px auto 80px auto",
+                padding: "0 20px",
+                textAlign: "center",
                 display: "flex",
                 flexDirection: "column",
-                gap: 24,
-                animation: "modalFadeIn 0.3s ease-out"
+                alignItems: "center",
+                animation: "modalFadeIn 0.25s ease-out"
               }}>
-                {/* Hero Greeting Box */}
-                <div style={{
-                  background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
-                  borderRadius: 20,
-                  padding: "36px 40px",
-                  color: "#FFFFFF",
-                  boxShadow: "0 20px 40px -15px rgba(15, 23, 42, 0.25)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 20,
-                  border: "1px solid rgba(255, 255, 255, 0.1)"
+                <h1 style={{
+                  fontSize: 28,
+                  fontWeight: 800,
+                  color: "var(--text-primary, #0F172A)",
+                  margin: "0 0 8px 0",
+                  fontFamily: "var(--font-heading, 'Manrope', sans-serif)",
+                  letterSpacing: "-0.02em"
                 }}>
-                  <div style={{ maxWidth: 540 }}>
-                    <div style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      background: "rgba(56, 189, 248, 0.15)",
-                      border: "1px solid rgba(56, 189, 248, 0.3)",
-                      color: "#38BDF8",
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: "4px 10px",
-                      borderRadius: 20,
-                      letterSpacing: "0.04em",
-                      textTransform: "uppercase",
-                      marginBottom: 12
-                    }}>
-                      ✨ Enterprise AI Business Copilot
-                    </div>
-                    <h1 style={{
-                      fontSize: 28,
-                      fontWeight: 800,
-                      margin: "0 0 10px 0",
-                      fontFamily: "var(--font-heading, 'Manrope', sans-serif)",
-                      letterSpacing: "-0.02em"
-                    }}>
-                      Good day, {user?.fullName || (user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "Tulasi")} 👋
-                    </h1>
-                    <p style={{
-                      fontSize: 14.5,
-                      color: "#94A3B8",
-                      margin: 0,
-                      lineHeight: 1.6
-                    }}>
-                      You don't need to know data science. Upload your business data, and your AI Copilot will automatically discover KPIs, audit data quality, answer questions, and generate executive reports.
-                    </p>
-                  </div>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <button
-                      onClick={() => window.dispatchEvent(new Event("open-ai-guide"))}
-                      style={{
-                        background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
-                        color: "#FFFFFF",
-                        border: "none",
-                        borderRadius: 12,
-                        padding: "12px 24px",
-                        fontSize: 14,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)",
-                        transition: "transform 0.15s ease"
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
-                      onMouseLeave={e => e.currentTarget.style.transform = "translateY(0px)"}
-                    >
-                      <span>✨</span>
-                      <span>Show Me How It Works</span>
-                    </button>
-                    <span style={{ fontSize: 11.5, color: "#64748B", textAlign: "center" }}>
-                      5-Step Interactive Guide
-                    </span>
-                  </div>
+                  Welcome to AI Business Copilot 👋
+                </h1>
+                <div style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: "var(--text-secondary, #475569)",
+                  marginBottom: 12
+                }}>
+                  Your workspace is ready.
                 </div>
+                <p style={{
+                  fontSize: 15,
+                  color: "var(--text-muted, #64748B)",
+                  maxWidth: 460,
+                  lineHeight: 1.6,
+                  margin: "0 0 28px 0"
+                }}>
+                  You haven't added any business data yet. Upload your data and I'll guide you through the analysis.
+                </p>
 
-                {/* 3 Action Cards */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-                  {/* Card 1: Upload File */}
-                  <div
+                {/* Primary Action Buttons */}
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", marginBottom: 32 }}>
+                  <button
                     onClick={() => fileInputRef.current?.click()}
                     style={{
-                      background: "var(--bg-secondary, #FFFFFF)",
-                      border: "2px dashed #CBD5E1",
-                      borderRadius: 16,
-                      padding: 24,
+                      background: "#2563EB",
+                      color: "#FFFFFF",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "12px 24px",
+                      fontSize: 14,
+                      fontWeight: 700,
                       cursor: "pointer",
-                      textAlign: "center",
-                      transition: "all 0.2s ease",
-                      boxShadow: "var(--shadow-sm)"
+                      boxShadow: "0 4px 14px rgba(37, 99, 235, 0.3)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      transition: "transform 0.15s ease"
                     }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = "#2563EB";
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                      e.currentTarget.style.boxShadow = "var(--shadow-md)";
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = "#CBD5E1";
-                      e.currentTarget.style.transform = "translateY(0px)";
-                      e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0px)"}
                   >
-                    <div style={{ fontSize: 36, marginBottom: 10 }}>📁</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary, #0F172A)", marginBottom: 4 }}>
-                      Upload My Data
-                    </div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-secondary, #64748B)", lineHeight: 1.5, marginBottom: 16 }}>
-                      Drag & drop or browse CSV, Excel (.xlsx), or JSON. Sealed as immutable v1 Raw.
-                    </div>
-                    <button
-                      style={{
-                        background: "#2563EB",
-                        color: "#FFFFFF",
-                        border: "none",
-                        borderRadius: 8,
-                        padding: "8px 18px",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        pointerEvents: "none"
-                      }}
-                    >
-                      + Browse Computer
-                    </button>
-                  </div>
+                    <span>＋</span>
+                    <span>Upload CSV / Excel</span>
+                  </button>
 
-                  {/* Card 2: Google Sheets */}
-                  <div
+                  <button
                     onClick={() => setShowGoogleSheetsModal(true)}
                     style={{
                       background: "var(--bg-secondary, #FFFFFF)",
-                      border: "1px solid var(--border-color, #E2E8F0)",
-                      borderRadius: 16,
-                      padding: 24,
+                      color: "var(--text-primary, #0F172A)",
+                      border: "1px solid var(--border-color, #CBD5E1)",
+                      borderRadius: 10,
+                      padding: "12px 22px",
+                      fontSize: 14,
+                      fontWeight: 700,
                       cursor: "pointer",
-                      textAlign: "center",
-                      transition: "all 0.2s ease",
-                      boxShadow: "var(--shadow-sm)"
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      transition: "transform 0.15s ease"
                     }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = "#10B981";
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                      e.currentTarget.style.boxShadow = "var(--shadow-md)";
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = "var(--border-color, #E2E8F0)";
-                      e.currentTarget.style.transform = "translateY(0px)";
-                      e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0px)"}
                   >
-                    <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary, #0F172A)", marginBottom: 4 }}>
-                      Connect Google Sheets
-                    </div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-secondary, #64748B)", lineHeight: 1.5, marginBottom: 16 }}>
-                      Paste a live Google Sheet sharing link for synchronized automated BI dashboards.
-                    </div>
-                    <button
-                      style={{
-                        background: "#059669",
-                        color: "#FFFFFF",
-                        border: "none",
-                        borderRadius: 8,
-                        padding: "8px 18px",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        pointerEvents: "none"
-                      }}
-                    >
-                      Connect Sheet →
-                    </button>
-                  </div>
+                    <span>🔗</span>
+                    <span>Connect Google Sheets</span>
+                  </button>
 
-                  {/* Card 3: AI Guide Tour */}
-                  <div
+                  <button
                     onClick={() => window.dispatchEvent(new Event("open-ai-guide"))}
                     style={{
-                      background: "var(--bg-secondary, #FFFFFF)",
-                      border: "1px solid var(--border-color, #E2E8F0)",
-                      borderRadius: 16,
-                      padding: 24,
+                      background: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)",
+                      color: "#1E40AF",
+                      border: "1px solid #BFDBFE",
+                      borderRadius: 10,
+                      padding: "12px 22px",
+                      fontSize: 14,
+                      fontWeight: 700,
                       cursor: "pointer",
-                      textAlign: "center",
-                      transition: "all 0.2s ease",
-                      boxShadow: "var(--shadow-sm)"
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      transition: "transform 0.15s ease"
                     }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = "#8B5CF6";
-                      e.currentTarget.style.transform = "translateY(-2px)";
-                      e.currentTarget.style.boxShadow = "var(--shadow-md)";
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = "var(--border-color, #E2E8F0)";
-                      e.currentTarget.style.transform = "translateY(0px)";
-                      e.currentTarget.style.boxShadow = "var(--shadow-sm)";
-                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0px)"}
                   >
-                    <div style={{ fontSize: 36, marginBottom: 10 }}>🤖</div>
-                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary, #0F172A)", marginBottom: 4 }}>
-                      First Time Here?
-                    </div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-secondary, #64748B)", lineHeight: 1.5, marginBottom: 16 }}>
-                      Take our guided walkthrough to see how Copilot extracts insights and creates executive reports.
-                    </div>
-                    <button
-                      style={{
-                        background: "#7C3AED",
-                        color: "#FFFFFF",
-                        border: "none",
-                        borderRadius: 8,
-                        padding: "8px 18px",
-                        fontSize: 13,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        pointerEvents: "none"
-                      }}
-                    >
-                      ✨ Open AI Guide
-                    </button>
-                  </div>
+                    <span>✨</span>
+                    <span>Show me how it works</span>
+                  </button>
                 </div>
 
-                {/* 4 Value Pillars */}
+                {/* Optional Demo Mode Option - Strictly Separate */}
                 <div style={{
-                  background: "var(--bg-secondary, #FFFFFF)",
-                  border: "1px solid var(--border-color, #E2E8F0)",
-                  borderRadius: 16,
-                  padding: "20px 24px",
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                  gap: 16
+                  borderTop: "1px solid var(--border-color, #E2E8F0)",
+                  paddingTop: 20,
+                  width: "100%",
+                  maxWidth: 440
                 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 22 }}>⚡</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>Auto KPI Discovery</div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>Revenue, margins, volume trends computed instantly.</div>
-                    </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted, #94A3B8)", marginBottom: 8 }}>
+                    Want to test the platform before uploading your own files?
                   </div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 22 }}>🎯</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>0-100 Quality Health</div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>Automated anomaly detection, duplicate scan & diffs.</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 22 }}>💬</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>Plain-English Copilot</div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>Ask questions naturally with verified evidence chips.</div>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 22 }}>📥</span>
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>Save to PC & Email</div>
-                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>1-Click PDF to PC & automated email dispatch.</div>
-                    </div>
-                  </div>
+                  <button
+                    onClick={handleLoadDemoData}
+                    style={{
+                      background: "none",
+                      border: "1px dashed var(--border-color, #CBD5E1)",
+                      borderRadius: 8,
+                      padding: "8px 16px",
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      color: "var(--text-secondary, #64748B)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = "#2563EB";
+                      e.currentTarget.style.color = "#2563EB";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = "var(--border-color, #CBD5E1)";
+                      e.currentTarget.style.color = "var(--text-secondary, #64748B)";
+                    }}
+                  >
+                    🧪 Explore Demo <span style={{ fontSize: 11, color: "var(--text-muted, #94A3B8)" }}>(Demo Mode — Sample data)</span>
+                  </button>
                 </div>
               </div>
             )}

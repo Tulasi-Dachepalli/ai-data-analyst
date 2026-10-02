@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRole } from "../../context/RoleContext";
 import { useActivity } from "../../context/ActivityContext";
 
-export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, onGoogleSheetsClick }) {
+export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, onGoogleSheetsClick, onExploreDemoClick }) {
   const { user, roleConfig, setRole } = useRole();
   const { logEvent } = useActivity();
   const [currentStep, setCurrentStep] = useState(1);
@@ -321,6 +321,24 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
                     }}
                   >
                     📊 Connect Google Sheets
+                  </button>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      if (onExploreDemoClick) onExploreDemoClick();
+                    }}
+                    style={{
+                      background: "none",
+                      color: "#64748B",
+                      border: "1px dashed #CBD5E1",
+                      borderRadius: 10,
+                      padding: "10px 16px",
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    🧪 Explore Demo (Demo Mode)
                   </button>
                 </div>
               </div>

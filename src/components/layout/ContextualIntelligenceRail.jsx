@@ -62,7 +62,7 @@ export default function ContextualIntelligenceRail() {
           Stage: {currentStage.toUpperCase()}
         </div>
         <div style={{ fontSize: 11.5, color: "#475569", marginTop: 2 }}>
-          Dataset: <strong>{activeDataset?.name || "Audit Ops"}</strong> ({currentVersion?.version || "v4"})
+          Dataset: <strong>{activeDataset?.name || "No Dataset Loaded"}</strong> {activeDataset ? `(${currentVersion?.version || "v1"})` : ""}
         </div>
       </div>
 
@@ -71,17 +71,23 @@ export default function ContextualIntelligenceRail() {
         <div style={{ fontSize: 11.5, fontWeight: 800, color: "#0F172A", marginBottom: 8, textTransform: "uppercase" }}>
           💡 Active Stage Findings
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#334155" }}>
-          <div style={{ background: "#F0FDF4", padding: 8, borderRadius: 6, borderLeft: "3px solid #16A34A" }}>
-            • Revenue trend ↑ +8.4% growth
+        {activeDataset ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, color: "#334155" }}>
+            <div style={{ background: "#F0FDF4", padding: 8, borderRadius: 6, borderLeft: "3px solid #16A34A" }}>
+              • {activeDataset.name} ({activeDataset.rows?.length || 0} rows verified)
+            </div>
+            <div style={{ background: "#EFF6FF", padding: 8, borderRadius: 6, borderLeft: "3px solid #2563EB" }}>
+              • {activeDataset.columns?.length || 0} attributes profiled
+            </div>
+            <div style={{ background: "#F8FAFC", padding: 8, borderRadius: 6, borderLeft: "3px solid #64748B" }}>
+              • Quality health: {activeDataset.quality?.score ?? 95}/100
+            </div>
           </div>
-          <div style={{ background: "#FEF2F2", padding: 8, borderRadius: 6, borderLeft: "3px solid #DC2626" }}>
-            • 27 structural anomalies detected
+        ) : (
+          <div style={{ fontSize: 12, color: "#94A3B8", fontStyle: "italic", background: "#F8FAFC", padding: 12, borderRadius: 8, border: "1px dashed #E2E8F0" }}>
+            No dataset loaded. Upload a CSV/Excel file to see live grounded findings.
           </div>
-          <div style={{ background: "#EFF6FF", padding: 8, borderRadius: 6, borderLeft: "3px solid #2563EB" }}>
-            • 24 duplicate records removed in v2
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Action Buttons */}

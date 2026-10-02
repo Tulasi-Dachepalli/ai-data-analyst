@@ -151,6 +151,7 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
         onClose={() => setIsGuideOpen(false)}
         onUploadClick={() => window.dispatchEvent(new Event("trigger-file-upload"))}
         onGoogleSheetsClick={() => window.dispatchEvent(new Event("trigger-google-sheets"))}
+        onExploreDemoClick={() => window.dispatchEvent(new Event("trigger-explore-demo"))}
       />
     </div>
   );
