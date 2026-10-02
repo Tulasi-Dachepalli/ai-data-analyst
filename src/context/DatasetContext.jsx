@@ -1,7 +1,7 @@
 // src/context/DatasetContext.jsx
 import React, { createContext, useContext, useState, useMemo } from "react";
 import { WORKFLOW_STAGES } from "../config/workflowStages";
-import { createInitialVersionStack, applyTransactionalOperation, compareVersions } from "../utils/dataLineage";
+import { createInitialVersionStack, applyTransactionalOperation, compareVersions, restoreVersion as restoreVersionInStack } from "../utils/dataLineage";
 
 const DatasetContext = createContext(null);
 
@@ -10,16 +10,102 @@ export function DatasetProvider({ children }) {
   const [currentStage, setCurrentStage] = useState("raw"); // Stage ID
   const [versionStack, setVersionStack] = useState(null);
 
-  // Initialize dataset & lineage version stack
-  const loadDataset = (name, rows = [], cols = []) => {
+  // Initialize dataset & lineage version stack with full metadata & SHA-256 hash
+  const loadDataset = (name, rows = [], cols = [], meta = {}) => {
     const stack = createInitialVersionStack(name, rows, cols);
     setVersionStack(stack);
+    const rawHash = meta.rawHash || (stack.rawVersion ? stack.rawVersion.hash : "sha256-v1-hash");
+    const datasetId = meta.id || `ds-${Date.now()}`;
+
+    // Diagnostic logging & dev guard (Development Only)
+    if (import.meta.env?.DEV) {
+      console.log("[DATASET SOURCE]", {
+        id: datasetId,
+        name,
+        version: "v1",
+        rows: rows.length,
+        columns: cols.length
+      });
+      if (name?.toLowerCase().includes("audit_operations") && !meta?.isUserExplicit) {
+        console.warn("[DATASET SOURCE WARNING] Unexpected audit_operations injection without explicit user intent:", new Error().stack);
+      }
+    }
+    
     setActiveDataset({
+      id: datasetId,
       name,
+      fileName: name,
+      fileType: meta.fileType || name.split(".").pop().toLowerCase() || "csv",
+      size: meta.size || (rows.length * (cols.length || 1) * 10),
+      columns: cols,
+      rows: rows,
+      rowCount: rows.length,
+      columnCount: cols.length,
       rawRows: rows,
-      rawCols: cols
+      rawCols: cols,
+      rawHash: rawHash,
+      currentVersion: "v1",
+      versions: [
+        {
+          version: "v1",
+          type: "raw",
+          rows: rows,
+          columns: cols,
+          hash: rawHash,
+          immutable: true
+        }
+      ]
     });
     setCurrentStage("raw");
+  };
+
+  const setActiveDatasetFromThread = (thread) => {
+    if (!thread) return;
+    const rows = thread.rows || [];
+    const cols = thread.columns || (rows.length ? Object.keys(rows[0]) : []);
+    const stack = createInitialVersionStack(thread.name || "Dataset", rows, cols);
+    setVersionStack(stack);
+    const rawHash = thread.rawHash || (stack.rawVersion ? stack.rawVersion.hash : "sha256-v1-hash");
+    const threadId = thread.id || `ds-${Date.now()}`;
+
+    if (import.meta.env?.DEV) {
+      console.log("[DATASET SOURCE]", {
+        id: threadId,
+        name: thread.name,
+        version: "v1",
+        rows: rows.length,
+        columns: cols.length
+      });
+      if (thread.name?.toLowerCase().includes("audit_operations") && !thread.isUserExplicit) {
+        console.warn("[DATASET SOURCE WARNING] Unexpected audit_operations injection without explicit user intent:", new Error().stack);
+      }
+    }
+
+    setActiveDataset({
+      id: threadId,
+      name: thread.name || "Dataset",
+      fileName: thread.name || "Dataset",
+      fileType: thread.name ? thread.name.split(".").pop().toLowerCase() : "csv",
+      size: thread.size || (rows.length * (cols.length || 1) * 10),
+      columns: cols,
+      rows: rows,
+      rowCount: rows.length,
+      columnCount: cols.length,
+      rawRows: rows,
+      rawCols: cols,
+      rawHash: rawHash,
+      currentVersion: "v1",
+      versions: [
+        {
+          version: "v1",
+          type: "raw",
+          rows: rows,
+          columns: cols,
+          hash: rawHash,
+          immutable: true
+        }
+      ]
+    });
   };
 
   // Perform a transactional data cleaning operation
@@ -39,6 +125,24 @@ export function DatasetProvider({ children }) {
     setVersionStack(newStack);
   };
 
+  // Non-destructive restore to historical version snapshot
+  const restoreDatasetVersion = (targetVersionTag = "v1") => {
+    if (!versionStack) return null;
+    const newStack = restoreVersionInStack(versionStack, targetVersionTag);
+    setVersionStack(newStack);
+    if (activeDataset && newStack.currentVersion) {
+      setActiveDataset(prev => ({
+        ...prev,
+        currentVersion: newStack.currentVersion.version,
+        rowCount: newStack.currentVersion.rowCount,
+        columnCount: newStack.currentVersion.colCount,
+        rows: newStack.currentVersion.rows,
+        columns: newStack.currentVersion.columns
+      }));
+    }
+    return newStack.currentVersion;
+  };
+
   const currentVersion = versionStack?.currentVersion || null;
   const rawVersion = versionStack?.rawVersion || null;
   const history = versionStack?.history || [];
@@ -51,9 +155,18 @@ export function DatasetProvider({ children }) {
     return compareVersions(rawVersion, currentVersion);
   }, [rawVersion, currentVersion]);
 
+  const [investigationItem, setInvestigationItem] = useState(null);
+
+  const openInvestigation = (item) => {
+    setInvestigationItem(item);
+  };
+
+  const closeInvestigation = () => setInvestigationItem(null);
+
   return (
     <DatasetContext.Provider value={{
       activeDataset,
+      currentDataset: activeDataset,
       currentStage,
       setCurrentStage,
       versionStack,
@@ -64,7 +177,12 @@ export function DatasetProvider({ children }) {
       activeCols,
       versionDiff,
       loadDataset,
-      applyTransformation
+      setActiveDatasetFromThread,
+      applyTransformation,
+      restoreVersion: restoreDatasetVersion,
+      investigationItem,
+      openInvestigation,
+      closeInvestigation
     }}>
       {children}
     </DatasetContext.Provider>

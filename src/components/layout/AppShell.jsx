@@ -100,14 +100,30 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
   );
 }
 
+import { ActivityProvider } from "../../context/ActivityContext";
+import { SettingsProvider } from "../../context/SettingsContext";
+import { DecisionProvider } from "../../context/DecisionContext";
+import { CollaborationProvider } from "../../context/CollaborationContext";
+import { SearchProvider } from "../../context/SearchContext";
+
 export default function AppShell(props) {
   return (
     <RoleProvider initialUser={props.user}>
-      <DatasetProvider>
-        <CopilotProvider>
-          <AppShellContent {...props} />
-        </CopilotProvider>
-      </DatasetProvider>
+      <SettingsProvider>
+        <DatasetProvider>
+          <ActivityProvider>
+            <CopilotProvider>
+              <DecisionProvider>
+                <CollaborationProvider>
+                  <SearchProvider>
+                    <AppShellContent {...props} />
+                  </SearchProvider>
+                </CollaborationProvider>
+              </DecisionProvider>
+            </CopilotProvider>
+          </ActivityProvider>
+        </DatasetProvider>
+      </SettingsProvider>
     </RoleProvider>
   );
 }

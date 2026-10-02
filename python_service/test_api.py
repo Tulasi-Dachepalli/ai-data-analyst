@@ -828,5 +828,483 @@ class TestDataScienceAPI(unittest.TestCase):
         self.assertIn("supporting_values", data)
         self.assertIn("dataset_context", data)
 
+    def test_38_concurrency_mutation_success_creates_version(self):
+        """Test CONCURRENCY: First user mutation with expected v1 succeeds and creates v2"""
+        self.client.post("/datasets/reset-state")
+        payload = {
+            "dataset_id": "ds_test_101",
+            "expected_dataset_version": "v1",
+            "operation": "deduplicate",
+            "raw_hash": "sha256-canonical-abc123",
+            "user_id": "user_a",
+            "role": "data_analyst"
+        }
+        res = self.client.post("/datasets/mutate", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["success"])
+        self.assertEqual(data["previous_version"], "v1")
+        self.assertEqual(data["new_version"], "v2")
+        self.assertEqual(data["raw_hash"], "sha256-canonical-abc123")
+
+    def test_39_concurrency_conflict_returns_409(self):
+        """Test CONCURRENCY: Second user with stale expected version v1 receives HTTP 409 Conflict"""
+        payload = {
+            "dataset_id": "ds_test_101",
+            "expected_dataset_version": "v1", # Stale! current is v2
+            "operation": "impute",
+            "raw_hash": "sha256-canonical-abc123",
+            "user_id": "user_b",
+            "role": "data_analyst"
+        }
+        res = self.client.post("/datasets/mutate", json=payload)
+        self.assertEqual(res.status_code, 409)
+        err = res.json()["detail"]
+        self.assertIn("Version conflict detected", err["error"])
+        self.assertEqual(err["current_version"], "v2")
+        self.assertEqual(err["expected_version"], "v1")
+
+    def test_40_concurrency_sequential_mutation_advances_version(self):
+        """Test CONCURRENCY: User B refreshes to v2 and succeeds, creating v3"""
+        payload = {
+            "dataset_id": "ds_test_101",
+            "expected_dataset_version": "v2", # Fresh! matches current
+            "operation": "impute",
+            "raw_hash": "sha256-canonical-abc123",
+            "user_id": "user_b",
+            "role": "data_analyst"
+        }
+        res = self.client.post("/datasets/mutate", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["new_version"], "v3")
+        self.assertEqual(data["history_count"], 3)
+
+    def test_41_concurrency_restore_creates_forward_branch(self):
+        """Test CONCURRENCY: Restoring historical v1 creates v4 without altering v1/v2/v3"""
+        payload = {
+            "dataset_id": "ds_test_101",
+            "expected_dataset_version": "v3",
+            "operation": "restore",
+            "restore_target_version": "v1",
+            "raw_hash": "sha256-canonical-abc123",
+            "user_id": "user_a",
+            "role": "data_analyst"
+        }
+        res = self.client.post("/datasets/mutate", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["new_version"], "v4")
+
+    def test_42_concurrency_rbac_rejection(self):
+        """Test CONCURRENCY: Unauthorized recruiter role receives HTTP 403 Forbidden"""
+        payload = {
+            "dataset_id": "ds_test_101",
+            "expected_dataset_version": "v4",
+            "operation": "filter",
+            "raw_hash": "sha256-canonical-abc123",
+            "user_id": "user_recruiter",
+            "role": "recruiter"
+        }
+        res = self.client.post("/datasets/mutate", json=payload)
+        self.assertEqual(res.status_code, 403)
+        self.assertIn("Unauthorized", res.json()["detail"])
+
+    def test_43_concurrency_cross_tenant_isolation_rejection(self):
+        """Test CONCURRENCY: Cross-tenant mutation request receives HTTP 403 Forbidden"""
+        payload = {
+            "dataset_id": "ds_test_101",
+            "expected_dataset_version": "v4",
+            "operation": "filter",
+            "raw_hash": "sha256-canonical-abc123",
+            "user_id": "tenant_b_user",
+            "role": "data_analyst",
+            "company_id": "company_2",
+            "target_tenant_id": "company_1"
+        }
+        res = self.client.post("/datasets/mutate", json=payload)
+        self.assertEqual(res.status_code, 403)
+        self.assertIn("Cross-tenant mutation rejected", res.json()["detail"])
+
+    def test_44_concurrency_audit_trail_recorded(self):
+        """Test CONCURRENCY: Audit endpoint retains history of both successful mutations and conflicts"""
+        res = self.client.get("/datasets/audit-events")
+        self.assertEqual(res.status_code, 200)
+        events = res.json()["audit_events"]
+        actions = [e["action"] for e in events]
+        self.assertIn("MUTATION_APPLIED", actions)
+        self.assertIn("MUTATION_CONFLICT", actions)
+        self.assertIn("MUTATION_BLOCKED_RBAC", actions)
+        self.assertIn("MUTATION_BLOCKED_TENANT_ISOLATION", actions)
+
+    def test_45_streaming_session_init(self):
+        """Test STREAMING: Initialize chunked upload session"""
+        payload = {
+            "upload_id": "sess_stream_01",
+            "file_name": "large_sales.csv",
+            "total_chunks": 2,
+            "expected_size_bytes": 100000000
+        }
+        res = self.client.post("/streaming/init", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "session_initialized")
+        self.assertEqual(data["upload_id"], "sess_stream_01")
+        self.assertEqual(data["total_chunks"], 2)
+
+    def test_46_streaming_chunk_upload_and_finalize(self):
+        """Test STREAMING: Upload sequential chunks and finalize stream profiling"""
+        # Chunk 0: Header and first 2 rows
+        chunk_0_data = "transaction_id,amount,region\nTX_001,500.0,North\nTX_002,750.5,South\n"
+        res_0 = self.client.post(
+            "/streaming/chunk",
+            data={"upload_id": "sess_stream_01", "chunk_index": 0},
+            files={"chunk": ("chunk_0.csv", io.BytesIO(chunk_0_data.encode("utf-8")), "text/csv")}
+        )
+        self.assertEqual(res_0.status_code, 200)
+        self.assertEqual(res_0.json()["received_chunks"], 1)
+
+        # Chunk 1: Next 2 rows
+        chunk_1_data = "TX_003,1200.0,East\nTX_004,310.25,West\n"
+        res_1 = self.client.post(
+            "/streaming/chunk",
+            data={"upload_id": "sess_stream_01", "chunk_index": 1},
+            files={"chunk": ("chunk_1.csv", io.BytesIO(chunk_1_data.encode("utf-8")), "text/csv")}
+        )
+        self.assertEqual(res_1.status_code, 200)
+        self.assertEqual(res_1.json()["received_chunks"], 2)
+
+        # Finalize session
+        res_fin = self.client.post("/streaming/finalize", json={"upload_id": "sess_stream_01"})
+        self.assertEqual(res_fin.status_code, 200)
+        data = res_fin.json()
+        self.assertTrue(data["success"])
+        profile = data["profile"]
+        self.assertEqual(profile["rows"], 4)
+        self.assertEqual(profile["columns"], 3)
+        self.assertTrue(profile["streaming_mode"])
+        self.assertTrue(profile["raw_hash"].startswith("sha256-"))
+
+    def test_47_streaming_out_of_order_chunk_rejected(self):
+        """Test STREAMING: Out of order chunk is rejected with 400 Bad Request"""
+        self.client.post("/streaming/init", json={
+            "upload_id": "sess_stream_err",
+            "file_name": "data.csv",
+            "total_chunks": 3
+        })
+        # Sending chunk 1 before chunk 0
+        res = self.client.post(
+            "/streaming/chunk",
+            data={"upload_id": "sess_stream_err", "chunk_index": 1},
+            files={"chunk": ("c1.csv", io.BytesIO(b"data\n"), "text/csv")}
+        )
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Out of order chunk", res.json()["detail"])
+
+    def test_48_streaming_finalize_incomplete_rejected(self):
+        """Test STREAMING: Finalize before all chunks uploaded is rejected"""
+        res = self.client.post("/streaming/finalize", json={"upload_id": "sess_stream_err"})
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Incomplete upload", res.json()["detail"])
+
+    def test_49_streaming_memory_bounded_preview(self):
+        """Test STREAMING: Dataset with 100 rows keeps memory bounded preview <= 50 rows"""
+        self.client.post("/streaming/init", json={
+            "upload_id": "sess_stream_large",
+            "file_name": "stream_100.csv",
+            "total_chunks": 1
+        })
+        # 100 rows CSV
+        lines = ["id,val\n"] + [f"{i},{i*10}\n" for i in range(1, 101)]
+        csv_bytes = "".join(lines).encode("utf-8")
+        self.client.post(
+            "/streaming/chunk",
+            data={"upload_id": "sess_stream_large", "chunk_index": 0},
+            files={"chunk": ("chunk_0.csv", io.BytesIO(csv_bytes), "text/csv")}
+        )
+        res = self.client.post("/streaming/finalize", json={"upload_id": "sess_stream_large"})
+        self.assertEqual(res.status_code, 200)
+        profile = res.json()["profile"]
+        self.assertEqual(profile["rows"], 100)
+        # Preview must be bounded to 50 items to protect browser heap
+        self.assertLessEqual(len(profile["rows_data"]), 50)
+
+    def test_50_streaming_sha256_canonical_hash_preservation(self):
+        """Test STREAMING: Canonical SHA-256 hash encodes row count and column count"""
+        self.client.post("/streaming/init", json={
+            "upload_id": "sess_stream_hash",
+            "file_name": "hash_check.csv",
+            "total_chunks": 1
+        })
+        csv_bytes = b"col1,col2\nval1,val2\nval3,val4\n"
+        self.client.post(
+            "/streaming/chunk",
+            data={"upload_id": "sess_stream_hash", "chunk_index": 0},
+            files={"chunk": ("c0.csv", io.BytesIO(csv_bytes), "text/csv")}
+        )
+        res = self.client.post("/streaming/finalize", json={"upload_id": "sess_stream_hash"})
+        self.assertEqual(res.status_code, 200)
+        raw_hash = res.json()["profile"]["raw_hash"]
+        self.assertTrue(raw_hash.startswith("sha256-"))
+        self.assertTrue(raw_hash.endswith("2r2c"))
+
+    def test_51_integrity_transactional_mutation_success(self):
+        """Test INTEGRITY: Transactional mutation commits atomically and writes to PITR ledger"""
+        self.client.post("/datasets/reset-state")
+        self.client.post("/integrity/reset-ledger")
+        payload = {
+            "dataset_id": "ds_pitr_101",
+            "expected_dataset_version": "v1",
+            "operation": "normalize_columns",
+            "raw_hash": "sha256-integrity-hash-999",
+            "user_id": "analyst_alpha",
+            "role": "data_analyst",
+            "simulate_failure": False
+        }
+        res = self.client.post("/integrity/mutate-transactional", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["success"])
+        self.assertFalse(data["rolled_back"])
+        self.assertEqual(data["previous_version"], "v1")
+        self.assertEqual(data["new_version"], "v2")
+        self.assertIn("ledger_id", data)
+
+    def test_52_integrity_transactional_rollback_on_failure(self):
+        """Test INTEGRITY: Simulated pipeline failure triggers atomic rollback with zero state mutation"""
+        payload = {
+            "dataset_id": "ds_pitr_101",
+            "expected_dataset_version": "v2",
+            "operation": "corrupting_step",
+            "raw_hash": "sha256-integrity-hash-999",
+            "user_id": "analyst_alpha",
+            "role": "data_analyst",
+            "simulate_failure": True,
+            "failure_phase": "matrix_calculation"
+        }
+        res = self.client.post("/integrity/mutate-transactional", json=payload)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertFalse(data["success"])
+        self.assertTrue(data["rolled_back"])
+        self.assertEqual(data["current_version"], "v2") # State unmutated!
+        self.assertEqual(data["history_count"], 2) # History did not grow!
+        self.assertIn("aborted and rolled back atomically", data["message"])
+
+        # Check ledger records ROLLED_BACK
+        ledger_res = self.client.get("/integrity/ledger/ds_pitr_101")
+        entries = ledger_res.json()["ledger_entries"]
+        rolled_back_entries = [e for e in entries if e["status"] == "ROLLED_BACK"]
+        self.assertGreaterEqual(len(rolled_back_entries), 1)
+
+    def test_53_integrity_transactional_conflict_409(self):
+        """Test INTEGRITY: Version mismatch returns HTTP 409 Conflict within transactional boundary"""
+        payload = {
+            "dataset_id": "ds_pitr_101",
+            "expected_dataset_version": "v1", # Outdated, current is v2
+            "operation": "stale_step",
+            "raw_hash": "sha256-integrity-hash-999",
+            "user_id": "analyst_beta",
+            "role": "data_analyst"
+        }
+        res = self.client.post("/integrity/mutate-transactional", json=payload)
+        self.assertEqual(res.status_code, 409)
+
+    def test_54_integrity_pitr_restore_to_point(self):
+        """Test PITR: Point-in-time recovery reconstructs historical state and creates new v3"""
+        # First commit v3 normally
+        commit_payload = {
+            "dataset_id": "ds_pitr_101",
+            "expected_dataset_version": "v2",
+            "operation": "feature_engineering",
+            "raw_hash": "sha256-integrity-hash-999",
+            "user_id": "analyst_alpha",
+            "role": "data_analyst"
+        }
+        res_v3 = self.client.post("/integrity/mutate-transactional", json=commit_payload)
+        self.assertEqual(res_v3.status_code, 200)
+        self.assertEqual(res_v3.json()["new_version"], "v3")
+
+        # Now execute PITR recovery to restore state back to v1
+        restore_payload = {
+            "dataset_id": "ds_pitr_101",
+            "target_timestamp": "2020-01-01T00:00:00", # Timestamp in the past -> restores v1
+            "user_id": "analyst_alpha",
+            "role": "data_analyst"
+        }
+        res_pitr = self.client.post("/integrity/pitr-restore", json=restore_payload)
+        self.assertEqual(res_pitr.status_code, 200)
+        pitr_data = res_pitr.json()
+        self.assertTrue(pitr_data["success"])
+        self.assertEqual(pitr_data["restored_from_version"], "v1")
+        self.assertEqual(pitr_data["new_version"], "v4") # Non-destructive forward advance!
+        self.assertEqual(pitr_data["raw_hash"], "sha256-integrity-hash-999") # Hash preserved!
+        self.assertEqual(pitr_data["history_count"], 4)
+
+    def test_55_integrity_verification_deep_audit(self):
+        """Test INTEGRITY: Full graph and cryptographic audit validates DAG continuity and SHA-256 hash"""
+        res = self.client.get("/integrity/verify/ds_pitr_101")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertTrue(data["is_valid"])
+        self.assertTrue(data["checks"]["raw_hash_immutability"])
+        self.assertTrue(data["checks"]["sequence_continuity"])
+        self.assertTrue(data["checks"]["head_matches_current"])
+        self.assertTrue(data["checks"]["no_duplicate_versions"])
+        self.assertEqual(data["orphaned_records"], 0)
+        self.assertEqual(data["total_versions"], 4)
+
+    def test_56_observability_apm_metrics(self):
+        """Test OBSERVABILITY: APM latency percentiles and endpoint tracking"""
+        res = self.client.get("/observability/metrics")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "healthy")
+        self.assertGreater(data["total_requests"], 0)
+        percentiles = data["latency_percentiles_ms"]
+        self.assertIn("p50", percentiles)
+        self.assertIn("p95", percentiles)
+        self.assertIn("p99", percentiles)
+        self.assertIn("avg", percentiles)
+
+    def test_57_observability_siem_event_ingestion_and_export(self):
+        """Test SIEM: Ingest structured ECS audit log and export with severity filtering"""
+        self.client.post("/observability/reset")
+        event_payload = {
+            "event_category": "security",
+            "event_action": "MUTATION_BLOCKED_TENANT_ISOLATION",
+            "event_outcome": "failure",
+            "severity": 80,
+            "user_id": "unauthorized_user_99",
+            "tenant_id": "company_malicious",
+            "dataset_id": "ds_pitr_101",
+            "dataset_version": "v1",
+            "raw_hash": "sha256-integrity-hash-999",
+            "details": {"attack_vector": "cross_tenant_manipulation"}
+        }
+        res_ingest = self.client.post("/observability/siem/ingest", json=event_payload)
+        self.assertEqual(res_ingest.status_code, 200)
+        self.assertTrue(res_ingest.json()["success"])
+
+        # Query SIEM with min_severity filter
+        res_export = self.client.get("/observability/siem/events?min_severity=50")
+        self.assertEqual(res_export.status_code, 200)
+        events = res_export.json()["events"]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event"]["severity"], 80)
+        self.assertEqual(events[0]["event"]["action"], "MUTATION_BLOCKED_TENANT_ISOLATION")
+        self.assertEqual(events[0]["ecs"]["version"], "8.11.0")
+
+    def test_58_observability_siem_tenant_filtering(self):
+        """Test SIEM: Multi-tenant export filters strictly by tenant organization"""
+        # Ingest event for company_a and company_b
+        self.client.post("/observability/siem/ingest", json={
+            "event_category": "audit",
+            "event_action": "EXPORT_TENANT_A",
+            "user_id": "user_a",
+            "tenant_id": "company_tenant_a"
+        })
+        self.client.post("/observability/siem/ingest", json={
+            "event_category": "audit",
+            "event_action": "EXPORT_TENANT_B",
+            "user_id": "user_b",
+            "tenant_id": "company_tenant_b"
+        })
+
+        res_a = self.client.get("/observability/siem/events?tenant_id=company_tenant_a")
+        self.assertEqual(res_a.status_code, 200)
+        events_a = res_a.json()["events"]
+        self.assertTrue(all(e["organization"]["id"] == "company_tenant_a" for e in events_a))
+
+    def test_59_observability_health_and_memory_bounded(self):
+        """Test OBSERVABILITY: Health endpoint certifies memory safety and bounded limits"""
+        res = self.client.get("/observability/health")
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["status"], "ok")
+        self.assertTrue(data["memory_safe"])
+        self.assertTrue(data["heap_bounded"])
+
+    def test_60_stress_concurrency_race_condition(self):
+        """Test STRESS: Simulating rapid concurrent mutations on the same version allows only 1 winner"""
+        self.client.post("/datasets/reset-state")
+        # Initialize ds_stress with v1
+        self.client.post("/datasets/mutate", json={
+            "dataset_id": "ds_stress_race",
+            "expected_dataset_version": "v1",
+            "operation": "setup",
+            "raw_hash": "sha256-stress-hash",
+            "user_id": "lead",
+            "role": "data_analyst"
+        })
+        # Current version is now v2. Two concurrent workers both attempt to mutate from v2
+        res1 = self.client.post("/datasets/mutate", json={
+            "dataset_id": "ds_stress_race",
+            "expected_dataset_version": "v2",
+            "operation": "worker_1_op",
+            "raw_hash": "sha256-stress-hash",
+            "user_id": "worker_1",
+            "role": "data_analyst"
+        })
+        res2 = self.client.post("/datasets/mutate", json={
+            "dataset_id": "ds_stress_race",
+            "expected_dataset_version": "v2",
+            "operation": "worker_2_op",
+            "raw_hash": "sha256-stress-hash",
+            "user_id": "worker_2",
+            "role": "data_analyst"
+        })
+
+        statuses = [res1.status_code, res2.status_code]
+        self.assertIn(200, statuses) # Exactly one winner
+        self.assertIn(409, statuses) # Exactly one conflict rejected
+
+    def test_61_stress_cross_tenant_mutation_and_restore_penetration_blocked(self):
+        """Test SECURITY PENETRATION: Cross-tenant barrier blocks unauthorized mutations and PITR restores"""
+        # Mutation penetration test
+        res_mut = self.client.post("/integrity/mutate-transactional", json={
+            "dataset_id": "ds_tenant_restricted",
+            "expected_dataset_version": "v1",
+            "operation": "exfiltrate",
+            "raw_hash": "sha256-secret-hash",
+            "user_id": "attacker",
+            "role": "data_analyst",
+            "company_id": "attacker_corp",
+            "target_tenant_id": "victim_corp"
+        })
+        self.assertEqual(res_mut.status_code, 403)
+
+        # RBAC penetration test
+        res_rbac = self.client.post("/integrity/pitr-restore", json={
+            "dataset_id": "ds_tenant_restricted",
+            "target_timestamp": "2026-09-27T12:00:00",
+            "user_id": "guest_attacker",
+            "role": "guest" # Unauthorized!
+        })
+        self.assertEqual(res_rbac.status_code, 403)
+
+    def test_62_stress_high_throughput_streaming_integrity(self):
+        """Test STRESS: Streaming session with sequential chunks maintains cryptographic checksum accuracy"""
+        self.client.post("/streaming/init", json={
+            "upload_id": "sess_stress_stream",
+            "file_name": "stress_data.csv",
+            "total_chunks": 3
+        })
+        for i in range(3):
+            chunk_data = f"row_{i}_a,row_{i}_b\n" if i > 0 else "col_a,col_b\nrow_0_a,row_0_b\n"
+            c_res = self.client.post(
+                "/streaming/chunk",
+                data={"upload_id": "sess_stress_stream", "chunk_index": i},
+                files={"chunk": (f"c{i}.csv", io.BytesIO(chunk_data.encode("utf-8")), "text/csv")}
+            )
+            self.assertEqual(c_res.status_code, 200)
+
+        finalize_res = self.client.post("/streaming/finalize", json={"upload_id": "sess_stress_stream"})
+        self.assertEqual(finalize_res.status_code, 200)
+        prof = finalize_res.json()["profile"]
+        self.assertEqual(prof["rows"], 3)
+        self.assertEqual(prof["columns"], 2)
+        self.assertTrue(prof["raw_hash"].startswith("sha256-"))
+
 if __name__ == "__main__":
     unittest.main()

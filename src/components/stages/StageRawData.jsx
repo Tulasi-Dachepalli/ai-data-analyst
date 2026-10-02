@@ -42,11 +42,19 @@ export default function StageRawData() {
             </tr>
           </thead>
           <tbody>
-            {rows.slice(0, 10).map((row, rIdx) => (
-              <tr key={rIdx} style={{ borderBottom: "1px solid var(--border-color, #E2E8F0)" }}>
-                {cols.map(c => <td key={c} style={{ padding: "8px 10px", color: "var(--text-primary, #0F172A)" }}>{String(row[c] ?? "")}</td>)}
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={Math.max(1, cols.length)} style={{ padding: "30px 10px", textAlign: "center", color: "var(--text-muted, #94A3B8)" }}>
+                  No dataset loaded. Please import a CSV or Excel file to view raw data.
+                </td>
               </tr>
-            ))}
+            ) : (
+              rows.slice(0, 10).map((row, rIdx) => (
+                <tr key={rIdx} style={{ borderBottom: "1px solid var(--border-color, #E2E8F0)" }}>
+                  {cols.map(c => <td key={c} style={{ padding: "8px 10px", color: "var(--text-primary, #0F172A)" }}>{String(row[c] ?? "")}</td>)}
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

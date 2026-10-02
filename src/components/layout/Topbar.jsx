@@ -3,8 +3,21 @@ import React from "react";
 import RoleSelector from "./RoleSelector";
 import { useRole } from "../../context/RoleContext";
 
+import AIActivityButton from "../activity/AIActivityButton";
+import AIActivityDrawer from "../activity/AIActivityDrawer";
+
+import GlobalSearch from "../search/GlobalSearch";
+import DecisionInbox from "../command-center/DecisionInbox";
+import ShareDialog from "../collaboration/ShareDialog";
+import { useSearch } from "../../context/SearchContext";
+import { useDecision } from "../../context/DecisionContext";
+import { useCollaboration } from "../../context/CollaborationContext";
+
 export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, onLogout, setView }) {
   const { user } = useRole();
+  const { openSearch } = useSearch();
+  const { pendingDecisions, openInbox } = useDecision();
+  const { openShareModal } = useCollaboration();
 
   return (
     <header style={{
@@ -18,12 +31,12 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
       zIndex: 80,
       display: "flex",
       alignItems: "center",
-      justify: "space-between",
+      justifyContent: "space-between",
       padding: "0 20px",
       transition: "left 0.2s ease-in-out",
       boxSizing: "border-box"
     }}>
-      {/* Left: Sidebar Toggle & Role Selector */}
+      {/* Left: Sidebar Toggle, Role Selector & Search Trigger */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -42,10 +55,96 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
         </button>
 
         <RoleSelector />
+
+        {/* Global Search Quick Trigger */}
+        <button
+          onClick={openSearch}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            padding: "5px 12px",
+            borderRadius: 8,
+            background: "var(--bg-primary, #F8FAFC)",
+            border: "1px solid var(--border-color, #CBD5E1)",
+            fontSize: 12,
+            color: "var(--text-secondary, #64748B)",
+            cursor: "pointer"
+          }}
+        >
+          <span>🔍</span>
+          <span style={{ fontWeight: 600 }}>Quick Search...</span>
+          <kbd style={{ fontSize: 10, background: "var(--bg-secondary, #FFFFFF)", border: "1px solid #CBD5E1", padding: "1px 5px", borderRadius: 4 }}>Ctrl+K</kbd>
+        </button>
       </div>
 
-      {/* Right: Theme Toggle, Notifications, Settings & User Profile */}
+      {/* Right: AI Activity, Decision Inbox, Theme Toggle, Profile */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {/* Decision Inbox Badge Button */}
+        <button
+          data-testid="topbar-decisions-btn"
+          onClick={openInbox}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 10px",
+            borderRadius: 8,
+            background: pendingDecisions.length > 0 ? "#FEF2F2" : "#F8FAFC",
+            border: `1px solid ${pendingDecisions.length > 0 ? "#FCA5A5" : "#E2E8F0"}`,
+            fontSize: 12,
+            fontWeight: 700,
+            color: pendingDecisions.length > 0 ? "#DC2626" : "#475569",
+            cursor: "pointer"
+          }}
+        >
+          <span>⚡</span>
+          <span>Decisions</span>
+          {pendingDecisions.length > 0 && (
+            <span style={{
+              background: "#DC2626",
+              color: "#FFF",
+              fontSize: 10,
+              fontWeight: 800,
+              padding: "1px 6px",
+              borderRadius: 10
+            }}>
+              {pendingDecisions.length}
+            </span>
+          )}
+        </button>
+
+        {/* Workspace Share Button */}
+        <button
+          data-testid="topbar-share-btn"
+          onClick={() => openShareModal("Active Workspace")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 10px",
+            borderRadius: 8,
+            background: "#F8FAFC",
+            border: "1px solid #E2E8F0",
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#475569",
+            cursor: "pointer"
+          }}
+        >
+          <span>👥</span>
+          <span>Share</span>
+        </button>
+
+        {/* Global AI Activity Stream Indicator */}
+        <AIActivityButton />
+        <AIActivityDrawer />
+        
+        {/* Modals */}
+        <GlobalSearch />
+        <DecisionInbox />
+        <ShareDialog />
+
         {/* Dark Mode Toggle */}
         <button
           onClick={() => setDarkMode(!darkMode)}

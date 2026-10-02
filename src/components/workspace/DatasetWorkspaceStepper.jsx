@@ -6,22 +6,26 @@ import { useDataset } from "../../context/DatasetContext";
 
 export default function DatasetWorkspaceStepper() {
   const { activeRole } = useRole();
-  const { currentStage, setCurrentStage } = useDataset();
+  const { currentStage, setCurrentStage, currentVersion, activeRows, history } = useDataset();
   const stages = getVisibleStagesForRole(activeRole);
 
   const completedStages = ["raw", "quality"];
+  const stageObj = stages.find(s => s.id === currentStage) || stages[0];
 
   return (
     <div style={{
       background: "var(--bg-secondary, #FFFFFF)",
       border: "1px solid var(--border-color, #E2E8F0)",
       borderRadius: 14,
-      padding: "10px 16px",
+      padding: "12px 16px",
       marginBottom: 20,
       boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
-      overflowX: "auto"
+      display: "flex",
+      flexDirection: "column",
+      gap: 10
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: "max-content" }}>
+      {/* 9-Stage Progress Stepper Bar */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, overflowX: "auto" }}>
         {stages.map((st, idx) => {
           const lockState = getStageLockState(st.id, currentStage, completedStages, activeRole);
           const isCurrent = lockState === "current";
@@ -73,7 +77,7 @@ export default function DatasetWorkspaceStepper() {
                   fontWeight: 800,
                   color: isCurrent ? "#FFF" : isCompleted ? "#10B981" : isRestricted ? "#EF4444" : isLocked ? "#94A3B8" : "#2563EB"
                 }}>
-                  {isCompleted ? "✓" : isCurrent ? "●" : isRestricted ? "⛔" : isLocked ? "🔒" : "○"}
+                  {isCompleted ? "✓" : isCurrent ? "● CURRENT" : isRestricted ? "⛔ RESTRICTED" : isLocked ? "🔒 LOCKED" : "○ AVAILABLE"}
                 </span>
                 <span>{st.number}. {st.label}</span>
               </button>
@@ -84,6 +88,30 @@ export default function DatasetWorkspaceStepper() {
             </React.Fragment>
           );
         })}
+      </div>
+
+      {/* Sub-header Breadcrumb Context Banner */}
+      <div style={{
+        background: "var(--bg-primary, #F8FAFC)",
+        border: "1px solid var(--border-color, #E2E8F0)",
+        borderRadius: 8,
+        padding: "8px 12px",
+        fontSize: 12,
+        color: "var(--text-secondary, #64748B)",
+        display: "flex",
+        justify: "space-between",
+        alignItems: "center"
+      }}>
+        <div>
+          <strong style={{ color: "var(--text-primary, #0F172A)" }}>You are here:</strong> Stage {stageObj?.number || "03"} {stageObj?.label || "Data Cleaning"}
+        </div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <span>{Math.max(1, history.length - 1)} transformations completed</span>
+          <span>•</span>
+          <span>{activeRows.length.toLocaleString()} rows affected</span>
+          <span>•</span>
+          <span style={{ color: "#2563EB", fontWeight: 700 }}>Dataset {currentVersion?.version || "v4"}</span>
+        </div>
       </div>
     </div>
   );

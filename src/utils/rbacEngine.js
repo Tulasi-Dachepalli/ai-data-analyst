@@ -1,7 +1,7 @@
 // src/utils/rbacEngine.js
 // Role-Based Access Control (RBAC), Anti-Prompt-Injection & Tenant Security Engine
 
-import { getRoleConfig } from "../config/roleConfigs";
+import { getRoleConfig } from "../config/roleConfigs.js";
 
 export function authorizeRoleAction(roleId, actionKey) {
   const config = getRoleConfig(roleId);

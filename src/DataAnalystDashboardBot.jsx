@@ -49,6 +49,17 @@ import FinanceCommandCenter from "./components/workspaces/FinanceCommandCenter";
 import DataScientistStudio from "./components/workspaces/DataScientistStudio";
 import RoleSelectionModal from "./components/workspaces/RoleSelectionModal";
 import EvidenceAnswerCard from "./components/ui/EvidenceAnswerCard";
+import WorkspaceCommandCenter from "./components/command-center/WorkspaceCommandCenter";
+import AIDecisionCenter from "./components/command-center/AIDecisionCenter";
+import LineageGraph from "./components/lineage/LineageGraph";
+import VisualizationBuilder from "./components/analysis/VisualizationBuilder";
+import AnalysisNotebook from "./components/analysis/AnalysisNotebook";
+import ModelRegistry from "./components/models/ModelRegistry";
+import ScenarioLibrary from "./components/forecast/ScenarioLibrary";
+import AuditCenter from "./components/audit/AuditCenter";
+import CommentsPanel from "./components/collaboration/CommentsPanel";
+import DatasetWorkspace from "./components/workspace/DatasetWorkspace";
+import { useDataset } from "./context/DatasetContext";
 import { getRoleConfig } from "./config/roleConfigs";
 import { checkDataAvailability } from "./utils/dataAvailabilityEngine.js";
 import { detectBusinessIntent } from "./utils/intentEngine.js";
@@ -1022,7 +1033,7 @@ function trainTestSplitAndFit(rows, columns, stats) {
 }
 
 
-function DashboardBlock({ dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete, user }) {
+function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slicerFilters, setSlicerFilters, chartTypes, setChartTypes, innerRef, currentView, serverId, onDatasetCreated, onForecastComplete, user }) {
   const isMisAnalyst = useMemo(() => {
     if (user?.role === "mis_analyst") return true;
     try {
@@ -4108,92 +4119,52 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
   );
 }
 
-// ---------------- Sample Datasets Definition ----------------
-const SAMPLE_DATASETS = [
-  {
-    name: "Sales Performance Sample",
-    icon: "🛒",
-    domain: "Retail & E-Commerce",
-    rows: [
-      { Date: "2026-01-01", Category: "Electronics", Product: "Laptop", Sales: 1200, Quantity: 1, Region: "North" },
-      { Date: "2026-01-02", Category: "Electronics", Product: "Phone", Sales: 800, Quantity: 1, Region: "South" },
-      { Date: "2026-01-03", Category: "Furniture", Product: "Chair", Sales: 150, Quantity: 2, Region: "East" },
-      { Date: "2026-01-04", Category: "Furniture", Product: "Desk", Sales: 450, Quantity: 1, Region: "West" },
-      { Date: "2026-01-05", Category: "Electronics", Product: "Laptop", Sales: 2400, Quantity: 2, Region: "North" },
-      { Date: "2026-01-06", Category: "Office", Product: "Paper", Sales: 50, Quantity: 5, Region: "Central" },
-      { Date: "2026-01-07", Category: "Electronics", Product: "Headphones", Sales: 150, Quantity: 1, Region: "South" },
-      { Date: "2026-01-08", Category: "Furniture", Product: "Sofa", Sales: 950, Quantity: 1, Region: "East" },
-      { Date: "2026-01-09", Category: "Office", Product: "Pen", Sales: 10, Quantity: 10, Region: "West" },
-      { Date: "2026-01-10", Category: "Electronics", Product: "Phone", Sales: 1600, Quantity: 2, Region: "Central" }
-    ],
-    columns: ["Date", "Category", "Product", "Sales", "Quantity", "Region"]
-  },
-  {
-    name: "Audit Operations Sample",
-    icon: "🏦",
-    domain: "Financial Audit",
-    rows: [
-      { Code: "AUD-101", Name: "Inventory Review", Auditor: "Sarah", Region: "North", Risk: "Medium", Status: "Completed", DelayDays: 2, Findings: 3 },
-      { Code: "AUD-102", Name: "Tax Compliance", Auditor: "John", Region: "South", Risk: "High", Status: "In Progress", DelayDays: 5, Findings: 1 },
-      { Code: "AUD-103", Name: "IT Security", Auditor: "Alex", Region: "East", Risk: "High", Status: "Completed", DelayDays: 0, Findings: 8 },
-      { Code: "AUD-104", Name: "HR Audit", Auditor: "Sarah", Region: "West", Risk: "Low", Status: "Completed", DelayDays: 1, Findings: 0 },
-      { Code: "AUD-105", Name: "Facility Safety", Auditor: "Emma", Region: "Central", Risk: "Medium", Status: "Delayed", DelayDays: 12, Findings: 4 },
-      { Code: "AUD-106", Name: "Asset Tracking", Auditor: "John", Region: "North", Risk: "Low", Status: "Completed", DelayDays: 0, Findings: 1 }
-    ],
-    columns: ["Code", "Name", "Auditor", "Region", "Risk", "Status", "DelayDays", "Findings"]
-  },
-  {
-    name: "HR Retention & Payroll Sample",
-    icon: "👥",
-    domain: "HR & Workforce",
-    rows: [
-      { EmpID: "EMP-001", Department: "Engineering", Role: "Senior Dev", Salary: 110000, PerformanceScore: 4.5, YearsAtCompany: 4, Attrition: "No" },
-      { EmpID: "EMP-002", Department: "Sales", Role: "Account Exec", Salary: 75000, PerformanceScore: 3.8, YearsAtCompany: 2, Attrition: "Yes" },
-      { EmpID: "EMP-003", Department: "Marketing", Role: "Growth Lead", Salary: 92000, PerformanceScore: 4.2, YearsAtCompany: 3, Attrition: "No" },
-      { EmpID: "EMP-004", Department: "Engineering", Role: "QA Analyst", Salary: 68000, PerformanceScore: 3.2, YearsAtCompany: 1, Attrition: "Yes" },
-      { EmpID: "EMP-005", Department: "Product", Role: "Product Mgr", Salary: 125000, PerformanceScore: 4.8, YearsAtCompany: 5, Attrition: "No" },
-      { EmpID: "EMP-006", Department: "Sales", Role: "SDR", Salary: 52000, PerformanceScore: 3.5, YearsAtCompany: 1, Attrition: "No" },
-      { EmpID: "EMP-007", Department: "Finance", Role: "Financial Analyst", Salary: 85000, PerformanceScore: 4.0, YearsAtCompany: 3, Attrition: "No" },
-      { EmpID: "EMP-008", Department: "Engineering", Role: "DevOps Engineer", Salary: 115000, PerformanceScore: 4.6, YearsAtCompany: 4, Attrition: "No" }
-    ],
-    columns: ["EmpID", "Department", "Role", "Salary", "PerformanceScore", "YearsAtCompany", "Attrition"]
-  },
-  {
-    name: "Supply Chain Logistics Sample",
-    icon: "📦",
-    domain: "Supply Chain & Logistics",
-    rows: [
-      { ShipmentID: "SHP-801", Carrier: "FedEx Express", Origin: "Chicago", Destination: "Dallas", FreightCost: 1450, DeliveryDays: 2, Status: "Delivered" },
-      { ShipmentID: "SHP-802", Carrier: "DHL Freight", Origin: "Seattle", Destination: "Phoenix", FreightCost: 2200, DeliveryDays: 4, Status: "In Transit" },
-      { ShipmentID: "SHP-803", Carrier: "UPS Freight", Origin: "New York", Destination: "Atlanta", FreightCost: 980, DeliveryDays: 1, Status: "Delivered" },
-      { ShipmentID: "SHP-804", Carrier: "FedEx Ground", Origin: "Los Angeles", Destination: "Denver", FreightCost: 1850, DeliveryDays: 5, Status: "Delayed" },
-      { ShipmentID: "SHP-805", Carrier: "XPO Logistics", Origin: "Miami", Destination: "Houston", FreightCost: 3100, DeliveryDays: 3, Status: "Delivered" },
-      { ShipmentID: "SHP-806", Carrier: "UPS Freight", Origin: "Chicago", Destination: "Seattle", FreightCost: 2400, DeliveryDays: 4, Status: "Delivered" }
-    ],
-    columns: ["ShipmentID", "Carrier", "Origin", "Destination", "FreightCost", "DeliveryDays", "Status"]
-  },
-  {
-    name: "Healthcare Claims Audit Sample",
-    icon: "🏥",
-    domain: "Healthcare Operations",
-    rows: [
-      { ClaimID: "CLM-901", Hospital: "St. Jude Hospital", Specialty: "Cardiology", TreatmentCost: 14500, InsuranceCovered: 12000, LengthOfStay: 4, Readmission: "No" },
-      { ClaimID: "CLM-902", Hospital: "General Health Center", Specialty: "Orthopedics", TreatmentCost: 28000, InsuranceCovered: 24000, LengthOfStay: 7, Readmission: "Yes" },
-      { ClaimID: "CLM-903", Hospital: "City Memorial", Specialty: "Neurology", TreatmentCost: 32000, InsuranceCovered: 30000, LengthOfStay: 8, Readmission: "No" },
-      { ClaimID: "CLM-904", Hospital: "St. Jude Hospital", Specialty: "Oncology", TreatmentCost: 45000, InsuranceCovered: 41000, LengthOfStay: 12, Readmission: "No" },
-      { ClaimID: "CLM-905", Hospital: "General Health Center", Specialty: "Pediatrics", TreatmentCost: 6500, InsuranceCovered: 5800, LengthOfStay: 2, Readmission: "No" },
-      { ClaimID: "CLM-906", Hospital: "Metro Care Clinic", Specialty: "Cardiology", TreatmentCost: 19500, InsuranceCovered: 17000, LengthOfStay: 5, Readmission: "Yes" }
-    ],
-    columns: ["ClaimID", "Hospital", "Specialty", "TreatmentCost", "InsuranceCovered", "LengthOfStay", "Readmission"]
-  }
-];
+// ---------------- Sample Datasets Definition (Zero-Leakage Production Mode) ----------------
+const SAMPLE_DATASETS = [];
 
 // ---------------- main component ----------------
 export default function DataAnalystDashboardBot({ currentView, setView, user: propUser }) {
   const user = propUser || JSON.parse(localStorage.getItem("aida_user") || "null");
+  const { activeDataset, loadDataset, setActiveDatasetFromThread } = useDataset();
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Synchronize threads and activeId when activeDataset in DatasetContext updates (e.g. from DatasetImportCenter or Library)
+  useEffect(() => {
+    if (!activeDataset || !activeDataset.name) return;
+    setThreads(prev => {
+      const existing = prev.find(t => t.id === activeDataset.id || (t.name === activeDataset.name && t.rows === activeDataset.rows));
+      if (existing) {
+        if (activeId !== existing.id) setActiveId(existing.id);
+        return prev;
+      }
+      const rows = activeDataset.rows || [];
+      const columns = activeDataset.columns || (rows.length ? Object.keys(rows[0]) : []);
+      const stats = columns.map(c => computeColumnStats(rows, c));
+      const quality = calculateDataQuality(rows, columns);
+      const newThread = {
+        id: activeDataset.id || `ds-${Date.now()}`,
+        name: activeDataset.name,
+        fileName: activeDataset.fileName || activeDataset.name,
+        rows,
+        columns,
+        stats,
+        quality,
+        rawHash: activeDataset.rawHash,
+        dashboard: null,
+        messages: [
+          { kind: "file", fileName: activeDataset.name, rowCount: rows.length, colCount: columns.length }
+        ],
+        loaded: true,
+        serverId: null,
+        isRawText: false,
+        rawText: ""
+      };
+      setActiveId(newThread.id);
+      return [newThread, ...prev];
+    });
+  }, [activeDataset]);
   const getLocalUsedTokens = () => {
     const resetTimeStr = localStorage.getItem("aida_token_reset_time");
     if (resetTimeStr) {
@@ -4324,9 +4295,8 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
   const active = threads.find(t => t.id === activeId) || threads[0] || null;
 
-  const sampleFallback = useMemo(() => SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0], []);
-  const activeData = useMemo(() => (active?.rows && active.rows.length > 0) ? active.rows : sampleFallback.rows, [active, sampleFallback]);
-  const activeCols = useMemo(() => (active?.columns && active.columns.length > 0) ? active.columns : sampleFallback.columns, [active, sampleFallback]);
+  const activeData = useMemo(() => (active?.rows && active.rows.length > 0) ? active.rows : [], [active]);
+  const activeCols = useMemo(() => (active?.columns && active.columns.length > 0) ? active.columns : [], [active]);
 
   const suggestedQuestions = useMemo(() => {
     const activeRole = user?.role || "ceo";
@@ -4396,44 +4366,6 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   }, [active?.messages?.length || 0, loading]);
 
   useEffect(() => {
-    const aiSuiteViews = [
-      "health", "whatif", "exec-reports", "alerts", "correlation", "branding",
-      "stats", "sql", "clustering", "pivot", "cohort", "transform", "pareto",
-      "anomalies", "search", "forecast", "montecarlo", "cleaner", "abc",
-      "benchmarks", "digest", "goalseek", "rfm", "geomap", "webhooks", "debate", "script"
-    ];
-    if (!active || !active.rows || active.rows.length === 0) {
-      if (threads.length === 0) {
-        const defaultSample = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
-        const stubStats = defaultSample.columns.map(c => computeColumnStats(defaultSample.rows, c));
-        const stubQuality = calculateDataQuality(defaultSample.rows, defaultSample.columns);
-        const stubPlan = pickDashboardPlan(stubStats);
-
-        const sampleThread = {
-          id: `sample-${Date.now()}`,
-          name: defaultSample.name,
-          fileName: defaultSample.name,
-          rows: defaultSample.rows,
-          columns: defaultSample.columns,
-          stats: stubStats,
-          quality: stubQuality,
-          dashboard: {
-            sheetName: defaultSample.name,
-            rawRows: defaultSample.rows,
-            plan: stubPlan,
-            narrative: `Sample dataset loaded automatically.`
-          },
-          messages: [
-            { kind: "file", fileName: defaultSample.name, rowCount: defaultSample.rows.length, colCount: defaultSample.columns.length },
-            { kind: "dashboard" }
-          ]
-        };
-
-        setThreads([sampleThread]);
-        setActiveId(sampleThread.id);
-      }
-    }
-
     if (currentView === "ai-analyst") {
       setTimeout(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -4686,6 +4618,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         };
         setThreads(prev => [thread, ...prev]);
         setActiveId(id);
+        setActiveDatasetFromThread(thread);
         if (typeof setView === "function") setView("dashboard");
 
         let serverId = null;
@@ -4706,47 +4639,24 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   };
 
   const handleLoadSample = async (sample) => {
-    if (usageStats && usageStats.tier === "free" && usageStats.usedTokens >= usageStats.limit) {
-      setShowUpgradeModal(true);
-      return;
-    }
-    try {
-      setLoading(true);
-      setLoadingLabel("Loading sample dataset…");
-      const { rows, columns } = sample;
-      const cleanCols = columns.filter(c => c && c.trim() !== "");
-      const stats = cleanCols.map(c => computeColumnStats(rows, c));
-      const quality = calculateDataQuality(rows, cleanCols);
-      const id = Date.now() + "-" + sample.name;
-      const initialMessages = [{ role: "user", kind: "file", fileName: sample.name, rowCount: rows.length, colCount: cleanCols.length }];
-      const thread = {
-        id, name: sample.name, rows, columns: cleanCols, stats, quality, dashboard: null,
-        messages: initialMessages, loaded: true, serverId: null, isRawText: false, rawText: ""
-      };
-      setThreads(prev => [thread, ...prev]);
-      setActiveId(id);
-      if (typeof setView === "function") setView("dashboard");
-
-      let serverId = null;
-      try {
-        const created = await api.createDataset({ name: sample.name, rows, columns: cleanCols, stats, quality, messages: initialMessages, isRawText: false, rawText: "" });
-        serverId = created?.dataset?.id || null;
-        if (serverId) updateThread(id, t => ({ ...t, serverId }));
-      } catch (err) {
-        console.error("Failed to save sample dataset:", err);
-      }
-
-      generateOverview(id, stats, rows.length, rows, quality, serverId, false, "");
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-    }
+    console.warn("[SECURITY] Sample dataset loading is disabled in production to enforce dynamic dataset source of truth.");
   };
 
   const answerQueryLocally = (question, rows, stats, quality, dashboard) => {
     const q = question.toLowerCase();
     const numCols = (stats || []).filter(s => s.type === "numeric");
     const catCols = (stats || []).filter(s => s.type === "categorical");
+    const allColNamesLower = (stats || []).map(s => (s.name || "").toLowerCase());
+
+    // Explicit check: If user asks for a common metric (revenue, cost, salary, etc.) not present in current dataset columns
+    const commonMetricWords = ["revenue", "cost", "salary", "profit", "price", "expense", "budget"];
+    for (const word of commonMetricWords) {
+      if (q.includes(word) && !allColNamesLower.some(c => c.includes(word))) {
+        const availNum = numCols.map(c => c.name).join(", ") || "None";
+        const availCat = catCols.map(c => c.name).join(", ") || "None";
+        return `The column **"${word}"** isn't available in this dataset.\n\n**Available numeric columns:** ${availNum}\n**Available categorical columns:** ${availCat}`;
+      }
+    }
 
     // 1. Forecasting / Future Projections queries
     if (q.includes("forecast") || q.includes("predict") || q.includes("future") || q.includes("next ")) {
@@ -5158,31 +5068,13 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
     let currentActive = active || (threads && threads[0]);
 
-    // ── Case A: No active thread at all → auto-load sample dataset ──────────
+    // ── Case A: No active dataset loaded ──────────
     if (!currentActive) {
-      const defaultSample = SAMPLE_DATASETS[1] || SAMPLE_DATASETS[0];
-      const stubStats = defaultSample.columns.map(c => computeColumnStats(defaultSample.rows, c));
-      const stubQuality = calculateDataQuality(defaultSample.rows, defaultSample.columns);
-      const stubPlan = pickDashboardPlan(stubStats);
-
-      currentActive = {
-        id: `sample-${Date.now()}`,
-        name: defaultSample.name,
-        rows: defaultSample.rows,
-        columns: defaultSample.columns,
-        stats: stubStats,
-        quality: stubQuality,
-        dashboard: {
-          sheetName: defaultSample.name,
-          rawRows: defaultSample.rows,
-          plan: stubPlan,
-          narrative: `Sample dataset loaded automatically.`
-        },
-        messages: []
-      };
-
-      setThreads(prev => [currentActive, ...prev]);
-      setActiveId(currentActive.id);
+      setAnswerToast({
+        question,
+        answer: "No dataset is currently loaded. Please upload a CSV or Excel file to analyze."
+      });
+      return;
     }
 
     // ── Case B: Active thread exists but rows not yet fetched (server stub) ──
@@ -5363,6 +5255,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   // messages from the backend on demand, instead of loading everything up front.
   const handleSelectThread = async (t) => {
     setActiveId(t.id);
+    setActiveDatasetFromThread(t);
     if (typeof setView === "function") setView("dashboard");
     if (t.loaded || !t.serverId) return;
     setLoading(true);
@@ -6370,7 +6263,35 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   {currentView === "script" && (
                     <PresentationScriptGenerator data={activeData} columns={activeCols} datasetName={active?.fileName || "Active Workspace Dataset"} />
                   )}
+                  {currentView === "lineage" && (
+                    <LineageGraph />
+                  )}
+                  {currentView === "studio" && (
+                    <VisualizationBuilder data={activeData} columns={activeCols} />
+                  )}
+                  {currentView === "notebook" && (
+                    <AnalysisNotebook />
+                  )}
+                  {currentView === "models" && (
+                    <ModelRegistry />
+                  )}
+                  {currentView === "scenarios" && (
+                    <ScenarioLibrary />
+                  )}
+                  {currentView === "audit" && (
+                    <AuditCenter />
+                  )}
+                  {(currentView === "workspace" || currentView === "stages" || currentView === "dataset-workspace") && (
+                    <DatasetWorkspace />
+                  )}
                 </>
+            {/* Workspace Command Center & AI 4-Area Decision Center */}
+            {(["dashboard", "overview", "dashboards"].includes(currentView)) && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 24, marginBottom: 24 }}>
+                <WorkspaceCommandCenter setView={setView} />
+                <AIDecisionCenter setView={setView} />
+              </div>
+            )}
             {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
             {(["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
               <ExecutiveCommandCenter onAskQuestion={(q) => handleSend(q)} />
@@ -6398,10 +6319,29 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                 />
               </div>
             )}
-            {!active && user?.role === "data_analyst" && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
-              <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 14, marginTop: 60, lineHeight: 1.7 }}>
-                <div style={{ fontSize: 20, color: "var(--text-primary)", fontWeight: 700, marginBottom: 8 }}>📊 Data Analyst Studio</div>
-                Upload your CSV or Excel dataset to build automated BI dashboards, statistical EDA, and ML predictive models.
+            {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
+              <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 14, marginTop: 60, lineHeight: 1.7, display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>📁</div>
+                <div style={{ fontSize: 20, color: "var(--text-primary)", fontWeight: 700, marginBottom: 8 }}>AI Business & Science Workspace</div>
+                <div style={{ maxWidth: 440, marginBottom: 20 }}>
+                  Upload any CSV or Excel dataset to build automated BI dashboards, statistical EDA, ML models, and grounded Copilot insights.
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    background: "#2563EB",
+                    color: "#FFF",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "10px 22px",
+                    fontSize: 13.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)"
+                  }}
+                >
+                  + Upload Dataset File
+                </button>
               </div>
             )}
             {active && (active.messages || []).map((m, i) => {
@@ -6410,6 +6350,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                 return (
                   <div key={i} style={{ alignSelf: "stretch", background: "var(--bg-secondary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
                   <DashboardBlock 
+                    active={active}
                     user={user}
                     dashboard={active.dashboard} 
                     filteredRows={filteredRows} 

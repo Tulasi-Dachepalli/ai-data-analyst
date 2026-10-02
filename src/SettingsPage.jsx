@@ -1,4 +1,10 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import WorkspaceSettings from "./components/settings/WorkspaceSettings";
+import DataSettings from "./components/settings/DataSettings";
+import CopilotSettings from "./components/settings/CopilotSettings";
+import NotificationSettings from "./components/settings/NotificationSettings";
+import SecuritySettings from "./components/settings/SecuritySettings";
+import ExportSettings from "./components/settings/ExportSettings";
 
 export default function SettingsPage({ user, onUserChange, onBack }) {
   const [activeTab, setActiveTab] = useState("general");
@@ -18,9 +24,9 @@ export default function SettingsPage({ user, onUserChange, onBack }) {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: 22, color: "var(--text-primary)", fontWeight: 800 }}>⚙ System Settings & Governance</h2>
+          <h2 style={{ margin: 0, fontSize: 22, color: "var(--text-primary)", fontWeight: 800 }}>⚙ System Settings & Governance Control Center</h2>
           <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>
-            Configure workspace preferences, enterprise role access, AI copilot behaviors, and data retention policies.
+            Configure workspace preferences, enterprise role access, AI copilot behaviors, data rules, and export options.
           </p>
         </div>
         {onBack && (
@@ -34,11 +40,12 @@ export default function SettingsPage({ user, onUserChange, onBack }) {
       <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--border-color)", paddingBottom: 8, overflowX: "auto" }}>
         {[
           { id: "general", label: "🌐 General & Workspace", icon: "🌐" },
-          { id: "roles", label: "🛡 Role & Access Controls", icon: "🛡" },
-          { id: "ai", label: "🤖 AI Copilot Preferences", icon: "🤖" },
-          { id: "data", label: "💾 Data & Storage Retention", icon: "💾" },
-          { id: "security", label: "🔐 Security & SOC2 Trust", icon: "🔐" },
-          { id: "plan", label: "💳 Plan & Usage Billing", icon: "💳" }
+          { id: "roles", label: "🛡 Role Scope & RBAC", icon: "🛡" },
+          { id: "ai", label: "🤖 AI Copilot Rules", icon: "🤖" },
+          { id: "data", label: "📥 Data Import & Retention", icon: "📥" },
+          { id: "notifications", label: "🔔 Alerts & Notifications", icon: "🔔" },
+          { id: "security", label: "🔐 Security & Privacy", icon: "🔐" },
+          { id: "export", label: "💳 Export Deck Rules", icon: "💳" }
         ].map(t => (
           <button
             key={t.id}
@@ -62,52 +69,7 @@ export default function SettingsPage({ user, onUserChange, onBack }) {
 
       {/* Tab Contents */}
       <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color)", borderRadius: 12, padding: 24 }}>
-        {activeTab === "general" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Workspace Preferences</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Company Workspace Name</label>
-                <input
-                  type="text"
-                  value={user?.companyName || "Acme Enterprise"}
-                  onChange={(e) => onUserChange && onUserChange({ ...user, companyName: e.target.value })}
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-color)", fontSize: 13, background: "var(--bg-primary)" }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>User Email</label>
-                <input
-                  type="text"
-                  value={user?.email || "demo.executive@enterprise.com"}
-                  disabled
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-color)", fontSize: 13, background: "var(--bg-hover)", opacity: 0.8 }}
-                />
-              </div>
-            </div>
-
-            <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Default Interface Language</label>
-                <select style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-color)", fontSize: 13, background: "var(--bg-primary)" }}>
-                  <option>English (US) — Default</option>
-                  <option>Spanish (Español)</option>
-                  <option>French (Français)</option>
-                  <option>German (Deutsch)</option>
-                  <option>Japanese (日本語)</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Theme Appearance</label>
-                <select style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-color)", fontSize: 13, background: "var(--bg-primary)" }}>
-                  <option>Clean Executive Light</option>
-                  <option>Dark Midnight Analytics</option>
-                  <option>System Default</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeTab === "general" && <WorkspaceSettings />}
 
         {activeTab === "roles" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -159,82 +121,15 @@ export default function SettingsPage({ user, onUserChange, onBack }) {
           </div>
         )}
 
-        {activeTab === "ai" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>AI Copilot Engine Preferences</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Response Tone & Style</label>
-                <select style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-color)", fontSize: 13, background: "var(--bg-primary)" }}>
-                  <option>Executive Consulting (Clear, Concise, Actionable) — Default</option>
-                  <option>Technical Analytical (Detailed Stats & Formulae)</option>
-                  <option>SaaS Metric Focused (Growth & Churn Emphasis)</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 12.5, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>Primary AI Reasoning Engine</label>
-                <select style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-color)", fontSize: 13, background: "var(--bg-primary)" }}>
-                  <option>Claude 3.5 Sonnet / Gemini Pro (Balanced High-Precision)</option>
-                  <option>Fast Local Deterministic Heuristics (Offline Capable)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeTab === "ai" && <CopilotSettings />}
 
-        {activeTab === "data" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Data Storage & Lineage Retention</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>🔒 Raw Data Lineage Protection</div>
-                <div style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  Original uploaded CSV/XLSX files are stored immutably as <strong>Version v1.0 Raw</strong>. All data cleaning transformations are saved as incremental non-destructive lineage versions (v1.1 Cleaned).
-                </div>
-              </div>
-              <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 16 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>⚡ Auto-Save Interval</div>
-                <div style={{ fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                  Interactive thread messages, EDA visualizations, and trained model parameters are automatically saved to your enterprise workspace account.
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeTab === "data" && <DataSettings />}
 
-        {activeTab === "security" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Security Compliance & Audit Trail</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, fontSize: 13, color: "var(--text-secondary)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: 8, padding: 12 }}>
-                <span style={{ fontSize: 18 }}>🔒</span>
-                <div>
-                  <strong style={{ color: "#10B981" }}>256-Bit AES Data Encryption</strong> — End-to-end transport and at-rest database storage encryption.
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(59, 130, 246, 0.05)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: 8, padding: 12 }}>
-                <span style={{ fontSize: 18 }}>🛡</span>
-                <div>
-                  <strong style={{ color: "#3B82F6" }}>Multi-Tenant Data Isolation Guard</strong> — All workspace tables strictly filtered by company_id.
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {activeTab === "notifications" && <NotificationSettings />}
 
-        {activeTab === "plan" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Subscription Tier & Usage Credits</h3>
-            <div style={{ background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)", color: "#FFFFFF", borderRadius: 12, padding: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "1px", color: "#F59E0B" }}>Current Subscription</div>
-                <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4 }}>Enterprise Pro Tier Active</div>
-                <div style={{ fontSize: 12.5, color: "#94A3B8", marginTop: 4 }}>Unlimited workspace tokens & 25-test security suite verification enabled.</div>
-              </div>
-              <span style={{ background: "#F59E0B", color: "#000", fontWeight: 800, padding: "6px 14px", borderRadius: 20, fontSize: 12 }}>PRO UNLOCKED</span>
-            </div>
-          </div>
-        )}
+        {activeTab === "security" && <SecuritySettings />}
+
+        {activeTab === "export" && <ExportSettings />}
       </div>
     </div>
   );

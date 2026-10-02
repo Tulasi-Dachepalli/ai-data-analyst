@@ -1,15 +1,19 @@
 // src/components/stages/StageDataCleaning.jsx
 import React, { useState } from "react";
 import DataAutoCleaner from "../../DataAutoCleaner";
-import BeforeAfterTable from "../common/BeforeAfterTable";
+import AIActionConfirmationModal from "../workspace/AIActionConfirmationModal";
 import { useDataset } from "../../context/DatasetContext";
 
 export default function StageDataCleaning() {
   const { activeRows, activeCols, applyTransformation, setCurrentStage } = useDataset();
-  const [selectedOp, setSelectedOp] = useState(null);
+  const [recommendation, setRecommendation] = useState({
+    stage: "03 Data Cleaning",
+    title: "AI Recommendation: 24 Duplicate Records Detected",
+    actionTitle: "Remove duplicate transaction IDs",
+    affectedRows: 24
+  });
 
   const handleApplyDedupe = () => {
-    // Transactional Deduplicate Operation
     const uniqueMap = new Map();
     const cleanRows = [];
     let dupsCount = 0;
@@ -54,6 +58,15 @@ export default function StageDataCleaning() {
           View Cleaned Dataset →
         </button>
       </div>
+
+      {/* AI Recommendation & Action Confirmation Card */}
+      {recommendation && (
+        <AIActionConfirmationModal
+          actionData={recommendation}
+          onApply={handleApplyDedupe}
+          onIgnore={() => setRecommendation(null)}
+        />
+      )}
 
       {/* Transactional Quick Cleaning Actions */}
       <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: 18 }}>

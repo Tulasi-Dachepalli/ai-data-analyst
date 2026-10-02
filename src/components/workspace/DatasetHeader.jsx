@@ -1,14 +1,18 @@
 // src/components/workspace/DatasetHeader.jsx
 import React, { useState } from "react";
 import ChangeHistoryDrawer from "./ChangeHistoryDrawer";
+import ProcessTimeline from "../investigation/ProcessTimeline";
+import DatasetImportCenter from "../import/DatasetImportCenter";
 import { useDataset } from "../../context/DatasetContext";
 
 export default function DatasetHeader() {
   const { currentVersion, activeDataset, activeRows, activeCols, history } = useDataset();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [processOpen, setProcessOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
-  const datasetName = currentVersion?.datasetName || activeDataset?.name || "Audit Operations Sample";
-  const versionTag = currentVersion?.version || "v1";
+  const datasetName = currentVersion?.datasetName || activeDataset?.name || "No Dataset Loaded";
+  const versionTag = currentVersion?.version || activeDataset?.currentVersion || "v1";
   const rowCount = activeRows.length;
   const colCount = activeCols.length;
   const changeCount = Math.max(0, history.length - 1);
@@ -63,8 +67,48 @@ export default function DatasetHeader() {
         </div>
       </div>
 
-      {/* Change History Trigger */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {/* Action Triggers */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => setImportOpen(true)}
+          style={{
+            background: "#2563EB",
+            color: "#FFFFFF",
+            border: "none",
+            borderRadius: 8,
+            padding: "8px 14px",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6
+          }}
+        >
+          <span>📤 Import New Dataset</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setProcessOpen(true)}
+          style={{
+            background: "var(--bg-primary, #F8FAFC)",
+            border: "1px solid var(--border-color, #CBD5E1)",
+            borderRadius: 8,
+            padding: "8px 14px",
+            fontSize: 12,
+            fontWeight: 700,
+            color: "var(--text-primary, #0F172A)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6
+          }}
+        >
+          <span>🧭 Process Timeline</span>
+        </button>
+
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
@@ -79,11 +123,8 @@ export default function DatasetHeader() {
             cursor: "pointer",
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            transition: "all 0.15s ease"
+            gap: 6
           }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = "#2563EB"}
-          onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border-color, #CBD5E1)"}
         >
           <span>📜 Change History</span>
           <span style={{ background: "#2563EB", color: "#FFF", borderRadius: "50%", width: 18, height: 18, fontSize: 10, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
@@ -92,6 +133,8 @@ export default function DatasetHeader() {
         </button>
 
         <ChangeHistoryDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} />
+        <ProcessTimeline isOpen={processOpen} onClose={() => setProcessOpen(false)} />
+        <DatasetImportCenter isOpen={importOpen} onClose={() => setImportOpen(false)} />
       </div>
     </div>
   );

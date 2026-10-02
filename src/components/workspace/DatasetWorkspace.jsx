@@ -11,6 +11,9 @@ import StageInsights from "../stages/StageInsights";
 import StageModeling from "../stages/StageModeling";
 import StageForecast from "../stages/StageForecast";
 import StageReport from "../stages/StageReport";
+import InvestigationDrawer from "./InvestigationDrawer";
+import AIUnderstandingPanel from "../activity/AIUnderstandingPanel";
+import ContextualIntelligenceRail from "../layout/ContextualIntelligenceRail";
 import { useDataset } from "../../context/DatasetContext";
 
 export default function DatasetWorkspace() {
@@ -32,15 +35,27 @@ export default function DatasetWorkspace() {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Dataset Header Bar */}
-      <DatasetHeader />
+    <div style={{ display: "flex", gap: 20, position: "relative" }}>
+      {/* Primary Workspace Main Content Area */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16, minWidth: 0, paddingRight: 280 }}>
+        {/* Dataset Header Bar */}
+        <DatasetHeader />
 
-      {/* 9-Stage Progress Stepper Header */}
-      <DatasetWorkspaceStepper />
+        {/* 9-Stage Progress Stepper Header */}
+        <DatasetWorkspaceStepper />
 
-      {/* Active Stage Content Slot */}
-      {renderStageContent()}
+        {/* AI Understanding Panel */}
+        <AIUnderstandingPanel />
+
+        {/* Active Stage Content Slot */}
+        {renderStageContent()}
+
+        {/* Universal Investigation Drawer */}
+        <InvestigationDrawer />
+      </div>
+
+      {/* Right-Side Persistent Contextual Intelligence Rail */}
+      <ContextualIntelligenceRail />
     </div>
   );
 }
