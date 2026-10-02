@@ -5,6 +5,7 @@ import { ROLE_CONFIGS, getRoleConfig } from "../config/roleConfigs";
 const RoleContext = createContext(null);
 
 const DEFAULT_USER = {
+  fullName: "Tulasi",
   email: "demo.executive@enterprise.com",
   role: "ceo",
   companyName: "Acme Enterprise",

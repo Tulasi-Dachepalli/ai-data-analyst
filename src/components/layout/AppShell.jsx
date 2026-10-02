@@ -6,6 +6,8 @@ import { RoleProvider } from "../../context/RoleContext";
 import { DatasetProvider } from "../../context/DatasetContext";
 import { CopilotProvider } from "../../context/CopilotContext";
 
+import OnboardingWizardModal from "../onboarding/OnboardingWizardModal";
+
 export function AppShellContent({ user, currentView, setView, onLogout, onUserChange, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -14,6 +16,21 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem("aida_theme") === "dark";
   });
+
+  // First-time onboarding guide state
+  const [isGuideOpen, setIsGuideOpen] = useState(() => {
+    try {
+      return localStorage.getItem("aida_onboarding_dismissed") !== "true";
+    } catch (e) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    const handleOpenGuide = () => setIsGuideOpen(true);
+    window.addEventListener("open-ai-guide", handleOpenGuide);
+    return () => window.removeEventListener("open-ai-guide", handleOpenGuide);
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
@@ -84,6 +101,7 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
           setSidebarOpen={setSidebarOpen}
           onLogout={onLogout}
           setView={setView}
+          onOpenGuide={() => setIsGuideOpen(true)}
         />
 
         {/* View content slot */}
@@ -96,6 +114,44 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
           {children}
         </div>
       </div>
+
+      {/* Persistent Floating Copilot Guide Button */}
+      <button
+        onClick={() => setIsGuideOpen(true)}
+        title="Open AI Copilot Guide"
+        style={{
+          position: "fixed",
+          bottom: 24,
+          right: 24,
+          zIndex: 90,
+          background: "linear-gradient(135deg, #0F172A 0%, #2563EB 100%)",
+          color: "#FFFFFF",
+          border: "1px solid rgba(255, 255, 255, 0.2)",
+          borderRadius: 30,
+          padding: "10px 18px",
+          fontSize: 13,
+          fontWeight: 700,
+          boxShadow: "0 8px 24px rgba(37, 99, 235, 0.35)",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          transition: "transform 0.2s ease, box-shadow 0.2s ease"
+        }}
+        onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+        onMouseLeave={e => e.currentTarget.style.transform = "translateY(0px)"}
+      >
+        <span style={{ fontSize: 16 }}>✨</span>
+        <span>Copilot Guide</span>
+      </button>
+
+      {/* Onboarding Wizard Modal */}
+      <OnboardingWizardModal
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+        onUploadClick={() => window.dispatchEvent(new Event("trigger-file-upload"))}
+        onGoogleSheetsClick={() => window.dispatchEvent(new Event("trigger-google-sheets"))}
+      />
     </div>
   );
 }

@@ -4995,6 +4995,21 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     }
   });
 
+  useEffect(() => {
+    const handleTriggerUpload = () => {
+      if (fileInputRef.current) fileInputRef.current.click();
+    };
+    const handleTriggerSheets = () => {
+      setShowGoogleSheetsModal(true);
+    };
+    window.addEventListener("trigger-file-upload", handleTriggerUpload);
+    window.addEventListener("trigger-google-sheets", handleTriggerSheets);
+    return () => {
+      window.removeEventListener("trigger-file-upload", handleTriggerUpload);
+      window.removeEventListener("trigger-google-sheets", handleTriggerSheets);
+    };
+  }, []);
+
   const handleCheckoutSuccess = async (newTier) => {
     try {
       await api.upgradeSubscription(newTier);
@@ -6320,28 +6335,282 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
               </div>
             )}
             {!active && currentView !== "health" && currentView !== "whatif" && currentView !== "exec-reports" && currentView !== "alerts" && (
-              <div style={{ textAlign: "center", color: "var(--text-secondary)", fontSize: 14, marginTop: 60, lineHeight: 1.7, display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>📁</div>
-                <div style={{ fontSize: 20, color: "var(--text-primary)", fontWeight: 700, marginBottom: 8 }}>AI Business & Science Workspace</div>
-                <div style={{ maxWidth: 440, marginBottom: 20 }}>
-                  Upload any CSV or Excel dataset to build automated BI dashboards, statistical EDA, ML models, and grounded Copilot insights.
+              <div style={{
+                maxWidth: 920,
+                margin: "40px auto 60px auto",
+                padding: "0 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 24,
+                animation: "modalFadeIn 0.3s ease-out"
+              }}>
+                {/* Hero Greeting Box */}
+                <div style={{
+                  background: "linear-gradient(135deg, #0F172A 0%, #1E293B 100%)",
+                  borderRadius: 20,
+                  padding: "36px 40px",
+                  color: "#FFFFFF",
+                  boxShadow: "0 20px 40px -15px rgba(15, 23, 42, 0.25)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                  gap: 20,
+                  border: "1px solid rgba(255, 255, 255, 0.1)"
+                }}>
+                  <div style={{ maxWidth: 540 }}>
+                    <div style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: "rgba(56, 189, 248, 0.15)",
+                      border: "1px solid rgba(56, 189, 248, 0.3)",
+                      color: "#38BDF8",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                      marginBottom: 12
+                    }}>
+                      ✨ Enterprise AI Business Copilot
+                    </div>
+                    <h1 style={{
+                      fontSize: 28,
+                      fontWeight: 800,
+                      margin: "0 0 10px 0",
+                      fontFamily: "var(--font-heading, 'Manrope', sans-serif)",
+                      letterSpacing: "-0.02em"
+                    }}>
+                      Good day, {user?.fullName || (user?.email ? user.email.split("@")[0].replace(/[._]/g, " ") : "Tulasi")} 👋
+                    </h1>
+                    <p style={{
+                      fontSize: 14.5,
+                      color: "#94A3B8",
+                      margin: 0,
+                      lineHeight: 1.6
+                    }}>
+                      You don't need to know data science. Upload your business data, and your AI Copilot will automatically discover KPIs, audit data quality, answer questions, and generate executive reports.
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <button
+                      onClick={() => window.dispatchEvent(new Event("open-ai-guide"))}
+                      style={{
+                        background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+                        color: "#FFFFFF",
+                        border: "none",
+                        borderRadius: 12,
+                        padding: "12px 24px",
+                        fontSize: 14,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        boxShadow: "0 4px 14px rgba(37, 99, 235, 0.4)",
+                        transition: "transform 0.15s ease"
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                      onMouseLeave={e => e.currentTarget.style.transform = "translateY(0px)"}
+                    >
+                      <span>✨</span>
+                      <span>Show Me How It Works</span>
+                    </button>
+                    <span style={{ fontSize: 11.5, color: "#64748B", textAlign: "center" }}>
+                      5-Step Interactive Guide
+                    </span>
+                  </div>
                 </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    background: "#2563EB",
-                    color: "#FFF",
-                    border: "none",
-                    borderRadius: 8,
-                    padding: "10px 22px",
-                    fontSize: 13.5,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)"
-                  }}
-                >
-                  + Upload Dataset File
-                </button>
+
+                {/* 3 Action Cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+                  {/* Card 1: Upload File */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      background: "var(--bg-secondary, #FFFFFF)",
+                      border: "2px dashed #CBD5E1",
+                      borderRadius: 16,
+                      padding: 24,
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "all 0.2s ease",
+                      boxShadow: "var(--shadow-sm)"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = "#2563EB";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = "#CBD5E1";
+                      e.currentTarget.style.transform = "translateY(0px)";
+                      e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                    }}
+                  >
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>📁</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary, #0F172A)", marginBottom: 4 }}>
+                      Upload My Data
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-secondary, #64748B)", lineHeight: 1.5, marginBottom: 16 }}>
+                      Drag & drop or browse CSV, Excel (.xlsx), or JSON. Sealed as immutable v1 Raw.
+                    </div>
+                    <button
+                      style={{
+                        background: "#2563EB",
+                        color: "#FFFFFF",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "8px 18px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        pointerEvents: "none"
+                      }}
+                    >
+                      + Browse Computer
+                    </button>
+                  </div>
+
+                  {/* Card 2: Google Sheets */}
+                  <div
+                    onClick={() => setShowGoogleSheetsModal(true)}
+                    style={{
+                      background: "var(--bg-secondary, #FFFFFF)",
+                      border: "1px solid var(--border-color, #E2E8F0)",
+                      borderRadius: 16,
+                      padding: 24,
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "all 0.2s ease",
+                      boxShadow: "var(--shadow-sm)"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = "#10B981";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = "var(--border-color, #E2E8F0)";
+                      e.currentTarget.style.transform = "translateY(0px)";
+                      e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                    }}
+                  >
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>📊</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary, #0F172A)", marginBottom: 4 }}>
+                      Connect Google Sheets
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-secondary, #64748B)", lineHeight: 1.5, marginBottom: 16 }}>
+                      Paste a live Google Sheet sharing link for synchronized automated BI dashboards.
+                    </div>
+                    <button
+                      style={{
+                        background: "#059669",
+                        color: "#FFFFFF",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "8px 18px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        pointerEvents: "none"
+                      }}
+                    >
+                      Connect Sheet →
+                    </button>
+                  </div>
+
+                  {/* Card 3: AI Guide Tour */}
+                  <div
+                    onClick={() => window.dispatchEvent(new Event("open-ai-guide"))}
+                    style={{
+                      background: "var(--bg-secondary, #FFFFFF)",
+                      border: "1px solid var(--border-color, #E2E8F0)",
+                      borderRadius: 16,
+                      padding: 24,
+                      cursor: "pointer",
+                      textAlign: "center",
+                      transition: "all 0.2s ease",
+                      boxShadow: "var(--shadow-sm)"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = "#8B5CF6";
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "var(--shadow-md)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = "var(--border-color, #E2E8F0)";
+                      e.currentTarget.style.transform = "translateY(0px)";
+                      e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+                    }}
+                  >
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>🤖</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary, #0F172A)", marginBottom: 4 }}>
+                      First Time Here?
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-secondary, #64748B)", lineHeight: 1.5, marginBottom: 16 }}>
+                      Take our guided walkthrough to see how Copilot extracts insights and creates executive reports.
+                    </div>
+                    <button
+                      style={{
+                        background: "#7C3AED",
+                        color: "#FFFFFF",
+                        border: "none",
+                        borderRadius: 8,
+                        padding: "8px 18px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        pointerEvents: "none"
+                      }}
+                    >
+                      ✨ Open AI Guide
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Value Pillars */}
+                <div style={{
+                  background: "var(--bg-secondary, #FFFFFF)",
+                  border: "1px solid var(--border-color, #E2E8F0)",
+                  borderRadius: 16,
+                  padding: "20px 24px",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                  gap: 16
+                }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 22 }}>⚡</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>Auto KPI Discovery</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>Revenue, margins, volume trends computed instantly.</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 22 }}>🎯</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>0-100 Quality Health</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>Automated anomaly detection, duplicate scan & diffs.</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 22 }}>💬</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>Plain-English Copilot</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>Ask questions naturally with verified evidence chips.</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 22 }}>📥</span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary, #0F172A)" }}>Save to PC & Email</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-muted, #94A3B8)", marginTop: 2 }}>1-Click PDF to PC & automated email dispatch.</div>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
             {active && (active.messages || []).map((m, i) => {

@@ -12,6 +12,7 @@ import ReportsPage from "./ReportsPage";
 import * as api from "./api";
 
 const DEFAULT_USER = {
+  fullName: "Tulasi",
   email: "demo.executive@enterprise.com",
   role: "ceo",
   companyName: "Acme Enterprise",

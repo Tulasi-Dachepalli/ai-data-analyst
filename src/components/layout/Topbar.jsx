@@ -13,7 +13,7 @@ import { useSearch } from "../../context/SearchContext";
 import { useDecision } from "../../context/DecisionContext";
 import { useCollaboration } from "../../context/CollaborationContext";
 
-export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, onLogout, setView }) {
+export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, onLogout, setView, onOpenGuide }) {
   const { user } = useRole();
   const { openSearch } = useSearch();
   const { pendingDecisions, openInbox } = useDecision();
@@ -112,6 +112,28 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
               {pendingDecisions.length}
             </span>
           )}
+        </button>
+
+        {/* AI Guide Helper Button */}
+        <button
+          onClick={onOpenGuide || (() => window.dispatchEvent(new Event("open-ai-guide")))}
+          title="Open First-Time AI Guide"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "5px 12px",
+            borderRadius: 8,
+            background: "linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)",
+            border: "1px solid #BFDBFE",
+            fontSize: 12,
+            fontWeight: 700,
+            color: "#1E40AF",
+            cursor: "pointer"
+          }}
+        >
+          <span>✨</span>
+          <span>Copilot Guide</span>
         </button>
 
         {/* Workspace Share Button */}
