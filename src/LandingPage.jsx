@@ -6,16 +6,29 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
   const [walkthroughStep, setWalkthroughStep] = useState(1);
   const [activeRoleTab, setActiveRoleTab] = useState("ceo");
 
-  // Track anonymous visitors for Admin SOC analytics
+  // Track real unique visitors and sessions for Admin analytics
   useEffect(() => {
     try {
-      const current = parseInt(localStorage.getItem("aida_visitor_count") || "142", 10);
+      // 1. Unique Visitor ID (persisted per browser device)
+      let visitorId = localStorage.getItem("aida_unique_visitor_id");
+      const isNewVisitor = !visitorId;
+      if (isNewVisitor) {
+        visitorId = "vis_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
+        localStorage.setItem("aida_unique_visitor_id", visitorId);
+        const uniqueCount = parseInt(localStorage.getItem("aida_unique_visitors_count") || "0", 10);
+        localStorage.setItem("aida_unique_visitors_count", String(uniqueCount + 1));
+      }
+
+      // 2. Browser Session Counter
       const isNewSession = !sessionStorage.getItem("aida_session_counted");
       if (isNewSession) {
-        localStorage.setItem("aida_visitor_count", String(current + 1));
+        const sessionCount = parseInt(localStorage.getItem("aida_visit_sessions_count") || "0", 10);
+        localStorage.setItem("aida_visit_sessions_count", String(sessionCount + 1));
         sessionStorage.setItem("aida_session_counted", "true");
       }
-    } catch {}
+    } catch (e) {
+      console.warn("Analytics counter notice:", e);
+    }
   }, []);
 
   const roles = [
@@ -451,8 +464,8 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
               },
               {
                 icon: "🛡️",
-                title: "Enterprise Security & Privacy",
-                desc: "Your raw files are stored immutable and read-only with SHA-256 hashes. Built with OWASP Top 10:2025 defenses, tenant isolation, and zero sample data leakage."
+                title: "Role-Based Access & Dataset Integrity",
+                desc: "Role-based access controls and dataset integrity checks. Raw files are stored immutable with SHA-256 checksums, tenant isolation, and zero sample data leakage."
               }
             ].map((b, i) => (
               <div key={i} style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 14, padding: "22px 20px", display: "flex", flexDirection: "column", gap: 10 }}>

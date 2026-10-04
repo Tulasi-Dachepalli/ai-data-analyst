@@ -131,7 +131,7 @@ export default function AdminSecurityCenter({ currentUserEmail }) {
         <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>Zero-Training LLM Binding</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#166534", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-            <span>📜</span> <span>ISO 27001 Terms</span>
+            <span>📜</span> <span>Commercial API Terms</span>
           </div>
           <div style={{ fontSize: 11.5, color: "#475569", marginTop: 4 }}>
             Customer data strictly excluded from model retraining

@@ -151,14 +151,44 @@ export default function App() {
     );
   }
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.email === "tulasidachepally9393@gmail.com";
   const showVerifyBanner = false; // Email verification removed
 
   const isMisAnalyst = user?.role === "mis_analyst";
   const isDataAnalyst = user?.role === "data_analyst";
 
   const renderContent = () => {
-    if (isMisAnalyst && ["reports", "clustering", "forecast", "ml", "team", "admin-members", "admin-audit"].includes(view)) {
+    // 1. Strict Administrator Authorization Guard
+    if (["team", "admin-members", "admin-audit", "security-center"].includes(view)) {
+      if (!isAdmin) {
+        return (
+          <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: 40, textAlign: "center", margin: "40px auto", maxWidth: 640 }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary, #0F172A)", margin: "0 0 8px 0" }}>
+              Access Restricted — Administrator Authorization Required
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--text-secondary, #475569)", margin: "0 0 20px 0", lineHeight: 1.6 }}>
+              The Team User Directory, Security Controls, and Audit Logs are strictly restricted to Workspace Administrators. Your current account ({user?.email || "User"}) does not possess admin privileges.
+            </p>
+            <button
+              onClick={() => setView("dashboard")}
+              style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
+            >
+              Return to BI Workspace
+            </button>
+          </div>
+        );
+      }
+      return (
+        <AdminPage
+          currentUserEmail={user?.email}
+          onBack={() => setView("dashboard")}
+          initialTab={view === "admin-audit" ? "audit" : (view === "security-center" ? "security" : "dashboard")}
+        />
+      );
+    }
+
+    if (isMisAnalyst && ["reports", "clustering", "forecast", "ml"].includes(view)) {
       return (
         <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: 40, textAlign: "center", margin: "40px auto", maxWidth: 640 }}>
           <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
@@ -166,7 +196,7 @@ export default function App() {
             Access Restricted — MIS Analyst Role
           </h3>
           <p style={{ fontSize: 13, color: "var(--text-secondary, #475569)", margin: "0 0 20px 0", lineHeight: 1.6 }}>
-            Machine Learning model training, unsupervised clustering, AI time-series forecasting, and Team Admin management are restricted for the MIS Analyst role.
+            Machine Learning model training, unsupervised clustering, and AI time-series forecasting are restricted for the MIS Analyst role.
           </p>
           <button
             onClick={() => setView("dashboard")}
@@ -178,32 +208,6 @@ export default function App() {
       );
     }
 
-    if (isDataAnalyst && ["team", "admin-members", "admin-audit"].includes(view)) {
-      return (
-        <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: 12, padding: 40, textAlign: "center", margin: "40px auto", maxWidth: 640 }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🔒</div>
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary, #0F172A)", margin: "0 0 8px 0" }}>
-            Access Restricted — Data Analyst Role
-          </h3>
-          <p style={{ fontSize: 13, color: "var(--text-secondary, #475569)", margin: "0 0 20px 0", lineHeight: 1.6 }}>
-            Team Administration, user invitation, and member role management are restricted to System Admins.
-          </p>
-          <button
-            onClick={() => setView("dashboard")}
-            style={{ background: "var(--accent-color, #0F172A)", color: "#FFF", border: "none", borderRadius: 8, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer" }}
-          >
-            Return to Executive BI Workspace
-          </button>
-        </div>
-      );
-    }
-
-    if ((view === "admin-members" || view === "team") && isAdmin) {
-      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="dashboard" />;
-    }
-    if (view === "admin-audit" && isAdmin) {
-      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="audit" />;
-    }
     if (view === "admin-security" || view === "security") {
       return <TrustPage onBack={() => setView("dashboard")} />;
     }
@@ -212,10 +216,6 @@ export default function App() {
     }
     if (view === "trust") {
       return <TrustPage onBack={() => setView("dashboard")} />;
-    }
-
-    if (view === "team") {
-      return <AdminPage currentUserEmail={user?.email} onBack={() => setView("dashboard")} initialTab="dashboard" />;
     }
 
     // All workspace navigation views (overview, datasets, ai-analyst, dashboards, insights, reports)

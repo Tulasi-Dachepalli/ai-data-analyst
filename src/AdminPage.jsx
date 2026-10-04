@@ -44,11 +44,17 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [visitorCount, setVisitorCount] = useState(() => {
+  const [visitorStats, setVisitorStats] = useState(() => {
     try {
-      return parseInt(localStorage.getItem("aida_visitor_count") || "142", 10);
+      const unique = parseInt(localStorage.getItem("aida_unique_visitors_count") || "0", 10);
+      const sessions = parseInt(localStorage.getItem("aida_visit_sessions_count") || "0", 10);
+      const legacy = parseInt(localStorage.getItem("aida_visitor_count") || "0", 10);
+      return {
+        uniqueVisitors: Math.max(unique, legacy > 0 ? 1 : 0),
+        pageSessions: Math.max(sessions, legacy)
+      };
     } catch {
-      return 142;
+      return { uniqueVisitors: 0, pageSessions: 0 };
     }
   });
 
@@ -301,9 +307,11 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                 <div style={card}>
                   <div style={label}>Landing Page Visitors</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: "#2563EB", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>👁️</span> <span>{visitorCount.toLocaleString()}</span>
+                    <span>👁️</span> <span>{visitorStats.uniqueVisitors.toLocaleString()}</span>
                   </div>
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Anonymous visitor traffic</div>
+                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                    Unique visitors ({visitorStats.pageSessions.toLocaleString()} browsing sessions)
+                  </div>
                 </div>
                 <div style={card}>
                   <div style={label}>Registered Users</div>

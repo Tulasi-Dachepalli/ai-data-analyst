@@ -111,6 +111,48 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
           boxSizing: "border-box",
           flex: 1
         }}>
+          {user?.isDemo && (
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+              background: "#FFFBEB",
+              border: "1px solid #FCD34D",
+              borderRadius: 8,
+              padding: "10px 16px",
+              marginBottom: 18,
+              fontSize: 13,
+              color: "#92400E"
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 500 }}>
+                <span style={{ fontSize: 16 }}>🟡</span>
+                <span>
+                  <strong>Demo Workspace Active:</strong> You are browsing in an isolated Guest Demo mode with mock data. Real business files remain private.
+                </span>
+              </div>
+              <button
+                onClick={onLogout}
+                style={{
+                  background: "#92400E",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "5px 12px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4
+                }}
+              >
+                <span>Exit Demo</span>
+                <span>➔</span>
+              </button>
+            </div>
+          )}
           {children}
         </div>
       </div>
