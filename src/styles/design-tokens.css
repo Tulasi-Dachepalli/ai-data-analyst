@@ -78,16 +78,14 @@ h1, h2, h3, h4, .brand-font, .heading-font {
 /* Responsive Dashboard Layout */
 .aida-dashboard-container {
   display: flex;
-  height: 700px;
-  max-width: 1200px;
+  min-height: calc(100vh - 120px);
+  width: 100%;
   margin: 0 auto;
   border-radius: 16px;
-  overflow: hidden;
   font-family: var(--font-sans);
   border: 1px solid var(--border-color);
   background: var(--bg-secondary);
   box-shadow: var(--shadow-md);
-  width: 100%;
   box-sizing: border-box;
   transition: all 0.2s ease-in-out;
 }

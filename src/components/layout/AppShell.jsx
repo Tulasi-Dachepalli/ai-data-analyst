@@ -14,7 +14,7 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
   
   // Theme state persisted to localStorage
   const [darkMode, setDarkMode] = useState(() => {
-    return localStorage.getItem("aida_theme") === "dark";
+    return localStorage.getItem("aida_theme") === "dark" || localStorage.getItem("aida_chart_theme") === "midnight";
   });
 
   // First-time onboarding guide state
@@ -40,6 +40,24 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const isDark = localStorage.getItem("aida_theme") === "dark" || localStorage.getItem("aida_chart_theme") === "midnight";
+      setDarkMode(isDark);
+      if (isDark) {
+        document.documentElement.classList.add("theme-dark");
+      } else {
+        document.documentElement.classList.remove("theme-dark");
+      }
+    };
+    window.addEventListener("aida_theme_changed", handleThemeChange);
+    window.addEventListener("storage", handleThemeChange);
+    return () => {
+      window.removeEventListener("aida_theme_changed", handleThemeChange);
+      window.removeEventListener("storage", handleThemeChange);
+    };
   }, []);
 
   useEffect(() => {

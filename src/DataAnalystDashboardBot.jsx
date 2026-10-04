@@ -613,7 +613,44 @@ function parseFile(file) {
       };
       reader.onerror = reject;
       reader.readAsText(file);
-    } else if (["txt", "md", "log", "xml", "html"].includes(ext)) {
+    } else if (ext === "html") {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(e.target.result, "text/html");
+          const tables = doc.querySelectorAll("table");
+          if (tables && tables.length > 0) {
+            for (let t = 0; t < tables.length; t++) {
+              const trs = Array.from(tables[t].querySelectorAll("tr"));
+              if (trs.length >= 2) {
+                const headerEls = Array.from(trs[0].querySelectorAll("th, td"));
+                const cols = headerEls.map((h, i) => (h.textContent || "").trim() || `Column_${i + 1}`);
+                const rows = [];
+                for (let r = 1; r < trs.length; r++) {
+                  const cells = Array.from(trs[r].querySelectorAll("td, th"));
+                  if (!cells.length) continue;
+                  const row = {};
+                  cols.forEach((col, idx) => {
+                    row[col] = cells[idx] ? (cells[idx].textContent || "").trim() : "";
+                  });
+                  rows.push(row);
+                }
+                if (rows.length > 0) {
+                  return resolve({ rows, columns: cols });
+                }
+              }
+            }
+          }
+          // No usable table found in HTML document
+          resolve({ rows: [], columns: [], isRawText: true, rawText: e.target.result, noTableDetected: true });
+        } catch (err) {
+          resolve({ rows: [], columns: [], isRawText: true, rawText: e.target.result, noTableDetected: true });
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsText(file);
+    } else if (["txt", "md", "log", "xml"].includes(ext)) {
       const reader = new FileReader();
       reader.onload = (e) => {
         resolve({ rows: [], columns: [], isRawText: true, rawText: e.target.result });
@@ -6460,8 +6497,63 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     <DatasetWorkspace />
                   )}
                 </>
-            {/* Active Dataset Status Banner */}
-            {active && (
+            {/* Active Dataset Status or Actionable Empty State */}
+            {active && ((active.rows || []).length === 0 ? (
+              <div style={{
+                background: "var(--bg-secondary, #FFFFFF)",
+                border: "1px solid var(--border-color, #E2E8F0)",
+                borderRadius: 16,
+                padding: "48px 32px",
+                textAlign: "center",
+                maxWidth: 680,
+                margin: "24px auto",
+                boxShadow: "var(--shadow-sm)"
+              }}>
+                <div style={{ fontSize: 44, marginBottom: 14 }}>📂</div>
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary, #0F172A)", margin: "0 0 10px 0" }}>
+                  No usable table was detected in {active.name || "this file"}.
+                </h3>
+                <p style={{ fontSize: 13.5, color: "var(--text-secondary, #64748B)", maxWidth: 500, margin: "0 auto 24px auto", lineHeight: 1.6 }}>
+                  Upload a CSV/Excel file, or select a table if HTML import is supported. Quality displays as <strong>Not assessed</strong>, and analysis actions remain disabled until parsing succeeds.
+                </p>
+                <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      background: "#2563EB",
+                      color: "#FFF",
+                      border: "none",
+                      borderRadius: 8,
+                      padding: "11px 22px",
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      boxShadow: "0 4px 12px rgba(37,99,235,0.25)"
+                    }}
+                  >
+                    <span>⬆</span> Upload Dataset
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      background: "var(--bg-primary, #F8FAFC)",
+                      color: "var(--text-primary, #0F172A)",
+                      border: "1px solid var(--border-color, #CBD5E1)",
+                      borderRadius: 8,
+                      padding: "11px 20px",
+                      fontSize: 13.5,
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    Choose Another File
+                  </button>
+                </div>
+              </div>
+            ) : (
               <div style={{
                 background: active.isDemo ? "#FFFBEB" : "var(--bg-secondary, #FFFFFF)",
                 border: `1px solid ${active.isDemo ? "#FCD34D" : "var(--border-color, #E2E8F0)"}`,
@@ -6489,49 +6581,19 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   </div>
                   <div style={{ fontSize: 13, color: "var(--text-secondary, #64748B)", marginTop: 2 }}>
                     {(active.rows || []).length.toLocaleString()} rows • {(active.columns || []).length} columns
-                    {(active.rows || []).length === 0 && (
-                      <span style={{ color: "#DC2626", fontWeight: 600, marginLeft: 8 }}>
-                        — No tabular data was detected. Upload a supported dataset to continue.
-                      </span>
-                    )}
                   </div>
                 </div>
                 <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-                  {(active.rows || []).length > 0 ? (
-                    <>
-                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                        <span>✓</span> Data received
-                      </span>
-                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                        <span>✓</span> Quality checked
-                      </span>
-                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                        <span>✓</span> AI analysis ready
-                      </span>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ color: "#D97706", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                        <span>⚠️</span> No tabular data detected
-                      </span>
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        style={{
-                          background: "#2563EB",
-                          color: "#FFF",
-                          border: "none",
-                          borderRadius: 8,
-                          padding: "6px 14px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: "pointer"
-                        }}
-                      >
-                        ＋ Upload Supported Dataset (.csv / .xlsx)
-                      </button>
-                    </>
-                  )}
-                  {active.isDemo && (active.rows || []).length > 0 && (
+                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>✓</span> Data received
+                  </span>
+                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>✓</span> Quality checked
+                  </span>
+                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>✓</span> AI analysis ready
+                  </span>
+                  {active.isDemo && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       style={{
@@ -6550,26 +6612,26 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   )}
                 </div>
               </div>
-            )}
+            ))}
 
-            {/* Workspace Command Center & AI 4-Area Decision Center (Rendered ONLY when data is active) */}
-            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && (
+            {/* Workspace Command Center & AI 4-Area Decision Center (Rendered ONLY when rows > 0) */}
+            {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && (
               <div style={{ display: "flex", flexDirection: "column", gap: 24, marginBottom: 24 }}>
                 <WorkspaceCommandCenter setView={setView} />
                 <AIDecisionCenter setView={setView} />
               </div>
             )}
             {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
-            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
+            {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
               <ExecutiveCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
-            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "hr" && (
+            {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "hr" && (
               <HrCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
-            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "recruiter" && (
+            {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "recruiter" && (
               <RecruitmentCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
-            {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
+            {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
               <FinanceCommandCenter onAskQuestion={(q) => handleSend(q)} />
             )}
             {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "data_scientist" && (
@@ -7102,7 +7164,8 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoGrow(e); }}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder={active ? "Ask anything about your dataset (e.g. 'Predict Q4 revenue', 'Find anomalies')..." : "Upload a file to begin, then ask away..."}
+                placeholder={(active && (active.rows || []).length > 0) ? "Ask anything about your dataset (e.g. 'Predict Q4 revenue', 'Find anomalies')..." : "Upload a tabular dataset (.csv, .xlsx) to begin analysis..."}
+                disabled={!active || (active.rows || []).length === 0}
                 rows={1}
                 style={{
                   flex: 1,
@@ -7115,7 +7178,8 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   padding: "6px 0",
                   fontFamily: "inherit",
                   maxHeight: 140,
-                  color: "var(--text-primary, #0F172A)"
+                  color: "var(--text-primary, #0F172A)",
+                  opacity: (!active || (active.rows || []).length === 0) ? 0.6 : 1
                 }}
               />
 
@@ -7126,7 +7190,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   e.stopPropagation();
                   handleSend();
                 }}
-                disabled={!input.trim()}
+                disabled={!input.trim() || !active || (active.rows || []).length === 0}
                 style={{
                   width: 34,
                   height: 34,
