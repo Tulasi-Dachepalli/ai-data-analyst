@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import * as api from "./api";
+import AdminSecurityCenter from "./components/admin/AdminSecurityCenter";
 
 const card = { background: "#fff", border: "1px solid #E4E0D8", borderRadius: 10, padding: 16 };
 const label = { fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: "#8A8580" };
@@ -263,8 +264,9 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
       <div style={{ display: "flex", gap: 6, borderBottom: "1px solid #EAE7E0", marginBottom: 20 }}>
         {[
           { id: "dashboard", label: "📊 Overview" },
+          { id: "security", label: "🛡️ Security & Controls" },
           { id: "invites", label: "✉️ Invites" },
-          { id: "audit", label: "🛡️ Audit Trail" },
+          { id: "audit", label: "📜 Audit Trail" },
           { id: "danger", label: "⚠️ Danger Zone" }
         ].map(t => (
           <button key={t.id} onClick={() => setActiveTab(t.id)}
@@ -680,6 +682,11 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                 </table>
               </div>
             </>
+          )}
+
+          {/* SECURITY & SOC TAB */}
+          {activeTab === "security" && (
+            <AdminSecurityCenter currentUserEmail={currentUserEmail} />
           )}
 
           {/* INVITES TAB */}

@@ -61,6 +61,8 @@ import CommentsPanel from "./components/collaboration/CommentsPanel";
 import DatasetWorkspace from "./components/workspace/DatasetWorkspace";
 import PowerBiDashboard from "./components/dashboard/PowerBiDashboard";
 import ExplainableErrorCard from "./components/common/ExplainableErrorCard";
+import BeginnerModePanel from "./components/beginner/BeginnerModePanel";
+import DataPrivacyPreviewModal from "./components/privacy/DataPrivacyPreviewModal";
 import { explainErrorForCopilot, createExplainableError, ERROR_CATEGORIES } from "./utils/errorExplainer.js";
 import { useDataset } from "./context/DatasetContext";
 import { getRoleConfig } from "./config/roleConfigs";
@@ -1063,6 +1065,17 @@ function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slice
   const [sortOrder, setSortOrder] = useState("asc");
   const [isExpanded, setIsExpanded] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isBeginnerMode, setIsBeginnerMode] = useState(() => {
+    return localStorage.getItem("aida_user_mode") !== "pro";
+  });
+  const [privacyModalOpen, setPrivacyModalOpen] = useState(false);
+  const [privacyRules, setPrivacyRules] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("aida_privacy_rules") || "{}");
+    } catch {
+      return {};
+    }
+  });
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
@@ -2108,7 +2121,53 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
             )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            {/* Beginner Mode Toggle */}
+            <button
+              onClick={() => {
+                const next = !isBeginnerMode;
+                setIsBeginnerMode(next);
+                localStorage.setItem("aida_user_mode", next ? "beginner" : "pro");
+              }}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: isBeginnerMode ? "#047857" : "var(--text-secondary, #475569)",
+                background: isBeginnerMode ? "#ECFDF5" : "var(--bg-primary)",
+                border: isBeginnerMode ? "1px solid #86EFAC" : "1px solid var(--border-color)",
+                borderRadius: 6,
+                padding: "4px 10px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5
+              }}
+            >
+              <span>🌱</span>
+              <span>{isBeginnerMode ? "Beginner Mode: ON" : "Pro Mode"}</span>
+            </button>
+
+            {/* Data Privacy & PII Scanner */}
+            <button
+              onClick={() => setPrivacyModalOpen(true)}
+              style={{
+                fontSize: 11.5,
+                fontWeight: 700,
+                color: Object.keys(privacyRules).filter(k => privacyRules[k] !== "keep").length > 0 ? "#1E40AF" : "var(--text-secondary, #475569)",
+                background: Object.keys(privacyRules).filter(k => privacyRules[k] !== "keep").length > 0 ? "#EFF6FF" : "var(--bg-primary)",
+                border: Object.keys(privacyRules).filter(k => privacyRules[k] !== "keep").length > 0 ? "1px solid #BFDBFE" : "1px solid var(--border-color)",
+                borderRadius: 6,
+                padding: "4px 10px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5
+              }}
+            >
+              <span>🛡️</span>
+              <span>Data Privacy {Object.keys(privacyRules).filter(k => privacyRules[k] !== "keep").length > 0 ? `(${Object.keys(privacyRules).filter(k => privacyRules[k] !== "keep").length} Masked)` : ""}</span>
+            </button>
+
             <button
               onClick={toggleFullScreen}
               style={{
@@ -2172,6 +2231,29 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
           })}
         </div>
       </div>
+
+      {/* Beginner Mode Guided Journey Panel */}
+      {isBeginnerMode && (
+        <BeginnerModePanel
+          onOpenPrivacy={() => setPrivacyModalOpen(true)}
+          onOpenHealth={() => setActiveTab("cleaning")}
+          onAskCopilot={(q) => {
+            if (typeof window !== "undefined" && window.aidaAskQuestion) {
+              window.aidaAskQuestion(q);
+            }
+          }}
+          onExportReport={() => setActiveTab("stats")}
+        />
+      )}
+
+      {/* Data Privacy Preview Modal */}
+      <DataPrivacyPreviewModal
+        isOpen={privacyModalOpen}
+        onClose={() => setPrivacyModalOpen(false)}
+        columns={validCols.length > 0 ? validCols : columns}
+        rows={currentRows}
+        onApplyMasking={(rules) => setPrivacyRules(rules)}
+      />
 
       {activeTab === "dashboard" && (
         <>

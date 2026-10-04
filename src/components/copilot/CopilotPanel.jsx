@@ -69,7 +69,35 @@ export default function CopilotPanel({ onAskQuestion }) {
           </div>
         </div>
 
-        <GroundingBadge type="dataset" version={currentVersion?.version || "v1"} records={activeRows.length} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {typeof window !== "undefined" && (() => {
+            try {
+              const r = JSON.parse(localStorage.getItem("aida_privacy_rules") || "{}");
+              const cnt = Object.values(r).filter(v => v !== "keep").length;
+              if (cnt > 0) {
+                return (
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    background: "#EFF6FF",
+                    color: "#1E40AF",
+                    border: "1px solid #BFDBFE",
+                    padding: "3px 8px",
+                    borderRadius: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4
+                  }}>
+                    <span>🛡️</span>
+                    <span>{cnt} PII Masked</span>
+                  </span>
+                );
+              }
+            } catch {}
+            return null;
+          })()}
+          <GroundingBadge type="dataset" version={currentVersion?.version || "v1"} records={activeRows.length} />
+        </div>
       </div>
 
       {/* 3 Primary Copilot Modes */}

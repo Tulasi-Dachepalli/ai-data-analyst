@@ -192,21 +192,45 @@ router.post("/signup", async (req, res) => {
   });
 });
 
+// In-memory brute-force rate limiter: 5 attempts within 15 mins triggers 15-min lockout
+const failedLoginTracker = new Map();
+
 // POST /api/auth/login
 router.post("/login", async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: "Email and password are required." });
 
+  const normalizedEmail = email.toLowerCase().trim();
+  const lockInfo = failedLoginTracker.get(normalizedEmail);
+  if (lockInfo && lockInfo.lockedUntil && lockInfo.lockedUntil > Date.now()) {
+    const minutesLeft = Math.ceil((lockInfo.lockedUntil - Date.now()) / (60 * 1000));
+    return res.status(429).json({
+      error: `Account temporarily locked due to 5 consecutive failed login attempts. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? "s" : ""}.`
+    });
+  }
+
   try {
-    const user = (await pool.query("SELECT * FROM users WHERE email = $1", [email.toLowerCase()])).rows[0];
+    const user = (await pool.query("SELECT * FROM users WHERE email = $1", [normalizedEmail])).rows[0];
     if (!user) {
+      const cur = failedLoginTracker.get(normalizedEmail) || { attempts: 0, lockedUntil: null };
+      cur.attempts += 1;
+      if (cur.attempts >= 5) cur.lockedUntil = Date.now() + 15 * 60 * 1000;
+      failedLoginTracker.set(normalizedEmail, cur);
       return res.status(401).json({ error: "Incorrect email or password." });
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
+      const cur = failedLoginTracker.get(normalizedEmail) || { attempts: 0, lockedUntil: null };
+      cur.attempts += 1;
+      if (cur.attempts >= 5) cur.lockedUntil = Date.now() + 15 * 60 * 1000;
+      failedLoginTracker.set(normalizedEmail, cur);
+      await logAction(user.company_id, user.id, user.email, "FAILED_LOGIN", `Failed password attempt (${cur.attempts}/5)`, req).catch(() => {});
       return res.status(401).json({ error: "Incorrect email or password." });
     }
+
+    // Login successful — clear failed attempts
+    failedLoginTracker.delete(normalizedEmail);
 
     const company = (await pool.query("SELECT * FROM companies WHERE id = $1", [user.company_id])).rows[0];
     if (company && company.deleted_at) {
