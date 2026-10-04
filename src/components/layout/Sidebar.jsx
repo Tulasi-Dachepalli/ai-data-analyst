@@ -4,7 +4,7 @@ import { useRole } from "../../context/RoleContext";
 
 export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
   const { roleConfig, user } = useRole();
-  const isAdmin = user?.role === "admin" || user?.email === "tulasidachepally9393@gmail.com";
+  const isAdmin = user?.role === "admin";
   const navItems = roleConfig?.navigation || [
     { id: "overview", label: "Executive Overview", icon: "🏠" },
     { id: "datasets", label: "Datasets", icon: "📂" },

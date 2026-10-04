@@ -172,7 +172,7 @@ export default function App() {
     );
   }
 
-  const isAdmin = user?.role === "admin" || user?.email === "tulasidachepally9393@gmail.com";
+  const isAdmin = user?.role === "admin";
   const showVerifyBanner = false; // Email verification removed
 
   const isMisAnalyst = user?.role === "mis_analyst";

@@ -530,13 +530,13 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                       }}
                     />
 
-                    {currentUserEmail === "tulasidachepally9393@gmail.com" && (
+                    {user?.role === "admin" && (
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         <button
                           onClick={async () => {
                             try {
                               await api.sendAdminUserReportEmail();
-                              alert("🎉 Full user report sent to tulasidachepally9393@gmail.com!");
+                              alert(`🎉 Full user report sent to ${currentUserEmail || "admin"}!`);
                             } catch (err) {
                               alert(err.message || "Failed to send report email.");
                             }
@@ -562,7 +562,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                           onClick={async () => {
                             try {
                               await api.sendAdminMonthlyReportEmail();
-                              alert("📅 Monthly report sent to tulasidachepally9393@gmail.com!");
+                              alert(`📅 Monthly report sent to ${currentUserEmail || "admin"}!`);
                             } catch (err) {
                               alert(err.message || "Failed to send monthly report email.");
                             }
@@ -597,7 +597,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                         <th style={th}>Company Workspace</th>
                         <th style={th}>Status</th>
                         <th style={th}>Onboarding</th>
-                        {currentUserEmail === "tulasidachepally9393@gmail.com" && <th style={th}>Datasets</th>}
+                        <th style={th}>Datasets</th>
                         <th style={th}>Joined</th>
                         <th style={th}></th>
                       </tr>
@@ -698,9 +698,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                                   {m.onboardingProgress || "Completed"}
                                 </span>
                               </td>
-                              {currentUserEmail === "tulasidachepally9393@gmail.com" && (
                                 <td style={td}>{m?.datasetCount != null ? Number(m.datasetCount).toLocaleString() : 0}</td>
-                              )}
                               <td style={td}>
                                 <div style={{ fontSize: 12, color: "#0F172A" }}>{formatDateOnly(m.createdAt)}</div>
                                 <div style={{ fontSize: 10.5, color: "#94A3B8" }}>
