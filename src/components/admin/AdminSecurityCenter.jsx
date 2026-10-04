@@ -129,25 +129,44 @@ export default function AdminSecurityCenter({ currentUserEmail }) {
         </div>
 
         <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>AI Provider Terms & Retention</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>AI Provider Disclosures</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#166534", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-            <span>📜</span> <span>Commercial API Policies</span>
+            <span>📜</span> <span>Provider-Specific Terms</span>
           </div>
           <div style={{ fontSize: 11.5, color: "#475569", marginTop: 4 }}>
-            Zero model training under Anthropic §3.2 & Gemini terms; standard 30-day security retention
+            Anthropic §3.2 (30d safety) & Gemini Terms (Tier-dependent retention)
           </div>
         </div>
       </div>
 
-      {/* Verified AI Provider Policy & Retention Disclosure */}
-      <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "14px 18px", fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
-        <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-          <span>ℹ️</span> <span>Verified AI Provider Data Policy & Retention Details</span>
+      {/* Verified AI Provider Policy & Retention Disclosure Breakdown */}
+      <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 12, padding: "16px 20px", fontSize: 12, color: "#334155", lineHeight: 1.6 }}>
+        <div style={{ fontWeight: 800, color: "#0F172A", marginBottom: 8, display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <span>ℹ️</span> <span>Verified Upstream AI Provider Data Policies & Retention Evidence</span>
         </div>
-        <div>
-          • <strong>Foundation Model Retraining:</strong> Excluded under standard commercial developer agreements (Anthropic Commercial Terms §3.2 and Google Cloud Vertex AI terms). Customer inputs and outputs are never utilized to retrain base models.<br />
-          • <strong>Operational Retention:</strong> Not universal zero-retention. Upstream AI providers maintain encrypted server logs for up to 30 days strictly for trust, safety, and abuse prevention, after which they are deleted.<br />
-          • <strong>Server-Side Sanitization:</strong> High-risk PII patterns and restricted fields are intercepted and scrubbed on the application backend before leaving for AI provider endpoints.
+        
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14, marginTop: 8 }}>
+          <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8, padding: 12 }}>
+            <div style={{ fontWeight: 700, color: "#1E293B", display: "flex", alignItems: "center", gap: 6 }}>
+              <span>🟣</span> <span>Anthropic Commercial API (Claude Sonnet)</span>
+            </div>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#475569", fontSize: 11.5, lineHeight: 1.5 }}>
+              <li><strong>Model Retraining:</strong> Excluded. Under Anthropic Commercial Terms §3.2, customer prompts and completions are <em>never</em> used to train foundation models.</li>
+              <li><strong>Retention Period:</strong> Retained for <strong>up to 30 days</strong> strictly for abuse and safety monitoring, after which logs are deleted.</li>
+              <li><strong>Zero Data Retention:</strong> Available only via custom executed enterprise agreement with Anthropic.</li>
+            </ul>
+          </div>
+
+          <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 8, padding: 12 }}>
+            <div style={{ fontWeight: 700, color: "#1E293B", display: "flex", alignItems: "center", gap: 6 }}>
+              <span>🔵</span> <span>Google Gemini API (1.5 Flash)</span>
+            </div>
+            <ul style={{ margin: "6px 0 0", paddingLeft: 18, color: "#475569", fontSize: 11.5, lineHeight: 1.5 }}>
+              <li><strong>Free Tier (Unpaid Key):</strong> Under Google AI Studio Terms, prompt data may be processed by human reviewers and used for product improvements; retained up to 18 months.</li>
+              <li><strong>Commercial / Paid Tier (Cloud Billing):</strong> Customer data is <em>not</em> used to train Google models; human review is disabled; data is processed transiently.</li>
+              <li><strong>Server Shielding:</strong> Sensitive fields and PII are scrubbed server-side prior to outbound transmission.</li>
+            </ul>
+          </div>
         </div>
       </div>
 

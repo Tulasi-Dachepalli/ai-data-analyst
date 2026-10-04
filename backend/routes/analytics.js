@@ -77,21 +77,20 @@ router.get("/stats", async (req, res) => {
     const dbUnique = rows[0]?.uniqueBrowsers || 0;
     const dbSessions = rows[0]?.totalSessions || 0;
 
-    const uniqueBrowsers = Math.max(dbUnique, memoryStats.uniqueBrowsers.size);
-    const totalSessions = Math.max(dbSessions, memoryStats.totalSessions.size);
-
     res.json({
-      uniqueBrowsers,
-      totalSessions,
+      status: "live",
+      uniqueBrowsers: dbUnique,
+      totalSessions: dbSessions,
       label: "Unique Browsers",
       disclaimer: "Measures distinct browser clients recording visit events to backend analytics. Single users on multiple devices count separately."
     });
   } catch (err) {
     res.json({
-      uniqueBrowsers: memoryStats.uniqueBrowsers.size,
-      totalSessions: memoryStats.totalSessions.size,
-      label: "Unique Browsers",
-      disclaimer: "Measures distinct browser clients recording visit events to backend analytics. Single users on multiple devices count separately."
+      status: "unavailable",
+      uniqueBrowsers: null,
+      totalSessions: null,
+      label: "Analytics Temporarily Unavailable",
+      disclaimer: "Site-wide analytics database is currently unreachable. Live visitor telemetry paused."
     });
   }
 });

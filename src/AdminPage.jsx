@@ -322,16 +322,29 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>
                 <div style={card}>
-                  <div style={label}>Site-Wide Analytics (Unique Browsers)</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: "#2563EB", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>💻</span> <span>{(visitorStats.uniqueBrowsers || 0).toLocaleString()}</span>
-                  </div>
-                  <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
-                    Unique browsers ({(visitorStats.totalSessions || 0).toLocaleString()} sessions)
-                  </div>
-                  <div style={{ fontSize: 9.5, color: "#94A3B8", marginTop: 3, lineHeight: 1.3 }}>
-                    Distinct browser clients via backend analytics. Multi-device users count separately.
-                  </div>
+                  <div style={label}>Site-Wide Analytics</div>
+                  {visitorStats.status === "unavailable" || visitorStats.uniqueBrowsers === null ? (
+                    <>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#B45309", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>⚠️</span> <span>Analytics Temporarily Unavailable</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                        Database unreachable; site-wide visitor metrics paused.
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "#2563EB", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>💻</span> <span>{visitorStats.uniqueBrowsers.toLocaleString()}</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                        Unique browsers ({visitorStats.totalSessions?.toLocaleString() || 0} sessions)
+                      </div>
+                      <div style={{ fontSize: 9.5, color: "#94A3B8", marginTop: 3, lineHeight: 1.3 }}>
+                        Distinct browser clients via backend analytics. Multi-device users count separately.
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div style={card}>
                   <div style={label}>Registered Users</div>

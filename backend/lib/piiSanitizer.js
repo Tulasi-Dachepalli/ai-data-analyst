@@ -81,3 +81,45 @@ export function sanitizePromptText(text, restrictedFields = []) {
 
   return { sanitizedText: sanitized, redactedCount: count };
 }
+
+/**
+ * Server-side RBAC & Dataset Classification Policy Engine
+ * Derives restricted columns based on authenticated user permissions and dataset sensitivity.
+ * Client-supplied restrictedFields may supplement, but cannot weaken, this server policy.
+ * @param {string} role - Authenticated role from database (e.g. 'admin', 'ceo', 'data_analyst', 'member', 'hr', 'finance')
+ * @param {string[]} datasetColumns - Columns present in the dataset schema
+ * @returns {string[]} - Array of column names strictly forbidden for this role
+ */
+export function deriveRestrictedColumns(role = "member", datasetColumns = []) {
+  const restricted = new Set();
+  const userRole = (role || "member").toLowerCase();
+
+  const isExecutive = userRole === "admin" || userRole === "ceo";
+  const isHR = userRole === "hr" || userRole === "recruiter";
+  const isFinance = userRole === "finance";
+
+  for (const col of datasetColumns) {
+    if (!col || typeof col !== "string") continue;
+    const norm = col.toLowerCase().replace(/[\s_-]+/g, "");
+
+    // 1. Payroll & Individual Compensation: restricted for all non-Executive and non-HR roles
+    const isCompensation = /salary|compensation|wage|payroll|bonus|ctc|annualpay|hourlyrate|equity/.test(norm);
+    if (isCompensation && !isExecutive && !isHR) {
+      restricted.add(col);
+    }
+
+    // 2. High-risk PII (SSN, National ID, Bank Account, Tax ID): restricted for non-executives
+    const isGovOrBank = /ssn|socialsecurity|nationalid|bankaccount|cvv|creditcard|aadhaar|panno|taxid/.test(norm);
+    if (isGovOrBank && !isExecutive) {
+      restricted.add(col);
+    }
+
+    // 3. Department Financial Margin / Confidential Profitability: restricted for HR/Recruiter roles
+    const isConfidentialFinancial = /netmargin|ebitda|operatingcost|grossmargin|profitrunrate/.test(norm);
+    if (isConfidentialFinancial && isHR) {
+      restricted.add(col);
+    }
+  }
+
+  return Array.from(restricted);
+}

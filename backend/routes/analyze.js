@@ -1,7 +1,7 @@
 import { Router } from "express";
 import pool from "../db.js";
 import { recordUsage } from "../lib/quota.js";
-import { sanitizePromptText } from "../lib/piiSanitizer.js";
+import { sanitizePromptText, deriveRestrictedColumns } from "../lib/piiSanitizer.js";
 
 const router = Router();
 
@@ -31,13 +31,18 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Invalid datasetId." });
     }
     const dsCheck = await pool.query(
-      "SELECT id FROM datasets WHERE id = $1 AND company_id = $2",
+      "SELECT id, data_json FROM datasets WHERE id = $1 AND company_id = $2",
       [dId, req.user.companyId]
     );
     if (dsCheck.rows.length === 0) {
       return res.status(404).json({ error: "Dataset not found or access denied." });
     }
     safeDatasetId = dId;
+    const datasetData = dsCheck.rows[0].data_json || {};
+    const datasetCols = datasetData.columns || (datasetData.rows?.[0] ? Object.keys(datasetData.rows[0]) : []);
+    var serverRestrictedCols = deriveRestrictedColumns(req.user?.role, datasetCols);
+  } else {
+    var serverRestrictedCols = deriveRestrictedColumns(req.user?.role, ["salary", "compensation", "wage", "payroll", "bonus", "ctc", "ssn", "bank_account"]);
   }
   const safeRequestType = typeof requestType === "string" && requestType.trim() ? requestType.trim().slice(0, 60) : "unknown";
 
@@ -49,12 +54,18 @@ router.post("/", async (req, res) => {
     }
   }
 
+  // Combine server-enforced role restrictions with any optional client supplements
+  const effectiveRestrictedFields = Array.from(new Set([
+    ...(serverRestrictedCols || []),
+    ...(Array.isArray(restrictedFields) ? restrictedFields : [])
+  ]));
+
   // Server-side PII and restricted field sanitization BEFORE dispatching to upstream AI provider
-  const { sanitizedText: cleanSystem, redactedCount: sysRedacted } = sanitizePromptText(system, restrictedFields);
-  const { sanitizedText: cleanUserText, redactedCount: userRedacted } = sanitizePromptText(userText, restrictedFields);
+  const { sanitizedText: cleanSystem, redactedCount: sysRedacted } = sanitizePromptText(system, effectiveRestrictedFields);
+  const { sanitizedText: cleanUserText, redactedCount: userRedacted } = sanitizePromptText(userText, effectiveRestrictedFields);
   const totalRedacted = sysRedacted + userRedacted;
   if (totalRedacted > 0) {
-    console.log(`[Privacy Guard] Stripped ${totalRedacted} restricted field instances from AI payload for company ${req.user.companyId}.`);
+    console.log(`[Privacy Guard] Stripped ${totalRedacted} restricted field instances from AI payload for company ${req.user.companyId} (role: ${req.user.role || 'member'}).`);
   }
 
   try {

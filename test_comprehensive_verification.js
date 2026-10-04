@@ -114,7 +114,7 @@ async function runTests() {
     // Verify all dataset SQL queries include company_id
     assert(datasetRoutes.includes("WHERE id = $1 AND company_id = $2"), "GET/PUT/DELETE /api/datasets/:id must scope to company_id");
     assert(datasetRoutes.includes("WHERE company_id = $1 ORDER BY updated_at DESC"), "GET /api/datasets must scope to company_id");
-    assert(analyzeRoutes.includes("SELECT id FROM datasets WHERE id = $1 AND company_id = $2"), "POST /api/analyze must verify dataset ownership");
+    assert(analyzeRoutes.includes("FROM datasets WHERE id = $1 AND company_id = $2"), "POST /api/analyze must verify dataset ownership");
   });
 
   // --------------------------------------------------------------------------
