@@ -19,7 +19,7 @@ export function DecisionProvider({ children }) {
 
   // Generate / populate decisions tied directly to the active dataset
   useEffect(() => {
-    if (!activeDataset) {
+    if (!activeDataset || !activeDataset.rows || activeDataset.rows.length === 0) {
       setLocalDecisions([]);
       return;
     }

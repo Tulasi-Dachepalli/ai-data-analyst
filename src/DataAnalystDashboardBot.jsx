@@ -6491,7 +6491,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     {(active.rows || []).length.toLocaleString()} rows • {(active.columns || []).length} columns
                     {(active.rows || []).length === 0 && (
                       <span style={{ color: "#DC2626", fontWeight: 600, marginLeft: 8 }}>
-                        (0 tabular rows parsed — please upload a CSV or Excel file)
+                        — No tabular data was detected. Upload a supported dataset to continue.
                       </span>
                     )}
                   </div>
@@ -6512,7 +6512,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   ) : (
                     <>
                       <span style={{ color: "#D97706", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                        <span>⚠️</span> Non-tabular / Empty file
+                        <span>⚠️</span> No tabular data detected
                       </span>
                       <button
                         onClick={() => fileInputRef.current?.click()}
@@ -6527,7 +6527,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                           cursor: "pointer"
                         }}
                       >
-                        ＋ Upload Spreadsheet (.csv / .xlsx)
+                        ＋ Upload Supported Dataset (.csv / .xlsx)
                       </button>
                     </>
                   )}
@@ -6946,7 +6946,11 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   <div style={{ fontSize: 11, color: "var(--text-secondary, #64748B)", display: "flex", alignItems: "center", gap: 6 }}>
                     <span>● Engine: Claude 3.5 / GPT-4o</span>
                     <span>•</span>
-                    <span style={{ color: "#10B981", fontWeight: 600 }}>✓ 98.4% Grounded</span>
+                    {(active?.rows || []).length > 0 ? (
+                      <span style={{ color: "#10B981", fontWeight: 600 }}>✓ Grounded on Active Dataset</span>
+                    ) : (
+                      <span style={{ color: "#94A3B8", fontWeight: 500 }}>○ Awaiting Dataset Context</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -7147,7 +7151,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
             {/* Grounding & Enterprise Security Disclaimer Footer */}
             <div style={{ marginTop: 8, textAlign: "center", fontSize: 10.5, color: "var(--text-secondary, #94A3B8)" }}>
-              🔒 Enterprise 256-Bit SSL Encrypted • SOC2 Type II Certified • Grounded on Verified Dataset Context
+              🔒 Enterprise 256-Bit TLS • Role-Based Access Controls • Grounded on Active Dataset Records
             </div>
           </div>
         </div>

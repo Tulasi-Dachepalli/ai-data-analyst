@@ -37,10 +37,10 @@ export default function WorkspaceCommandCenter({ setView }) {
       id: "health",
       testId: "metric-health",
       title: "Data Health",
-      value: rowCount > 0 ? `${healthScore}/100` : "0/100",
-      sub: rowCount > 0 ? "Quality index verified" : "Awaiting data",
-      color: "#16A34A",
-      bg: "#F0FDF4",
+      value: rowCount > 0 ? `${healthScore}/100` : "Not assessed",
+      sub: rowCount > 0 ? "Quality index verified" : "Requires tabular data",
+      color: rowCount > 0 ? "#16A34A" : "#64748B",
+      bg: rowCount > 0 ? "#F0FDF4" : "#F8FAFC",
       action: "Inspect Quality",
       onClick: () => {
         setCurrentStage("quality");
@@ -149,7 +149,7 @@ export default function WorkspaceCommandCenter({ setView }) {
             <span>•</span>
             <span>Version: <strong style={{ color: "#38BDF8" }}>{versionTag}</strong></span>
             <span>•</span>
-            <span>Health: <strong style={{ color: "#4ADE80" }}>{healthScore}/100</strong></span>
+            <span>Health: <strong style={{ color: rowCount > 0 ? "#4ADE80" : "#94A3B8" }}>{rowCount > 0 ? `${healthScore}/100` : "Not assessed"}</strong></span>
             <span>•</span>
             <span style={{ fontFamily: "monospace", fontSize: 11, color: "#CBD5E1", background: "rgba(255,255,255,0.1)", padding: "2px 6px", borderRadius: 4 }}>
               SHA: {rawHash.length > 16 ? `${rawHash.slice(0, 10)}...` : rawHash}

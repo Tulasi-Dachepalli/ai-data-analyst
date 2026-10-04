@@ -45,13 +45,21 @@ export default function ChartThemeSelector({ onThemeChange }) {
     setActiveKey(key);
     localStorage.setItem("aida_chart_theme", key);
     if (onThemeChange) onThemeChange(CHART_THEMES[key]);
+    if (key === "midnight") {
+      document.documentElement.classList.add("theme-dark");
+      localStorage.setItem("aida_theme", "dark");
+    } else {
+      document.documentElement.classList.remove("theme-dark");
+      localStorage.setItem("aida_theme", "light");
+    }
     window.dispatchEvent(new Event("chart_theme_change"));
+    window.dispatchEvent(new Event("aida_theme_changed"));
   };
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
       <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, #6B7280)" }}>
-        🎨 Theme:
+        🎨 Palette:
       </span>
       <select
         value={activeKey}

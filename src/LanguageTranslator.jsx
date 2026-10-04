@@ -33,9 +33,9 @@ export default function LanguageTranslator({ onLanguageChange }) {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6 }} title="Controls AI Copilot responses and exported report language">
       <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-secondary, #6B7280)", textTransform: "uppercase" }}>
-        🌐 Language:
+        🌐 AI & Report Language:
       </span>
       <select
         value={activeCode}
