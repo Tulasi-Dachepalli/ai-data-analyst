@@ -18,6 +18,7 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
   const { openSearch } = useSearch();
   const { pendingDecisions, openInbox } = useDecision();
   const { openShareModal } = useCollaboration();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
     <header style={{
@@ -206,39 +207,93 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
           }} />
         </button>
 
-        {/* User Profile Pill */}
-        <div
-          onClick={() => setView && setView("settings")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "4px 10px",
-            borderRadius: 20,
-            background: "var(--bg-primary, #F8FAFC)",
-            border: "1px solid var(--border-color, #E2E8F0)",
-            cursor: "pointer"
-          }}
-        >
-          <div style={{
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
-            background: "#2563EB",
-            color: "#FFF",
-            display: "flex",
-            alignItems: "center",
-            justify: "center",
-            fontSize: 11,
-            fontWeight: 700
-          }}>
-            {(user?.email || "U")[0].toUpperCase()}
+        {/* User Profile Pill with Interactive Dropdown Menu */}
+        <div style={{ position: "relative" }}>
+          <div
+            onClick={() => setUserMenuOpen(prev => !prev)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "4px 10px",
+              borderRadius: 20,
+              background: "var(--bg-primary, #F8FAFC)",
+              border: "1px solid var(--border-color, #E2E8F0)",
+              cursor: "pointer"
+            }}
+          >
+            <div style={{
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              background: user?.isDemo ? "#F59E0B" : "#2563EB",
+              color: "#FFF",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 11,
+              fontWeight: 700
+            }}>
+              {user?.isDemo ? "D" : (user?.email || "U")[0].toUpperCase()}
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary, #0F172A)" }}>
+              {user?.email ? user.email.split("@")[0] : "User"}
+            </span>
+            <span style={{ fontSize: 9, color: "#94A3B8" }}>▼</span>
           </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary, #0F172A)" }}>
-            {user?.email ? user.email.split("@")[0] : "User"}
-          </span>
+
+          {userMenuOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                right: 0,
+                marginTop: 6,
+                background: "#FFFFFF",
+                border: "1px solid #E2E8F0",
+                borderRadius: 12,
+                boxShadow: "0 10px 25px -5px rgba(0,0,0,0.15)",
+                width: 220,
+                zIndex: 1000,
+                padding: "8px 0",
+                fontSize: 12.5
+              }}
+            >
+              <div style={{ padding: "8px 14px", borderBottom: "1px solid #F1F5F9" }}>
+                <div style={{ fontWeight: 700, color: "#0F172A" }}>{user?.fullName || "User"}</div>
+                <div style={{ fontSize: 11, color: "#64748B" }}>{user?.email || ""}</div>
+                {user?.isDemo && (
+                  <span style={{ display: "inline-block", background: "#FEF3C7", color: "#92400E", padding: "2px 6px", borderRadius: 4, fontSize: 10, fontWeight: 700, marginTop: 4 }}>
+                    🟡 Guest Demo Mode
+                  </span>
+                )}
+              </div>
+
+              <div
+                onClick={() => { setUserMenuOpen(false); if (setView) setView("settings"); }}
+                style={{ padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#334155" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F8FAFC"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span>⚙️</span> <span>Workspace Settings</span>
+              </div>
+
+              <div
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  if (onLogout) onLogout();
+                }}
+                style={{ padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, color: "#DC2626", borderTop: "1px solid #F1F5F9" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#FEE2E2"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <span>🚪</span> <span>{user?.isDemo ? "Exit Demo Mode" : "Sign Out"}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
     </header>
   );
 }

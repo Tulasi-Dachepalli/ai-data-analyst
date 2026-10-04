@@ -5084,6 +5084,13 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     if (typeof setView === "function") setView("dashboard");
   };
 
+  // Auto-load demo dataset when entering in demo mode so the dashboard is immediately active
+  useEffect(() => {
+    if (user?.isDemo && (!activeId || threads.length === 0)) {
+      handleLoadDemoData();
+    }
+  }, [user?.isDemo]);
+
   const handleLoadDemoData = () => {
     const demoRows = [
       { Order_ID: "CA-2024-1001", Order_Date: "2024-01-15", Region: "East", Category: "Technology", Sales: 1250, Profit: 340, Quantity: 3, Discount: 0.1 },
@@ -5101,6 +5108,49 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     const demoStats = demoCols.map(c => computeColumnStats(demoRows, c));
     const demoQuality = calculateDataQuality(demoRows, demoCols);
     const demoId = "demo-superstore-sales";
+
+    const kpis = [
+      { label: "Total Revenue", value: "₹12,070" },
+      { label: "Net Profit", value: "₹2,680" },
+      { label: "Profit Margin", value: "22.2%" },
+      { label: "Total Orders", value: "10" }
+    ];
+    const categoryCharts = [
+      {
+        title: "Revenue by Category",
+        metricLabel: "Sales",
+        chartType: "bar",
+        data: [
+          { name: "Technology", Sales: 8640 },
+          { name: "Furniture", Sales: 2550 },
+          { name: "Office Supplies", Sales: 980 }
+        ]
+      },
+      {
+        title: "Orders by Region",
+        metricLabel: "count",
+        chartType: "bar",
+        data: [
+          { name: "East", count: 3 },
+          { name: "West", count: 3 },
+          { name: "Central", count: 1 },
+          { name: "South", count: 2 },
+          { name: "North", count: 1 }
+        ]
+      }
+    ];
+    const trend = {
+      title: "Sales over time",
+      metricLabel: "Sales",
+      data: [
+        { date: "2024-01", Sales: 2420 },
+        { date: "2024-02", Sales: 3830 },
+        { date: "2024-03", Sales: 5920 }
+      ]
+    };
+    const narrative = "Welcome to the Superstore Retail Sales live interactive demo! Performance is highest in Technology (generating 71% of total revenue). Review the charts, filter with slicers, or ask the AI Copilot questions about margin, categories, or trends.";
+    const demoDashboard = { kpis, categoryCharts, trend, distributions: [], quality: demoQuality, outliers: {}, correlations: [], rawRows: demoRows, narrative };
+
     const demoThread = {
       id: demoId,
       name: "Superstore_Retail_Sales.csv",
@@ -5109,9 +5159,14 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
       columns: demoCols,
       stats: demoStats,
       quality: demoQuality,
+      dashboard: demoDashboard,
       isDemo: true,
       isUserExplicit: true,
-      messages: [{ kind: "file", fileName: "Superstore_Retail_Sales.csv (Demo Mode)", rowCount: demoRows.length, colCount: demoCols.length }]
+      messages: [
+        { kind: "file", fileName: "Superstore_Retail_Sales.csv (Demo Mode)", rowCount: demoRows.length, colCount: demoCols.length },
+        { role: "assistant", kind: "local_overview", content: narrative },
+        { role: "assistant", kind: "dashboard" }
+      ]
     };
     setThreads(prev => [demoThread, ...prev.filter(t => t.id !== demoId)]);
     setActiveId(demoId);

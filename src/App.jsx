@@ -146,6 +146,9 @@ export default function App() {
           setToken(demoToken);
           setUser(demoUser);
           setView("dashboard");
+          setTimeout(() => {
+            window.dispatchEvent(new Event("trigger-explore-demo"));
+          }, 50);
         }}
       />
     );
