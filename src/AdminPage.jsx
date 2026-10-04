@@ -10,24 +10,55 @@ const td = { fontSize: 13, color: "#2B2A27", padding: "8px 10px", borderBottom: 
 
 function formatDate(iso) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return "—";
+  }
 }
 
 function formatDateOnly(iso) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  } catch {
+    return "—";
+  }
 }
 
 function formatShortDate(dateStr) {
-  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return "—";
+  }
 }
 
 function formatCost(cost) {
-  return `$${Number(cost || 0).toFixed(4)}`;
+  try {
+    return `$${Number(cost || 0).toFixed(4)}`;
+  } catch {
+    return "$0.0000";
+  }
 }
 
 export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
-  const user = JSON.parse(localStorage.getItem("aida_user") || "null");
+  const user = (() => {
+    try {
+      const raw = localStorage.getItem("aida_user");
+      if (raw && raw !== "undefined" && raw !== "null") {
+        return JSON.parse(raw);
+      }
+    } catch (e) {}
+    return null;
+  })();
   const [activeTab, setActiveTab] = useState(initialTab || "dashboard"); // "dashboard" | "invites" | "audit" | "danger"
 
   useEffect(() => {
@@ -49,8 +80,8 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
       const unique = parseInt(localStorage.getItem("aida_unique_visitors_count") || "0", 10);
       const sessions = parseInt(localStorage.getItem("aida_visit_sessions_count") || "0", 10);
       return {
-        uniqueBrowsers: unique,
-        totalSessions: sessions,
+        uniqueBrowsers: isNaN(unique) ? 0 : unique,
+        totalSessions: isNaN(sessions) ? 0 : sessions,
         disclaimer: "Measures distinct browser clients recording visit events to backend analytics. Single users on multiple devices count separately."
       };
     } catch {
@@ -60,19 +91,26 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
 
   // Fetch site-wide analytics from backend service
   useEffect(() => {
-    fetch("/api/analytics/stats")
-      .then(r => r.json())
-      .then(d => {
-        if (d && typeof d.uniqueBrowsers === "number") {
-          setVisitorStats(prev => ({
-            ...prev,
-            uniqueBrowsers: Math.max(d.uniqueBrowsers, prev.uniqueBrowsers),
-            totalSessions: Math.max(d.totalSessions, prev.totalSessions),
-            disclaimer: d.disclaimer || prev.disclaimer
-          }));
-        }
-      })
-      .catch(() => {});
+    if (typeof api.getAnalyticsStats === "function") {
+      api.getAnalyticsStats()
+        .then(d => {
+          if (d && typeof d.uniqueBrowsers === "number") {
+            setVisitorStats(prev => ({
+              ...prev,
+              status: d.status || "live",
+              uniqueBrowsers: Math.max(d.uniqueBrowsers, prev?.uniqueBrowsers || 0),
+              totalSessions: Math.max(d.totalSessions || 0, prev?.totalSessions || 0),
+              disclaimer: d.disclaimer || prev?.disclaimer
+            }));
+          } else if (d && d.status === "unavailable") {
+            setVisitorStats(prev => ({
+              ...prev,
+              status: "unavailable"
+            }));
+          }
+        })
+        .catch(() => {});
+    }
   }, []);
 
   // Invites Manager State
@@ -323,7 +361,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>
                 <div style={card}>
                   <div style={label}>Site-Wide Analytics</div>
-                  {visitorStats.status === "unavailable" || visitorStats.uniqueBrowsers === null ? (
+                  {visitorStats?.status === "unavailable" || visitorStats?.uniqueBrowsers == null ? (
                     <>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#B45309", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
                         <span>⚠️</span> <span>Analytics Temporarily Unavailable</span>
@@ -335,10 +373,10 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                   ) : (
                     <>
                       <div style={{ fontSize: 24, fontWeight: 800, color: "#2563EB", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                        <span>💻</span> <span>{visitorStats.uniqueBrowsers.toLocaleString()}</span>
+                        <span>💻</span> <span>{Number(visitorStats.uniqueBrowsers || 0).toLocaleString()}</span>
                       </div>
                       <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
-                        Unique browsers ({visitorStats.totalSessions?.toLocaleString() || 0} sessions)
+                        Unique browsers ({Number(visitorStats.totalSessions || 0).toLocaleString()} sessions)
                       </div>
                       <div style={{ fontSize: 9.5, color: "#94A3B8", marginTop: 3, lineHeight: 1.3 }}>
                         Distinct browser clients via backend analytics. Multi-device users count separately.
@@ -349,21 +387,21 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                 <div style={card}>
                   <div style={label}>Registered Users</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>👤</span> <span>{members.length}</span>
+                    <span>👤</span> <span>{Number(members?.length || 0).toLocaleString()}</span>
                   </div>
                   <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Active registered accounts</div>
                 </div>
                 <div style={card}>
                   <div style={label}>Datasets Connected</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>📂</span> <span>{summary?.datasetCount ?? datasets.length}</span>
+                    <span>📂</span> <span>{Number(summary?.datasetCount ?? datasets?.length ?? 0).toLocaleString()}</span>
                   </div>
                   <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Business data sources</div>
                 </div>
                 <div style={card}>
                   <div style={label}>Rows Analyzed</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: "#0F172A", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>📊</span> <span>{summary?.totalRowsAnalyzed?.toLocaleString() ?? "12,480"}</span>
+                    <span>📊</span> <span>{Number(summary?.totalRowsAnalyzed ?? 12480).toLocaleString()}</span>
                   </div>
                   <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>Processed in pipelines</div>
                 </div>
@@ -373,11 +411,11 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 12 }}>
                 <div style={card}>
                   <div style={label}>AI requests</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#2B2A27", marginTop: 4 }}>{usage?.totalRequests?.toLocaleString() ?? "—"}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#2B2A27", marginTop: 4 }}>{usage?.totalRequests != null ? Number(usage.totalRequests).toLocaleString() : "—"}</div>
                 </div>
                 <div style={card}>
                   <div style={label}>Total tokens</div>
-                  <div style={{ fontSize: 22, fontWeight: 700, color: "#2B2A27", marginTop: 4 }}>{usage?.totalTokens?.toLocaleString() ?? "—"}</div>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: "#2B2A27", marginTop: 4 }}>{usage?.totalTokens != null ? Number(usage.totalTokens).toLocaleString() : "—"}</div>
                 </div>
                 <div style={card}>
                   <div style={label}>Estimated cost</div>
@@ -422,10 +460,10 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                     <tbody>
                       {byUser.map((u, i) => (
                         <tr key={i}>
-                          <td style={td}>{u.email}</td>
-                          <td style={td}>{u.requests.toLocaleString()}</td>
-                          <td style={td}>{u.tokens.toLocaleString()}</td>
-                          <td style={td}>{formatCost(u.cost)}</td>
+                          <td style={td}>{u?.email || "—"}</td>
+                          <td style={td}>{Number(u?.requests || 0).toLocaleString()}</td>
+                          <td style={td}>{Number(u?.tokens || 0).toLocaleString()}</td>
+                          <td style={td}>{formatCost(u?.cost)}</td>
                         </tr>
                       ))}
                       {byUser.length === 0 && (
@@ -449,10 +487,10 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                     <tbody>
                       {byDataset.map((d, i) => (
                         <tr key={i}>
-                          <td style={td}>{d.name}</td>
-                          <td style={td}>{d.requests.toLocaleString()}</td>
-                          <td style={td}>{d.tokens.toLocaleString()}</td>
-                          <td style={td}>{formatCost(d.cost)}</td>
+                          <td style={td}>{d?.name || "—"}</td>
+                          <td style={td}>{Number(d?.requests || 0).toLocaleString()}</td>
+                          <td style={td}>{Number(d?.tokens || 0).toLocaleString()}</td>
+                          <td style={td}>{formatCost(d?.cost)}</td>
                         </tr>
                       ))}
                       {byDataset.length === 0 && (
@@ -467,7 +505,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A", marginBottom: 2 }}>
-                      Registered Users & Member Directory ({members.length})
+                      Registered Users & Member Directory ({members?.length || 0})
                     </div>
                     <div style={{ fontSize: 11.5, color: "#64748B" }}>
                       Real-time user profiles, role-based privileges, onboarding stages & usage records.
@@ -588,7 +626,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                           }[m.role] || { label: m.role || "Member", bg: "#F1F5F9", color: "#475569" };
 
                           return (
-                            <tr key={m.id || m.email}>
+                            <tr key={m.id || m.email || Math.random()}>
                               <td style={td}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                                   <div style={{
@@ -603,7 +641,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                                     alignItems: "center",
                                     justifyContent: "center"
                                   }}>
-                                    {(m.fullName || m.email || "U")[0].toUpperCase()}
+                                    {String(m?.fullName || m?.email || "U").trim()[0]?.toUpperCase() || "U"}
                                   </div>
                                   <div>
                                     <div style={{ fontWeight: 700, color: "#0F172A", fontSize: 13 }}>
@@ -661,7 +699,7 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                                 </span>
                               </td>
                               {currentUserEmail === "tulasidachepally9393@gmail.com" && (
-                                <td style={td}>{m.datasetCount ?? 0}</td>
+                                <td style={td}>{m?.datasetCount != null ? Number(m.datasetCount).toLocaleString() : 0}</td>
                               )}
                               <td style={td}>
                                 <div style={{ fontSize: 12, color: "#0F172A" }}>{formatDateOnly(m.createdAt)}</div>
@@ -708,12 +746,12 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
                   </thead>
                   <tbody>
                     {datasets.map(d => (
-                      <tr key={d.id}>
-                        <td style={td}>{d.name}</td>
-                        <td style={td}>{d.rowCount.toLocaleString()}</td>
-                        <td style={td}>{d.qualityScore != null ? `${d.qualityScore}%` : "—"}</td>
-                        <td style={td}>{d.createdByEmail}</td>
-                        <td style={td}>{formatDateOnly(d.updatedAt)}</td>
+                      <tr key={d?.id || Math.random()}>
+                        <td style={td}>{d?.name || "Untitled Dataset"}</td>
+                        <td style={td}>{Number(d?.rowCount || 0).toLocaleString()}</td>
+                        <td style={td}>{d?.qualityScore != null ? `${d.qualityScore}%` : "—"}</td>
+                        <td style={td}>{d?.createdByEmail || "—"}</td>
+                        <td style={td}>{formatDateOnly(d?.updatedAt)}</td>
                       </tr>
                     ))}
                     {datasets.length === 0 && (

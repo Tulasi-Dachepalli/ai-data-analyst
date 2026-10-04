@@ -237,6 +237,10 @@ export function getAdminUsage() {
   return request("/api/admin/usage");
 }
 
+export function getAnalyticsStats() {
+  return request("/api/analytics/stats");
+}
+
 export function forgotPassword(email) {
   return request("/api/auth/forgot-password", {
     method: "POST",
