@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import LandingPage from "./LandingPage";
 import DataAnalystDashboardBot from "./DataAnalystDashboardBot";
 import AuthPage from "./AuthPage";
 import AdminPage from "./AdminPage";
@@ -21,13 +22,9 @@ const DEFAULT_USER = {
 
 export default function App() {
   const [token, setToken] = useState(() => {
-    let t = localStorage.getItem("aida_token");
+    const t = localStorage.getItem("aida_token");
     if (!t || t === "undefined" || t === "null") {
-      t = "demo-session-token-" + Date.now();
-      localStorage.setItem("aida_token", t);
-      if (!localStorage.getItem("aida_user")) {
-        localStorage.setItem("aida_user", JSON.stringify(DEFAULT_USER));
-      }
+      return null;
     }
     return t;
   });
@@ -41,9 +38,9 @@ export default function App() {
     } catch (e) {
       console.warn("User parse error:", e);
     }
-    localStorage.setItem("aida_user", JSON.stringify(DEFAULT_USER));
-    return DEFAULT_USER;
+    return null;
   });
+  const [authMode, setAuthMode] = useState("landing"); // "landing" | "login" | "signup"
   const [view, setView] = useState(() => {
     const hash = window.location.hash.replace(/^#\/?/, "");
     return hash || "dashboard";
@@ -98,6 +95,7 @@ export default function App() {
     setUser(u);
     setView("dashboard");
     setResendState("idle");
+    setAuthMode("landing");
   };
 
   const handleLogout = () => {
@@ -105,6 +103,7 @@ export default function App() {
     localStorage.removeItem("aida_user");
     setToken(null);
     setUser(null);
+    setAuthMode("landing");
   };
 
   const handleResendVerification = async () => {
@@ -118,7 +117,38 @@ export default function App() {
   };
 
   if (!token) {
-    return <AuthPage onAuthenticated={handleAuthenticated} />;
+    if (authMode === "login" || authMode === "signup") {
+      return (
+        <AuthPage
+          initialMode={authMode}
+          onAuthenticated={handleAuthenticated}
+          onBackToLanding={() => setAuthMode("landing")}
+        />
+      );
+    }
+
+    return (
+      <LandingPage
+        onGetStarted={() => setAuthMode("signup")}
+        onSignIn={() => setAuthMode("login")}
+        onExploreDemo={() => {
+          const demoUser = {
+            fullName: "Guest Executive",
+            email: "demo.executive@enterprise.com",
+            role: "ceo",
+            companyName: "Acme Enterprise (Demo)",
+            tier: "pro",
+            isDemo: true
+          };
+          const demoToken = "demo-session-token-" + Date.now();
+          localStorage.setItem("aida_token", demoToken);
+          localStorage.setItem("aida_user", JSON.stringify(demoUser));
+          setToken(demoToken);
+          setUser(demoUser);
+          setView("dashboard");
+        }}
+      />
+    );
   }
 
   const isAdmin = user?.role === "admin";

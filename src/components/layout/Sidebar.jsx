@@ -104,7 +104,28 @@ export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
       </nav>
 
       {/* System Footer Link */}
-      <div style={{ padding: 12, borderTop: "1px solid var(--border-color, #E2E8F0)" }}>
+      <div style={{ padding: 12, borderTop: "1px solid var(--border-color, #E2E8F0)", display: "flex", flexDirection: "column", gap: 4 }}>
+        <button
+          onClick={() => setView("team")}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            width: "100%",
+            padding: "8px 12px",
+            fontSize: 13,
+            fontWeight: currentView === "team" || currentView === "admin-members" ? 700 : 500,
+            color: currentView === "team" || currentView === "admin-members" ? "#2563EB" : "var(--text-primary, #475569)",
+            background: currentView === "team" || currentView === "admin-members" ? "rgba(37, 99, 235, 0.08)" : "transparent",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer"
+          }}
+        >
+          <span style={{ fontSize: 16 }}>👥</span>
+          <span>Admin & User Directory</span>
+        </button>
+
         <button
           onClick={() => setView("settings")}
           style={{
