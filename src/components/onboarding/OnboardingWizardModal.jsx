@@ -1,15 +1,23 @@
 // src/components/onboarding/OnboardingWizardModal.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRole } from "../../context/RoleContext";
 import { useActivity } from "../../context/ActivityContext";
 
 export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, onGoogleSheetsClick, onExploreDemoClick }) {
   const { user, roleConfig, setRole } = useRole();
-  const { logEvent } = useActivity();
+  const activity = useActivity();
+  const logEvent = activity?.logEvent;
   const [currentStep, setCurrentStep] = useState(1);
-  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [dontShowAgain, setDontShowAgain] = useState(true);
   const [showMoreRoles, setShowMoreRoles] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(1);
+      setIsTransitioning(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -28,31 +36,51 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
   ];
 
   const handleFinish = () => {
-    if (dontShowAgain) {
-      try {
+    try {
+      if (dontShowAgain) {
         localStorage.setItem("aida_onboarding_dismissed", "true");
-      } catch (e) {}
+      }
+    } catch (e) {
+      console.warn("Storage error saving onboarding dismissal:", e);
     }
-    logEvent({
-      stage: "01 Raw Data",
-      action: "Completed Interactive AI Guide",
-      result: `Workspace configured for ${roleConfig?.title || "Executive"} (${displayName})`
-    });
-    onClose();
+
+    try {
+      if (typeof logEvent === "function") {
+        logEvent({
+          stage: "01 Raw Data",
+          action: "Completed Interactive AI Guide",
+          result: `Workspace configured for ${roleConfig?.title || "Executive"} (${displayName})`
+        });
+      }
+    } catch (e) {
+      console.warn("Activity log error:", e);
+    }
+
+    setIsTransitioning(false);
+    setCurrentStep(1);
+
+    if (typeof onClose === "function") {
+      try {
+        onClose();
+      } catch (err) {
+        console.error("Error closing onboarding modal:", err);
+      }
+    }
   };
 
   const handleStartAnalyzing = () => {
     setIsTransitioning(true);
+    // Auto-complete cleanly after 250ms or instantly if user clicks button
     setTimeout(() => {
       handleFinish();
-    }, 1100);
+    }, 250);
   };
 
   const handleNext = () => {
     if (currentStep < 3) {
       setCurrentStep(prev => prev + 1);
     } else {
-      handleStartAnalyzing();
+      handleFinish();
     }
   };
 
@@ -63,20 +91,27 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
   };
 
   return (
-    <div style={{
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: "rgba(15, 23, 42, 0.68)",
-      backdropFilter: "blur(4px)",
-      zIndex: 9999,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: 12
-    }}>
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleFinish();
+        }
+      }}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(15, 23, 42, 0.68)",
+        backdropFilter: "blur(4px)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 12
+      }}
+    >
       <div style={{
         width: 520,
         maxWidth: "94vw",
@@ -128,7 +163,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
 
           <button
             onClick={handleFinish}
-            title="Close Guide"
+            title="Close Guide & Enter Workspace"
             style={{
               background: "rgba(255,255,255,0.12)",
               border: "none",
@@ -279,8 +314,9 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
 
                 <div style={{ display: "flex", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
                   <button
+                    type="button"
                     onClick={() => {
-                      onClose();
+                      handleFinish();
                       if (onUploadClick) onUploadClick();
                     }}
                     style={{
@@ -297,8 +333,9 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
                     + Upload File Now
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
-                      onClose();
+                      handleFinish();
                       if (onGoogleSheetsClick) onGoogleSheetsClick();
                     }}
                     style={{
@@ -315,8 +352,9 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
                     🔗 Google Sheets
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
-                      onClose();
+                      handleFinish();
                       if (onExploreDemoClick) onExploreDemoClick();
                     }}
                     style={{
@@ -337,57 +375,55 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
             </div>
           )}
 
-          {/* STEP 3: Preview & Transition Checklist */}
+          {/* STEP 3: Preview & Automation (Always Ready & Enter Immediately) */}
           {currentStep === 3 && (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>
                 STEP 3 • Preview & Automation:
               </div>
 
-              {isTransitioning ? (
-                <div style={{
-                  background: "#F8FAFC",
-                  border: "1px solid #E2E8F0",
-                  borderRadius: 10,
-                  padding: "16px 14px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8
-                }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "#2563EB", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>⚡</span> Preparing your workspace…
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "#16A34A", display: "flex", flexDirection: "column", gap: 4, fontFamily: "monospace" }}>
-                    <div>✓ Role perspective initialized: {roleConfig?.title || "Executive"}</div>
-                    <div>✓ Security and RBAC policies verified</div>
-                    <div>✓ Power BI-style dashboard engine loaded</div>
-                    <div>✓ Copilot grounding ready</div>
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "#64748B", fontStyle: "italic", marginTop: 4 }}>
-                    Entering workspace now…
-                  </div>
+              <div style={{
+                background: "#F8FAFC",
+                border: "1px solid #E2E8F0",
+                borderRadius: 10,
+                padding: "14px 16px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#2563EB", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>⚡</span> Workspace Ready for {roleConfig?.title || "Executive"}
                 </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
-                      📊 Power BI Visuals & Slicers
-                    </div>
-                    <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
-                      Synchronous cross-filtering across KPIs, sparklines, charts, and maps.
-                    </div>
-                  </div>
+                <div style={{ fontSize: 11.5, color: "#16A34A", display: "flex", flexDirection: "column", gap: 4, fontFamily: "monospace" }}>
+                  <div>✓ Role perspective initialized: {roleConfig?.title || "Executive"}</div>
+                  <div>✓ Security and RBAC policies verified</div>
+                  <div>✓ Power BI-style dashboard engine loaded</div>
+                  <div>✓ Copilot grounding ready</div>
+                </div>
+                <div style={{ fontSize: 11.5, color: isTransitioning ? "#2563EB" : "#64748B", fontStyle: "italic", marginTop: 2, fontWeight: isTransitioning ? 700 : 400 }}>
+                  {isTransitioning ? "Opening workspace now…" : "Ready to explore. Click below to enter your workspace."}
+                </div>
+              </div>
 
-                  <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
-                      📑 Automated Reports
-                    </div>
-                    <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
-                      1-click PDF export to local PC and leadership email dispatch.
-                    </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
+                    📊 Power BI Visuals & Slicers
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
+                    Synchronous cross-filtering across KPIs, sparklines, charts, and maps.
                   </div>
                 </div>
-              )}
+
+                <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", marginBottom: 3 }}>
+                    📑 Automated Reports
+                  </div>
+                  <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.3 }}>
+                    1-click PDF export to local PC and leadership email dispatch.
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -412,8 +448,9 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
           </label>
 
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {currentStep > 1 && !isTransitioning && (
+            {currentStep > 1 && (
               <button
+                type="button"
                 onClick={handleBack}
                 style={{
                   background: "transparent",
@@ -432,6 +469,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
 
             {currentStep === 1 && (
               <button
+                type="button"
                 onClick={handleFinish}
                 style={{
                   background: "transparent",
@@ -450,6 +488,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
 
             {currentStep < 3 ? (
               <button
+                type="button"
                 onClick={handleNext}
                 style={{
                   background: "#0F172A",
@@ -466,21 +505,22 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
               </button>
             ) : (
               <button
-                onClick={handleStartAnalyzing}
-                disabled={isTransitioning}
+                type="button"
+                onClick={() => handleFinish()}
                 style={{
-                  background: isTransitioning ? "#94A3B8" : "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
+                  background: "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)",
                   color: "#FFFFFF",
                   border: "none",
                   borderRadius: 7,
                   padding: "7px 18px",
                   fontSize: 12,
                   fontWeight: 700,
-                  cursor: isTransitioning ? "not-allowed" : "pointer",
-                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)"
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(37, 99, 235, 0.25)",
+                  transition: "all 0.15s ease"
                 }}
               >
-                {isTransitioning ? "Preparing…" : "Start Analyzing ➔"}
+                Enter Workspace ➔
               </button>
             )}
           </div>
