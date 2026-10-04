@@ -19,60 +19,124 @@ export default function StageInsights() {
     }
   };
 
-  const insightCards = [
-    {
-      id: "high-1",
-      priority: "🔴 HIGH ATTENTION",
-      priorityBg: "#FEF2F2",
-      priorityColor: "#DC2626",
-      title: "South region operating costs are above the established baseline variance.",
-      finding: "Operating expenditure in the South region exceeded expected quarterly budget thresholds by +18.4%.",
-      evidenceRecords: recordCount,
-      affectedRows: 412,
-      columns: ["Operating_Cost", "Region", "Quarter"],
-      groundingScore: "98% Grounded",
-      explanation: "Variance is driven by vendor software license sync delays and unbudgeted regional compliance audits.",
-      recommendation: "Re-negotiate vendor contract schedules or apply tier adjustment filters in Stage 07 modeling.",
-      transformation: { operation: "Variance Filter", versionStep: "v3 → v4 Cleaned" },
-      auditDiff: [
-        { id: "AUD-8012", before: "Unflagged cost spike", after: "Flagged High-Risk (+18.4%)" },
-        { id: "AUD-8013", before: "Unclassified Vendor B", after: "Re-allocated Software Licensing" }
-      ]
-    },
-    {
-      id: "watch-1",
-      priority: "🟡 WATCH",
-      priorityBg: "#FFFBEB",
-      priorityColor: "#D97706",
-      title: "Marketing license expenses increased across Q3 cycle.",
-      finding: "SaaS licensing expenditure rose by +14.2% across marketing accounts.",
-      evidenceRecords: recordCount,
-      affectedRows: 128,
-      columns: ["License_Fee", "Department"],
-      groundingScore: "95% Grounded",
-      explanation: "Duplicate license renewals detected prior to data cleaning transformation.",
-      recommendation: "Confirm deduplication status in lineage timeline drawer.",
-      transformation: { operation: "Duplicate License Removal", versionStep: "v2 → v3" },
-      auditDiff: [
-        { id: "LIC-401", before: "Duplicate renewal ($12,000)", after: "Removed ($0)" }
-      ]
-    },
-    {
-      id: "pos-1",
+  if (recordCount === 0) {
+    return (
+      <div style={{
+        background: "var(--bg-secondary, #FFFFFF)",
+        border: "1px solid var(--border-color, #E2E8F0)",
+        borderRadius: 16,
+        padding: "48px 32px",
+        textAlign: "center",
+        maxWidth: 640,
+        margin: "32px auto",
+        boxShadow: "var(--shadow-sm)"
+      }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>🔍</div>
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary, #0F172A)", margin: "0 0 8px 0" }}>
+          No Tabular Data Available for Stage 06 Insights
+        </h3>
+        <p style={{ fontSize: 13.5, color: "var(--text-secondary, #64748B)", margin: "0 0 20px 0", lineHeight: 1.5 }}>
+          Upload a CSV or Excel dataset, or select a table from an HTML document to generate grounded insights and anomaly detections.
+        </p>
+        <button
+          onClick={() => {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) fileInput.click();
+          }}
+          style={{
+            background: "#2563EB",
+            color: "#FFF",
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 20px",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(37,99,235,0.2)"
+          }}
+        >
+          ⬆ Upload Dataset
+        </button>
+      </div>
+    );
+  }
+
+  // Dynamically generate insight cards based on actual dataset columns and records
+  const insightCards = [];
+
+  // Check numeric columns
+  const numericCols = (activeCols || []).filter(c => {
+    return activeRows.some(r => typeof r[c] === "number" || (!isNaN(Number(r[c])) && r[c] !== "" && r[c] !== null));
+  });
+
+  if (numericCols.length > 0) {
+    const primaryNum = numericCols[0];
+    const vals = activeRows.map(r => Number(r[primaryNum])).filter(v => !isNaN(v));
+    const mean = vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0;
+    insightCards.push({
+      id: "metric-dist",
       priority: "🟢 POSITIVE",
       priorityBg: "#F0FDF4",
       priorityColor: "#16A34A",
-      title: "Revenue increased consistently during the selected evaluation period.",
-      finding: "Total enterprise revenue grew +8.2% month-over-month.",
+      title: `${primaryNum} distribution verified across ${recordCount.toLocaleString()} records.`,
+      finding: `Mean computed value is ${mean.toLocaleString()} across ${recordCount.toLocaleString()} active dataset records.`,
       evidenceRecords: recordCount,
-      affectedRows: 2450,
-      columns: ["Revenue", "Date", "Transaction_ID"],
-      groundingScore: "99% Grounded",
-      explanation: "Growth driven by core enterprise account renewals and expanded tier adoption.",
-      recommendation: "Include trend projections in Stage 08 Time-Series Forecast.",
-      transformation: { operation: "Date Standardization", versionStep: "v1 → v4 Cleaned" }
-    }
-  ];
+      affectedRows: recordCount,
+      columns: [primaryNum],
+      groundingScore: "Dataset connected",
+      explanation: `Deterministic statistical distribution calculated across all non-null entries in ${primaryNum}.`,
+      recommendation: `Include metric aggregates in Stage 08 Time-Series Forecasting.`,
+      transformation: { operation: "Distribution Baseline", versionStep: `${versionTag} Verified` }
+    });
+  }
+
+  // Check missing values / data health
+  let missingTotal = 0;
+  activeRows.forEach(r => {
+    (activeCols || []).forEach(c => {
+      if (r[c] === null || r[c] === undefined || String(r[c]).trim() === "") missingTotal++;
+    });
+  });
+
+  if (missingTotal > 0) {
+    insightCards.push({
+      id: "quality-gap",
+      priority: "🟡 WATCH",
+      priorityBg: "#FFFBEB",
+      priorityColor: "#D97706",
+      title: `Completeness scan detected ${missingTotal} blank or null cell(s).`,
+      finding: `Data completeness gaps observed across ${activeDataset?.name || "the active dataset"}.`,
+      evidenceRecords: recordCount,
+      affectedRows: missingTotal,
+      columns: activeCols.slice(0, 3),
+      groundingScore: "Dataset connected",
+      explanation: "Missing values can introduce skew in downstream predictive modeling.",
+      recommendation: "Apply imputation in Stage 03 Data Cleaning to establish baseline completeness.",
+      transformation: { operation: "Imputation Scan", versionStep: `${versionTag} Audit` }
+    });
+  }
+
+  // Categorical spread
+  const catCols = (activeCols || []).filter(c => !numericCols.includes(c));
+  if (catCols.length > 0) {
+    const primaryCat = catCols[0];
+    const uniqueVals = new Set(activeRows.map(r => String(r[primaryCat] || "")).filter(Boolean)).size;
+    insightCards.push({
+      id: "dimension-spread",
+      priority: "🔴 ATTENTION",
+      priorityBg: "#FEF2F2",
+      priorityColor: "#DC2626",
+      title: `${primaryCat} dimension contains ${uniqueVals} distinct categories.`,
+      finding: `Categorical segmentation identified across ${uniqueVals} unique groups in ${primaryCat}.`,
+      evidenceRecords: recordCount,
+      affectedRows: recordCount,
+      columns: [primaryCat],
+      groundingScore: "Dataset connected",
+      explanation: `High variance across category segments may warrant stratified modeling.`,
+      recommendation: `Review category segmentation in Stage 05 Explore Studio.`,
+      transformation: { operation: "Categorical Stratification", versionStep: `${versionTag} Evaluated` }
+    });
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>

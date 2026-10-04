@@ -7,6 +7,48 @@ export default function StageCleanedData() {
   const { currentVersion, rawVersion, activeRows, activeCols, setCurrentStage } = useDataset();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  if (!activeRows || activeRows.length === 0) {
+    return (
+      <div style={{
+        background: "var(--bg-secondary, #FFFFFF)",
+        border: "1px solid var(--border-color, #E2E8F0)",
+        borderRadius: 16,
+        padding: "48px 32px",
+        textAlign: "center",
+        maxWidth: 640,
+        margin: "32px auto",
+        boxShadow: "var(--shadow-sm)"
+      }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>✨</div>
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary, #0F172A)", margin: "0 0 8px 0" }}>
+          No Cleaned Dataset Available
+        </h3>
+        <p style={{ fontSize: 13.5, color: "var(--text-secondary, #64748B)", margin: "0 0 20px 0", lineHeight: 1.5 }}>
+          Upload a dataset and execute cleaning steps in Stage 03 to create verified cleaned versions.
+        </p>
+        <button
+          onClick={() => {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) fileInput.click();
+          }}
+          style={{
+            background: "#2563EB",
+            color: "#FFF",
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 20px",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(37,99,235,0.2)"
+          }}
+        >
+          ⬆ Upload Dataset
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Verified Clean Banner */}

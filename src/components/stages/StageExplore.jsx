@@ -36,6 +36,48 @@ export default function StageExplore() {
     { id: 3, severity: "🟡 Low", metric: "Processing Time", value: "+11% delay", records: 5, column: "Processing_Time", desc: "Slight latency anomaly observed in automated batch processing." }
   ];
 
+  if (rowCount === 0) {
+    return (
+      <div style={{
+        background: "var(--bg-secondary, #FFFFFF)",
+        border: "1px solid var(--border-color, #E2E8F0)",
+        borderRadius: 16,
+        padding: "48px 32px",
+        textAlign: "center",
+        maxWidth: 640,
+        margin: "32px auto",
+        boxShadow: "var(--shadow-sm)"
+      }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>🧭</div>
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary, #0F172A)", margin: "0 0 8px 0" }}>
+          No Tabular Data Available for Stage 05 Explore
+        </h3>
+        <p style={{ fontSize: 13.5, color: "var(--text-secondary, #64748B)", margin: "0 0 20px 0", lineHeight: 1.5 }}>
+          Upload a CSV or Excel dataset, or select a table from an HTML document to run exploratory distributions and anomaly inspections.
+        </p>
+        <button
+          onClick={() => {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) fileInput.click();
+          }}
+          style={{
+            background: "#2563EB",
+            color: "#FFF",
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 20px",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(37,99,235,0.2)"
+          }}
+        >
+          ⬆ Upload Dataset
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Top Stage Navigation & Quick Actions */}

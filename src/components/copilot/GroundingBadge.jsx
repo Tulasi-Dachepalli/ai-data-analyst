@@ -3,10 +3,17 @@ import React from "react";
 
 export default function GroundingBadge({ type = "dataset", version = "v4", records = 0, confidence = 0.98 }) {
   if (type === "dataset") {
+    if (!records || records === 0) {
+      return (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(148, 163, 184, 0.08)", border: "1px solid rgba(148, 163, 184, 0.25)", color: "#64748B", borderRadius: 12, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
+          <span>○ No dataset connected</span>
+        </div>
+      );
+    }
     return (
       <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.25)", color: "#059669", borderRadius: 12, padding: "2px 10px", fontSize: 11, fontWeight: 700 }}>
-        <span>✓ Grounded in Dataset {version}</span>
-        {records > 0 && <span style={{ opacity: 0.8, fontWeight: 600 }}>• {records.toLocaleString()} records evaluated</span>}
+        <span>✓ Dataset connected ({version})</span>
+        <span style={{ opacity: 0.8, fontWeight: 600 }}>• {records.toLocaleString()} records</span>
       </div>
     );
   }

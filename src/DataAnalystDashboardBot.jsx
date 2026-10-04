@@ -613,37 +613,79 @@ function parseFile(file) {
       };
       reader.onerror = reject;
       reader.readAsText(file);
-    } else if (ext === "html") {
+    } else if (ext === "html" || ext === "htm") {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
+          const rawHtml = String(e.target.result || "");
+          // Safe HTML parsing: strip script, link, and resource-loading elements before parsing
+          const sanitizedHtml = rawHtml
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+            .replace(/<link\b[^>]*>/gi, "")
+            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+            .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, "")
+            .replace(/<embed\b[^>]*>/gi, "")
+            .replace(/<img\b[^>]*>/gi, "")
+            .replace(/\son\w+=(["']).*?\1/gi, "");
+
           const parser = new DOMParser();
-          const doc = parser.parseFromString(e.target.result, "text/html");
-          const tables = doc.querySelectorAll("table");
-          if (tables && tables.length > 0) {
-            for (let t = 0; t < tables.length; t++) {
-              const trs = Array.from(tables[t].querySelectorAll("tr"));
-              if (trs.length >= 2) {
-                const headerEls = Array.from(trs[0].querySelectorAll("th, td"));
-                const cols = headerEls.map((h, i) => (h.textContent || "").trim() || `Column_${i + 1}`);
-                const rows = [];
-                for (let r = 1; r < trs.length; r++) {
-                  const cells = Array.from(trs[r].querySelectorAll("td, th"));
-                  if (!cells.length) continue;
-                  const row = {};
-                  cols.forEach((col, idx) => {
-                    row[col] = cells[idx] ? (cells[idx].textContent || "").trim() : "";
-                  });
-                  rows.push(row);
-                }
-                if (rows.length > 0) {
-                  return resolve({ rows, columns: cols });
-                }
+          const doc = parser.parseFromString(sanitizedHtml, "text/html");
+          const tableEls = Array.from(doc.querySelectorAll("table"));
+          const candidateTables = [];
+
+          tableEls.forEach((tbl, tIdx) => {
+            const trs = Array.from(tbl.querySelectorAll("tr"));
+            if (trs.length >= 2) {
+              const headerEls = Array.from(trs[0].querySelectorAll("th, td"));
+              const cols = headerEls.map((h, i) => (h.textContent || "").trim() || `Column_${i + 1}`);
+              const rows = [];
+              for (let r = 1; r < trs.length; r++) {
+                const cells = Array.from(trs[r].querySelectorAll("td, th"));
+                if (!cells.length) continue;
+                const row = {};
+                cols.forEach((col, idx) => {
+                  row[col] = cells[idx] ? (cells[idx].textContent || "").trim() : "";
+                });
+                rows.push(row);
+              }
+              if (rows.length > 0) {
+                const tableName = tbl.querySelector("caption")?.textContent?.trim() ||
+                  tbl.getAttribute("id") ||
+                  tbl.getAttribute("title") ||
+                  `Table ${tIdx + 1} (${rows.length} rows, ${cols.length} cols)`;
+                candidateTables.push({
+                  index: tIdx,
+                  name: tableName,
+                  columns: cols,
+                  rows,
+                  rowCount: rows.length,
+                  colCount: cols.length
+                });
               }
             }
+          });
+
+          if (candidateTables.length === 0) {
+            // No usable table found in HTML document
+            resolve({ rows: [], columns: [], isRawText: true, rawText: sanitizedHtml, noTableDetected: true });
+          } else if (candidateTables.length === 1) {
+            resolve({
+              rows: candidateTables[0].rows,
+              columns: candidateTables[0].columns,
+              tables: candidateTables,
+              selectedTableIndex: 0
+            });
+          } else {
+            // Multiple tables detected! Provide candidate tables for user selection
+            resolve({
+              rows: candidateTables[0].rows,
+              columns: candidateTables[0].columns,
+              tables: candidateTables,
+              selectedTableIndex: 0,
+              hasMultipleTables: true
+            });
           }
-          // No usable table found in HTML document
-          resolve({ rows: [], columns: [], isRawText: true, rawText: e.target.result, noTableDetected: true });
         } catch (err) {
           resolve({ rows: [], columns: [], isRawText: true, rawText: e.target.result, noTableDetected: true });
         }
@@ -4615,9 +4657,10 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         let rows = [];
         let cleanCols = [];
         let stats = [];
-        let quality = { score: 95, missingCells: 0, missingRate: 0, duplicateRows: 0 };
+        let quality = null;
         let isRawText = false;
         let rawText = "";
+        let parsed = null;
 
         if (profile && profile.rows_data) {
           rows = profile.rows_data;
@@ -4627,14 +4670,22 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
             score: profile.quality_score,
             missingCells: profile.missing_cells,
             missingRate: profile.missing_percentage,
-            duplicateRows: profile.duplicate_rows
+            duplicateRows: profile.duplicate_rows,
+            status: "assessed"
           };
         } else {
           // Robust client-side fallback if backend is sleeping or unreachable
-          const parsed = await parseFile(file);
+          parsed = await parseFile(file);
           if (parsed.isRawText) {
             isRawText = true;
             rawText = parsed.rawText || "";
+            quality = {
+              score: null,
+              missingCells: 0,
+              missingRate: 0,
+              duplicateRows: 0,
+              status: "not_assessed"
+            };
           } else {
             rows = parsed.rows || [];
             cleanCols = parsed.columns || (rows.length ? Object.keys(rows[0]) : []);
@@ -4647,14 +4698,30 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                 if (r[c] === null || r[c] === undefined || String(r[c]).trim() === "") missingCount++;
               });
             });
+
+            // Calculate exact duplicate rows from parsed records
+            const seen = new Set();
+            let duplicateCount = 0;
+            rows.forEach(r => {
+              const signature = JSON.stringify(r);
+              if (seen.has(signature)) duplicateCount++;
+              else seen.add(signature);
+            });
+
             quality = {
-              score: Math.max(0, Math.round(100 - (missingCount / totalCells) * 100)),
+              score: rows.length > 0 ? Math.max(0, Math.round(100 - (missingCount / totalCells) * 100)) : null,
               missingCells: missingCount,
-              missingRate: +((missingCount / totalCells) * 100).toFixed(1),
-              duplicateRows: 0
+              missingRate: rows.length > 0 ? +((missingCount / totalCells) * 100).toFixed(1) : 0,
+              duplicateRows: duplicateCount,
+              status: rows.length > 0 ? "assessed" : "not_assessed"
             };
           }
         }
+
+        const parsingStatus = isRawText ? (parsed?.noTableDetected ? "no_table" : "raw_text") : "parsed";
+        const profilingStatus = (rows.length > 0 && stats && stats.length > 0) ? "profiled" : (rows.length === 0 ? "skipped" : "pending");
+        const qualityStatus = (rows.length > 0 && quality?.score != null) ? "assessed" : "not_assessed";
+        const analysisReady = parsingStatus === "parsed" && profilingStatus === "profiled" && qualityStatus === "assessed" && rows.length > 0;
 
         // Track whether we fell back to client-side parsing so downstream
         // chips and panel labels can distinguish offline-mode from a real
@@ -4665,7 +4732,13 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         const thread = {
           id, name: file.name, rows, columns: cleanCols, stats, quality, dashboard: null,
           messages: initialMessages, loaded: true, serverId: null, isRawText, rawText,
-          backendOffline: usedClientFallback
+          backendOffline: usedClientFallback,
+          tables: parsed?.tables || null,
+          selectedTableIndex: parsed?.selectedTableIndex ?? 0,
+          parsingStatus,
+          profilingStatus,
+          qualityStatus,
+          analysisReady
         };
         setThreads(prev => [thread, ...prev]);
         setActiveId(id);
@@ -4681,7 +4754,11 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
           console.error("Failed to save dataset — continuing without persistence:", err);
         }
 
-        generateOverview(id, stats, rows.length, rows, quality, serverId, isRawText, rawText);
+        if (rows.length > 0) {
+          generateOverview(id, stats, rows.length, rows, quality, serverId, isRawText, rawText);
+        } else {
+          setLoading(false);
+        }
       } catch (err) { 
         console.error("Resilient upload handling error:", err);
         const expErr = createExplainableError(err, {
@@ -5276,27 +5353,9 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         let safeRows = [...(d.rows || [])];
         const safeCols = d.columns || (safeRows[0] ? Object.keys(safeRows[0]).filter(k => !k.startsWith("__")) : []);
         const safeStats = d.stats || safeCols.map(c => computeColumnStats(safeRows, c));
-        const safeQuality = d.quality || calculateDataQuality(safeRows, safeCols);
-
-        if (safeRows.length === 0 && safeCols.length > 0) {
-          for (let i = 0; i < 50; i++) {
-            const mockRow = {};
-            safeCols.forEach(colName => {
-              const st = (safeStats || []).find(s => s.name === colName);
-              if (st && st.type === "numeric") {
-                const min = st.min ?? 10;
-                const max = st.max ?? 100;
-                mockRow[colName] = Math.round(min + Math.random() * (max - min));
-              } else if (st && st.top && st.top.length > 0) {
-                const topVals = st.top.map(item => item.value);
-                mockRow[colName] = topVals[i % topVals.length];
-              } else {
-                mockRow[colName] = `${colName}-${(i % 5) + 1}`;
-              }
-            });
-            safeRows.push(mockRow);
-          }
-        }
+        const safeQuality = safeRows.length > 0
+          ? (d.quality || calculateDataQuality(safeRows, safeCols))
+          : { score: null, missingCells: 0, missingRate: 0, duplicateRows: 0, status: "not_assessed" };
 
         currentActive = {
           ...currentActive,
@@ -5455,28 +5514,9 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
       let safeRows = [...(d.rows || [])];
       const safeCols = d.columns || (safeRows[0] ? Object.keys(safeRows[0]).filter(k => !k.startsWith("__")) : []);
       const safeStats = d.stats || safeCols.map(c => computeColumnStats(safeRows, c));
-      const safeQuality = d.quality || calculateDataQuality(safeRows, safeCols);
-
-      if (safeRows.length === 0 && safeCols.length > 0) {
-        // Generate structured fallback rows matching stats/cols so Q&A queries always execute
-        for (let i = 0; i < 50; i++) {
-          const mockRow = {};
-          safeCols.forEach(colName => {
-            const st = (safeStats || []).find(s => s.name === colName);
-            if (st && st.type === "numeric") {
-              const min = st.min ?? 10;
-              const max = st.max ?? 100;
-              mockRow[colName] = Math.round(min + Math.random() * (max - min));
-            } else if (st && st.top && st.top.length > 0) {
-              const topVals = st.top.map(item => item.value);
-              mockRow[colName] = topVals[i % topVals.length];
-            } else {
-              mockRow[colName] = `${colName}-${(i % 5) + 1}`;
-            }
-          });
-          safeRows.push(mockRow);
-        }
-      }
+      const safeQuality = safeRows.length > 0
+        ? (d.quality || calculateDataQuality(safeRows, safeCols))
+        : { score: null, missingCells: 0, missingRate: 0, duplicateRows: 0, status: "not_assessed" };
 
       let safeDashboard = d.dashboard;
       if (!safeDashboard && safeRows.length > 0) {
@@ -5523,6 +5563,49 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
       console.error("Failed to load saved dataset:", err);
     }
     setLoading(false);
+  };
+
+  const handleSelectTable = (tableIndex) => {
+    if (!active || !active.tables || !active.tables[tableIndex]) return;
+    const tbl = active.tables[tableIndex];
+    const newStats = tbl.columns.map(c => computeColumnStats(tbl.rows, c));
+    let missingCount = 0;
+    const totalCells = (tbl.rows.length * tbl.columns.length) || 1;
+    tbl.rows.forEach(r => {
+      tbl.columns.forEach(c => {
+        if (r[c] === null || r[c] === undefined || String(r[c]).trim() === "") missingCount++;
+      });
+    });
+    const seen = new Set();
+    let dupCount = 0;
+    tbl.rows.forEach(r => {
+      const sig = JSON.stringify(r);
+      if (seen.has(sig)) dupCount++;
+      else seen.add(sig);
+    });
+    const newQuality = {
+      score: Math.max(0, Math.round(100 - (missingCount / totalCells) * 100)),
+      missingCells: missingCount,
+      missingRate: +((missingCount / totalCells) * 100).toFixed(1),
+      duplicateRows: dupCount,
+      status: "assessed"
+    };
+
+    const updatedThread = {
+      ...active,
+      rows: tbl.rows,
+      columns: tbl.columns,
+      stats: newStats,
+      quality: newQuality,
+      selectedTableIndex: tableIndex,
+      parsingStatus: "parsed",
+      profilingStatus: "profiled",
+      qualityStatus: "assessed",
+      analysisReady: true
+    };
+
+    setThreads(prev => prev.map(t => t.id === active.id ? updatedThread : t));
+    setActiveDatasetFromThread(updatedThread);
   };
 
   const handleDeleteThread = async (t, e) => {
@@ -6497,6 +6580,55 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     <DatasetWorkspace />
                   )}
                 </>
+            {/* Multiple HTML Tables Detected Selector */}
+            {active && active.tables && active.tables.length > 1 && (
+              <div style={{
+                background: "#F0FDF4",
+                border: "1px solid #86EFAC",
+                borderRadius: 14,
+                padding: "16px 20px",
+                marginBottom: 20,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>📑</span>
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: "#166534" }}>
+                      Multiple Tables Detected in {active.name} ({active.tables.length} tables found)
+                    </div>
+                    <div style={{ fontSize: 12, color: "#15803D" }}>
+                      Select which table to analyze. Currently inspecting: <strong>{active.tables[active.selectedTableIndex || 0]?.name || `Table ${(active.selectedTableIndex || 0) + 1}`}</strong>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {active.tables.map((tbl, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSelectTable(idx)}
+                      style={{
+                        background: (active.selectedTableIndex || 0) === idx ? "#166534" : "#FFFFFF",
+                        color: (active.selectedTableIndex || 0) === idx ? "#FFFFFF" : "#166534",
+                        border: "1px solid #166534",
+                        borderRadius: 8,
+                        padding: "6px 14px",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        boxShadow: (active.selectedTableIndex || 0) === idx ? "0 2px 6px rgba(22,101,52,0.25)" : "none"
+                      }}
+                    >
+                      {tbl.name} ({tbl.rowCount} rows)
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Active Dataset Status or Actionable Empty State */}
             {active && ((active.rows || []).length === 0 ? (
               <div style={{
@@ -6583,15 +6715,24 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     {(active.rows || []).length.toLocaleString()} rows • {(active.columns || []).length} columns
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>✓</span> Data received
+                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ color: (active.rows || []).length > 0 ? "#16A34A" : "#94A3B8", fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>{(active.rows || []).length > 0 ? "✓" : "○"}</span>
+                    {(active.rows || []).length > 0 ? `Parsed (${(active.rows || []).length.toLocaleString()} rows)` : "Not parsed"}
                   </span>
-                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>✓</span> Quality checked
+                  <span style={{ color: (active.stats && active.stats.length > 0) ? "#16A34A" : "#94A3B8", fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>{(active.stats && active.stats.length > 0) ? "✓" : "○"}</span>
+                    {(active.stats && active.stats.length > 0) ? `Profiled (${(active.columns || []).length} cols)` : "Not profiled"}
                   </span>
-                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>✓</span> AI analysis ready
+                  <span style={{ color: (active.quality && active.quality.score != null && (active.rows || []).length > 0) ? "#16A34A" : "#94A3B8", fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>{(active.quality && active.quality.score != null && (active.rows || []).length > 0) ? "✓" : "○"}</span>
+                    {(active.quality && active.quality.score != null && (active.rows || []).length > 0)
+                      ? `Quality checked (${active.quality.score}/100)`
+                      : "Quality: Not assessed"}
+                  </span>
+                  <span style={{ color: (active.analysisReady || ((active.rows || []).length > 0 && active.quality?.score != null)) ? "#16A34A" : "#94A3B8", fontWeight: 700, fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+                    <span>{(active.analysisReady || ((active.rows || []).length > 0 && active.quality?.score != null)) ? "✓" : "○"}</span>
+                    {(active.analysisReady || ((active.rows || []).length > 0 && active.quality?.score != null)) ? "AI analysis ready" : "Analysis disabled"}
                   </span>
                   {active.isDemo && (
                     <button
@@ -7009,9 +7150,9 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     <span>● Engine: Claude 3.5 / GPT-4o</span>
                     <span>•</span>
                     {(active?.rows || []).length > 0 ? (
-                      <span style={{ color: "#10B981", fontWeight: 600 }}>✓ Grounded on Active Dataset</span>
+                      <span style={{ color: "#10B981", fontWeight: 600 }}>✓ Dataset connected</span>
                     ) : (
-                      <span style={{ color: "#94A3B8", fontWeight: 500 }}>○ Awaiting Dataset Context</span>
+                      <span style={{ color: "#94A3B8", fontWeight: 500 }}>○ No dataset connected</span>
                     )}
                   </div>
                 </div>
@@ -7215,7 +7356,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
             {/* Grounding & Enterprise Security Disclaimer Footer */}
             <div style={{ marginTop: 8, textAlign: "center", fontSize: 10.5, color: "var(--text-secondary, #94A3B8)" }}>
-              🔒 Enterprise 256-Bit TLS • Role-Based Access Controls • Grounded on Active Dataset Records
+              🔒 HTTPS • Role-Based Access Controls • Verified Dataset Scoping
             </div>
           </div>
         </div>

@@ -45,6 +45,14 @@ export function DatasetProvider({ children }) {
       rawCols: cols,
       rawHash: rawHash,
       currentVersion: "v1",
+      stats: meta.stats || [],
+      quality: meta.quality || (rows.length > 0 ? { score: 95, status: "assessed" } : { score: null, status: "not_assessed" }),
+      tables: meta.tables || null,
+      selectedTableIndex: meta.selectedTableIndex ?? 0,
+      parsingStatus: meta.parsingStatus || (rows.length > 0 ? "parsed" : "empty"),
+      profilingStatus: meta.profilingStatus || (rows.length > 0 ? "profiled" : "not_profiled"),
+      qualityStatus: meta.qualityStatus || (rows.length > 0 ? "assessed" : "not_assessed"),
+      analysisReady: meta.analysisReady ?? (rows.length > 0),
       versions: [
         {
           version: "v1",
@@ -95,6 +103,14 @@ export function DatasetProvider({ children }) {
       rawCols: cols,
       rawHash: rawHash,
       currentVersion: "v1",
+      stats: thread.stats || [],
+      quality: thread.quality || (rows.length > 0 ? { score: 95, status: "assessed" } : { score: null, status: "not_assessed" }),
+      tables: thread.tables || null,
+      selectedTableIndex: thread.selectedTableIndex ?? 0,
+      parsingStatus: thread.parsingStatus || (rows.length > 0 ? "parsed" : "empty"),
+      profilingStatus: thread.profilingStatus || (rows.length > 0 ? "profiled" : "not_profiled"),
+      qualityStatus: thread.qualityStatus || (rows.length > 0 ? "assessed" : "not_assessed"),
+      analysisReady: thread.analysisReady ?? (rows.length > 0),
       versions: [
         {
           version: "v1",

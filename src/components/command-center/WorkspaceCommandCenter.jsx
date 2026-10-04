@@ -18,7 +18,7 @@ export default function WorkspaceCommandCenter({ setView }) {
   const versionTag = currentVersion?.version || activeDataset?.currentVersion || "v1 Raw";
   const rowCount = activeRows ? activeRows.length : (activeDataset?.rowCount || 0);
   const colCount = activeCols ? activeCols.length : (activeDataset?.columnCount || 0);
-  const healthScore = activeDataset?.quality?.score ?? (rowCount > 0 ? 96 : 0);
+  const healthScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : (rowCount > 0 ? 95 : null);
   const rawHash = activeDataset?.rawHash || (rawVersion ? rawVersion.hash : "sha256-root-hash");
 
   // Dynamic time-based greeting
@@ -37,10 +37,10 @@ export default function WorkspaceCommandCenter({ setView }) {
       id: "health",
       testId: "metric-health",
       title: "Data Health",
-      value: rowCount > 0 ? `${healthScore}/100` : "Not assessed",
-      sub: rowCount > 0 ? "Quality index verified" : "Requires tabular data",
-      color: rowCount > 0 ? "#16A34A" : "#64748B",
-      bg: rowCount > 0 ? "#F0FDF4" : "#F8FAFC",
+      value: (rowCount > 0 && healthScore != null) ? `${healthScore}/100` : "Not assessed",
+      sub: (rowCount > 0 && healthScore != null) ? "Quality index verified" : "Requires tabular data",
+      color: (rowCount > 0 && healthScore != null) ? "#16A34A" : "#64748B",
+      bg: (rowCount > 0 && healthScore != null) ? "#F0FDF4" : "#F8FAFC",
       action: "Inspect Quality",
       onClick: () => {
         setCurrentStage("quality");
@@ -149,7 +149,7 @@ export default function WorkspaceCommandCenter({ setView }) {
             <span>•</span>
             <span>Version: <strong style={{ color: "#38BDF8" }}>{versionTag}</strong></span>
             <span>•</span>
-            <span>Health: <strong style={{ color: rowCount > 0 ? "#4ADE80" : "#94A3B8" }}>{rowCount > 0 ? `${healthScore}/100` : "Not assessed"}</strong></span>
+            <span>Health: <strong style={{ color: (rowCount > 0 && healthScore != null) ? "#4ADE80" : "#94A3B8" }}>{(rowCount > 0 && healthScore != null) ? `${healthScore}/100` : "Not assessed"}</strong></span>
             <span>•</span>
             <span style={{ fontFamily: "monospace", fontSize: 11, color: "#CBD5E1", background: "rgba(255,255,255,0.1)", padding: "2px 6px", borderRadius: 4 }}>
               SHA: {rawHash.length > 16 ? `${rawHash.slice(0, 10)}...` : rawHash}

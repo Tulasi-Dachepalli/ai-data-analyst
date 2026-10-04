@@ -34,47 +34,128 @@ export function DecisionProvider({ children }) {
       return;
     }
 
-    // Initialize dataset-specific pending AI recommendations
-    const d1 = createDecision({
-      companyId: user?.companyName || "acme-corp",
-      datasetId,
-      datasetVersion: version,
-      rawHash,
-      lineageId: `lin-${datasetId}`,
-      userId: user?.email || "analyst@enterprise.com",
-      title: `Duplicate Record Validation (${activeDataset.name})`,
-      recommendation: `Scan and deduplicate potential duplicate records in ${activeDataset.name} to establish a clean analytical baseline.`,
-      why: `Initial profiling scan detected row patterns that may skew aggregation models.`,
-      impact: "Eliminates potential double-counting across reporting stages.",
-      affectedRows: Math.min(12, activeDataset.rowCount || 12),
-      affectedCols: (activeDataset.columns || []).length,
-      severity: "🔴 High",
-      transformation: {
-        operationType: "deduplicate",
-        columns: activeDataset.columns || [],
-        reason: "Automated deduplication decision approved by analyst",
-        method: "Exact Row Hash Match"
+    // Initialize dataset-specific pending AI recommendations STRICTLY FROM VERIFIED EVIDENCE
+    const generatedDecisions = [];
+
+    // 1. Evidence Check: Duplicate Records
+    const seenRows = new Set();
+    let duplicateRowsCount = 0;
+    (activeDataset.rows || []).forEach(r => {
+      const sig = JSON.stringify(r);
+      if (seenRows.has(sig)) duplicateRowsCount++;
+      else seenRows.add(sig);
+    });
+
+    if (duplicateRowsCount > 0) {
+      generatedDecisions.push(createDecision({
+        companyId: user?.companyName || "acme-corp",
+        datasetId,
+        datasetVersion: version,
+        rawHash,
+        lineageId: `lin-${datasetId}`,
+        userId: user?.email || "analyst@enterprise.com",
+        title: `Deduplicate Verified Collisions (${activeDataset.name})`,
+        recommendation: `Remove ${duplicateRowsCount} duplicate record(s) in ${activeDataset.name} to establish a clean analytical baseline.`,
+        why: `Automated profiling scan verified ${duplicateRowsCount} identical record collision(s) across dataset rows.`,
+        impact: "Eliminates potential double-counting across metric aggregations and downstream reporting.",
+        affectedRows: duplicateRowsCount,
+        affectedCols: (activeDataset.columns || []).length,
+        severity: duplicateRowsCount > 10 ? "🔴 High" : "🟡 Medium",
+        transformation: {
+          operationType: "deduplicate",
+          columns: activeDataset.columns || [],
+          reason: `Automated deduplication for ${duplicateRowsCount} duplicate rows`,
+          method: "Exact Row Signature Match"
+        }
+      }));
+    }
+
+    // 2. Evidence Check: Missing Field Values
+    let missingCellCount = 0;
+    const columnsWithNulls = new Set();
+    (activeDataset.rows || []).forEach(r => {
+      (activeDataset.columns || []).forEach(c => {
+        if (r[c] === null || r[c] === undefined || String(r[c]).trim() === "") {
+          missingCellCount++;
+          columnsWithNulls.add(c);
+        }
+      });
+    });
+
+    if (missingCellCount > 0) {
+      const affectedColsList = Array.from(columnsWithNulls);
+      generatedDecisions.push(createDecision({
+        companyId: user?.companyName || "acme-corp",
+        datasetId,
+        datasetVersion: version,
+        rawHash,
+        lineageId: `lin-${datasetId}`,
+        userId: user?.email || "analyst@enterprise.com",
+        title: `Missing Field Imputation (${activeDataset.name})`,
+        recommendation: `Impute or handle ${missingCellCount} blank/null value(s) detected across ${affectedColsList.length} column(s).`,
+        why: `Profiling scan detected incomplete data in columns: ${affectedColsList.slice(0, 3).join(", ")}${affectedColsList.length > 3 ? "..." : ""}.`,
+        impact: "Prevents calculation bias and missing-value dropouts in Stage 07 modeling.",
+        affectedRows: missingCellCount,
+        affectedCols: affectedColsList.length,
+        severity: "🟠 Medium",
+        transformation: {
+          operationType: "impute",
+          columns: affectedColsList,
+          reason: `Handle ${missingCellCount} missing values`,
+          method: "Forward Fill / Median Imputation"
+        }
+      }));
+    }
+
+    // 3. Evidence Check: Statistical Outliers (Numeric columns)
+    const outlierFindings = [];
+    (activeDataset.columns || []).forEach(col => {
+      const numericVals = (activeDataset.rows || [])
+        .map(r => r[col])
+        .filter(v => v !== null && v !== undefined && v !== "" && !isNaN(Number(v)))
+        .map(v => Number(v));
+
+      if (numericVals.length >= 10) {
+        const mean = numericVals.reduce((a, b) => a + b, 0) / numericVals.length;
+        const variance = numericVals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / numericVals.length;
+        const std = Math.sqrt(variance);
+        if (std > 0) {
+          const outliers = numericVals.filter(v => Math.abs(v - mean) > 3 * std);
+          if (outliers.length > 0) {
+            outlierFindings.push({ column: col, count: outliers.length });
+          }
+        }
       }
     });
 
-    const d2 = createDecision({
-      companyId: user?.companyName || "acme-corp",
-      datasetId,
-      datasetVersion: version,
-      rawHash,
-      lineageId: `lin-${datasetId}`,
-      userId: user?.email || "analyst@enterprise.com",
-      title: `Statistical Outlier Review (${activeDataset.name})`,
-      recommendation: `Flag and normalize high-leverage outliers in ${activeDataset.name} prior to running forecasting models.`,
-      why: "Outlier data points with Z-score > 3.0 observed in primary numeric distribution.",
-      impact: "Improves regression and forecasting accuracy.",
-      affectedRows: Math.min(5, activeDataset.rowCount || 5),
-      affectedCols: 1,
-      severity: "🟠 Medium"
-    });
+    if (outlierFindings.length > 0) {
+      const totalOutliers = outlierFindings.reduce((sum, o) => sum + o.count, 0);
+      const outlierCols = outlierFindings.map(o => o.column);
+      generatedDecisions.push(createDecision({
+        companyId: user?.companyName || "acme-corp",
+        datasetId,
+        datasetVersion: version,
+        rawHash,
+        lineageId: `lin-${datasetId}`,
+        userId: user?.email || "analyst@enterprise.com",
+        title: `Statistical Outlier Review (${activeDataset.name})`,
+        recommendation: `Inspect and normalize ${totalOutliers} extreme value(s) with |Z| > 3.0 across ${outlierCols.slice(0, 3).join(", ")}.`,
+        why: `Extreme distribution deviations observed in numeric columns: ${outlierCols.slice(0, 3).join(", ")}.`,
+        impact: "Prevents distortion in regression and time-series forecasting models.",
+        affectedRows: totalOutliers,
+        affectedCols: outlierCols.length,
+        severity: "🟠 Medium",
+        transformation: {
+          operationType: "winsorize",
+          columns: outlierCols,
+          reason: `Normalize ${totalOutliers} distribution outliers`,
+          method: "99th Percentile Winsorization"
+        }
+      }));
+    }
 
-    setLocalDecisions([d1, d2]);
-  }, [activeDataset?.id, activeDataset?.name]);
+    setLocalDecisions(generatedDecisions);
+  }, [activeDataset?.id, activeDataset?.name, activeDataset?.rowCount]);
 
   const applyDecisionHandler = (id, role = activeRole) => {
     const res = approveDecision(id, role, (trans) => {

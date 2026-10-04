@@ -6,11 +6,24 @@ import { useDataset } from "../../context/DatasetContext";
 
 export default function StageDataCleaning() {
   const { activeRows, activeCols, applyTransformation, setCurrentStage } = useDataset();
-  const [recommendation, setRecommendation] = useState({
-    stage: "03 Data Cleaning",
-    title: "AI Recommendation: 24 Duplicate Records Detected",
-    actionTitle: "Remove duplicate transaction IDs",
-    affectedRows: 24
+  const [recommendation, setRecommendation] = useState(() => {
+    if (!activeRows || activeRows.length === 0) return null;
+    const uniqueMap = new Map();
+    let dupsCount = 0;
+    activeRows.forEach(row => {
+      const key = JSON.stringify(row);
+      if (uniqueMap.has(key)) dupsCount++;
+      else uniqueMap.set(key, true);
+    });
+    if (dupsCount > 0) {
+      return {
+        stage: "03 Data Cleaning",
+        title: `AI Recommendation: ${dupsCount} Duplicate Record(s) Detected`,
+        actionTitle: "Remove duplicate records",
+        affectedRows: dupsCount
+      };
+    }
+    return null;
   });
 
   const handleApplyDedupe = () => {
@@ -39,7 +52,50 @@ export default function StageDataCleaning() {
       beforeSample: { rows: activeRows.slice(0, 3) },
       afterSample: { rows: cleanRows.slice(0, 3) }
     });
+    setRecommendation(null);
   };
+
+  if (!activeRows || activeRows.length === 0) {
+    return (
+      <div style={{
+        background: "var(--bg-secondary, #FFFFFF)",
+        border: "1px solid var(--border-color, #E2E8F0)",
+        borderRadius: 16,
+        padding: "48px 32px",
+        textAlign: "center",
+        maxWidth: 640,
+        margin: "32px auto",
+        boxShadow: "var(--shadow-sm)"
+      }}>
+        <div style={{ fontSize: 44, marginBottom: 12 }}>🧹</div>
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary, #0F172A)", margin: "0 0 8px 0" }}>
+          No Tabular Data Available for Stage 03 Cleaning
+        </h3>
+        <p style={{ fontSize: 13.5, color: "var(--text-secondary, #64748B)", margin: "0 0 20px 0", lineHeight: 1.5 }}>
+          Upload a CSV or Excel dataset to perform verified transactional deduplication and imputation.
+        </p>
+        <button
+          onClick={() => {
+            const fileInput = document.querySelector('input[type="file"]');
+            if (fileInput) fileInput.click();
+          }}
+          style={{
+            background: "#2563EB",
+            color: "#FFF",
+            border: "none",
+            borderRadius: 8,
+            padding: "10px 20px",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(37,99,235,0.2)"
+          }}
+        >
+          ⬆ Upload Dataset
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
