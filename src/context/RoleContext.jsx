@@ -34,11 +34,17 @@ export function RoleProvider({ children, initialUser = DEFAULT_USER }) {
     const updatedUser = { ...user, role: newRole };
     setUser(updatedUser);
     localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("aida_user_updated"));
+    }
   };
 
   const updateUser = (updatedUser) => {
     setUser(updatedUser);
     localStorage.setItem("aida_user", JSON.stringify(updatedUser));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("aida_user_updated"));
+    }
   };
 
   return (
