@@ -6489,19 +6489,49 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   </div>
                   <div style={{ fontSize: 13, color: "var(--text-secondary, #64748B)", marginTop: 2 }}>
                     {(active.rows || []).length.toLocaleString()} rows • {(active.columns || []).length} columns
+                    {(active.rows || []).length === 0 && (
+                      <span style={{ color: "#DC2626", fontWeight: 600, marginLeft: 8 }}>
+                        (0 tabular rows parsed — please upload a CSV or Excel file)
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
-                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>✓</span> Data received
-                  </span>
-                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>✓</span> Quality checked
-                  </span>
-                  <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
-                    <span>✓</span> AI analysis ready
-                  </span>
-                  {active.isDemo && (
+                <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+                  {(active.rows || []).length > 0 ? (
+                    <>
+                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>✓</span> Data received
+                      </span>
+                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>✓</span> Quality checked
+                      </span>
+                      <span style={{ color: "#16A34A", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>✓</span> AI analysis ready
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ color: "#D97706", fontWeight: 700, fontSize: 12.5, display: "flex", alignItems: "center", gap: 4 }}>
+                        <span>⚠️</span> Non-tabular / Empty file
+                      </span>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          background: "#2563EB",
+                          color: "#FFF",
+                          border: "none",
+                          borderRadius: 8,
+                          padding: "6px 14px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer"
+                        }}
+                      >
+                        ＋ Upload Spreadsheet (.csv / .xlsx)
+                      </button>
+                    </>
+                  )}
+                  {active.isDemo && (active.rows || []).length > 0 && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       style={{
