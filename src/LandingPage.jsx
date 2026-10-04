@@ -6,26 +6,33 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
   const [walkthroughStep, setWalkthroughStep] = useState(1);
   const [activeRoleTab, setActiveRoleTab] = useState("ceo");
 
-  // Track real unique visitors and sessions for Admin analytics
+  // Send visit events to backend analytics service to track site-wide unique browsers
   useEffect(() => {
     try {
-      // 1. Unique Visitor ID (persisted per browser device)
-      let visitorId = localStorage.getItem("aida_unique_visitor_id");
-      const isNewVisitor = !visitorId;
-      if (isNewVisitor) {
-        visitorId = "vis_" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
-        localStorage.setItem("aida_unique_visitor_id", visitorId);
-        const uniqueCount = parseInt(localStorage.getItem("aida_unique_visitors_count") || "0", 10);
-        localStorage.setItem("aida_unique_visitors_count", String(uniqueCount + 1));
+      // 1. Persistent pseudonymous browser identifier (stored in browser device)
+      let browserId = localStorage.getItem("aida_browser_client_id") || localStorage.getItem("aida_unique_visitor_id");
+      if (!browserId) {
+        browserId = "client_" + Math.random().toString(36).substring(2, 10) + "_" + Date.now();
+        localStorage.setItem("aida_browser_client_id", browserId);
       }
 
-      // 2. Browser Session Counter
-      const isNewSession = !sessionStorage.getItem("aida_session_counted");
+      // 2. Browser session identifier (per tab/session lifetime)
+      let sessionId = sessionStorage.getItem("aida_browser_session_id");
+      const isNewSession = !sessionId;
       if (isNewSession) {
-        const sessionCount = parseInt(localStorage.getItem("aida_visit_sessions_count") || "0", 10);
-        localStorage.setItem("aida_visit_sessions_count", String(sessionCount + 1));
-        sessionStorage.setItem("aida_session_counted", "true");
+        sessionId = "sess_" + Math.random().toString(36).substring(2, 10) + "_" + Date.now();
+        sessionStorage.setItem("aida_browser_session_id", sessionId);
       }
+
+      // 3. Dispatch visit event to backend analytics service
+      fetch("/api/analytics/visit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: browserId, sessionId })
+      }).catch((err) => {
+        // Backend offline fallback: preserve local counters
+        console.warn("Analytics telemetry notice:", err);
+      });
     } catch (e) {
       console.warn("Analytics counter notice:", e);
     }

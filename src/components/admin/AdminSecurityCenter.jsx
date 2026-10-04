@@ -129,13 +129,25 @@ export default function AdminSecurityCenter({ currentUserEmail }) {
         </div>
 
         <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 16 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>Zero-Training LLM Binding</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748B", textTransform: "uppercase" }}>AI Provider Terms & Retention</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#166534", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-            <span>📜</span> <span>Commercial API Terms</span>
+            <span>📜</span> <span>Commercial API Policies</span>
           </div>
           <div style={{ fontSize: 11.5, color: "#475569", marginTop: 4 }}>
-            Customer data strictly excluded from model retraining
+            Zero model training under Anthropic §3.2 & Gemini terms; standard 30-day security retention
           </div>
+        </div>
+      </div>
+
+      {/* Verified AI Provider Policy & Retention Disclosure */}
+      <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "14px 18px", fontSize: 12, color: "#334155", lineHeight: 1.5 }}>
+        <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
+          <span>ℹ️</span> <span>Verified AI Provider Data Policy & Retention Details</span>
+        </div>
+        <div>
+          • <strong>Foundation Model Retraining:</strong> Excluded under standard commercial developer agreements (Anthropic Commercial Terms §3.2 and Google Cloud Vertex AI terms). Customer inputs and outputs are never utilized to retrain base models.<br />
+          • <strong>Operational Retention:</strong> Not universal zero-retention. Upstream AI providers maintain encrypted server logs for up to 30 days strictly for trust, safety, and abuse prevention, after which they are deleted.<br />
+          • <strong>Server-Side Sanitization:</strong> High-risk PII patterns and restricted fields are intercepted and scrubbed on the application backend before leaving for AI provider endpoints.
         </div>
       </div>
 

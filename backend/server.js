@@ -6,6 +6,7 @@ import analyzeRouter from "./routes/analyze.js";
 import authRouter from "./routes/auth.js";
 import datasetsRouter from "./routes/datasets.js";
 import adminRouter from "./routes/admin.js";
+import analyticsRouter from "./routes/analytics.js";
 import { requireAuth, requireAdmin, requireTokenQuota } from "./middleware/auth.js";
 import pool, { initDb } from "./db.js";
 import { initScheduler } from "./lib/scheduler.js";
@@ -78,6 +79,15 @@ const adminLimiter = rateLimit({
   keyGenerator: (req) => String(req.user.userId)
 });
 app.use("/api/admin", requireAuth, requireAdmin, adminLimiter, adminRouter);
+
+// Public analytics endpoints for unique browser activity and metrics
+const analyticsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use("/api/analytics", analyticsLimiter, analyticsRouter);
 
 app.post("/api/reports/email", (req, res) => {
   const { email, datasetName, rowCount, colCount } = req.body || {};

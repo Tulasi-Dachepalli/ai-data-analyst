@@ -1,7 +1,8 @@
 // src/utils/piiSanitizer.js
 // Automated PII detection, sensitivity classification, and non-destructive masking engine.
 
-// Common hash helper (SHA-256 representation)
+// Common hash helper (SHA-256 pseudonymous representation)
+// Note: Hashes provide pseudonymity, not anonymity. Low-entropy inputs remain susceptible to dictionary attacks.
 function pseudoHash(str) {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {

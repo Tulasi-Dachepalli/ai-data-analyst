@@ -1,6 +1,7 @@
 import { Router } from "express";
 import pool from "../db.js";
 import { recordUsage } from "../lib/quota.js";
+import { sanitizePromptText } from "../lib/piiSanitizer.js";
 
 const router = Router();
 
@@ -10,7 +11,7 @@ const MODEL = "claude-sonnet-4-6";
 
 
 router.post("/", async (req, res) => {
-  const { system, userText, requestType, datasetId } = req.body || {};
+  const { system, userText, requestType, datasetId, restrictedFields } = req.body || {};
 
   if (typeof system !== "string" || typeof userText !== "string") {
     return res.status(400).json({ error: "Both 'system' and 'userText' are required strings." });
@@ -48,6 +49,14 @@ router.post("/", async (req, res) => {
     }
   }
 
+  // Server-side PII and restricted field sanitization BEFORE dispatching to upstream AI provider
+  const { sanitizedText: cleanSystem, redactedCount: sysRedacted } = sanitizePromptText(system, restrictedFields);
+  const { sanitizedText: cleanUserText, redactedCount: userRedacted } = sanitizePromptText(userText, restrictedFields);
+  const totalRedacted = sysRedacted + userRedacted;
+  if (totalRedacted > 0) {
+    console.log(`[Privacy Guard] Stripped ${totalRedacted} restricted field instances from AI payload for company ${req.user.companyId}.`);
+  }
+
   try {
     let text = "";
     let inputTokens = 0;
@@ -62,12 +71,12 @@ router.post("/", async (req, res) => {
         },
         body: JSON.stringify({
           systemInstruction: {
-            parts: [{ text: system }]
+            parts: [{ text: cleanSystem }]
           },
           contents: [
             {
               role: "user",
-              parts: [{ text: userText }]
+              parts: [{ text: cleanUserText }]
             }
           ],
           generationConfig: {
@@ -98,8 +107,8 @@ router.post("/", async (req, res) => {
         body: JSON.stringify({
           model: MODEL,
           max_tokens: 1000,
-          system,
-          messages: [{ role: "user", content: userText }]
+          system: cleanSystem,
+          messages: [{ role: "user", content: cleanUserText }]
         })
       });
 

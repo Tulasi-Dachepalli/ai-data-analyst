@@ -268,9 +268,9 @@ export default function DataPrivacyPreviewModal({ isOpen, onClose, columns = [],
                               }}
                             >
                               <option value="redact">🔒 Redact [CONFIDENTIAL]</option>
-                              <option value="hash">🔑 Hash (SHA-256)</option>
+                              <option value="hash">🔑 Pseudonymize (SHA-256 Hash)</option>
                               <option value="range">📊 Range Binning ($50k-$75k)</option>
-                              <option value="anonymize">👤 Anonymize (Subject-1)</option>
+                              <option value="anonymize">👤 Synthetic Alias (Subject-1)</option>
                               <option value="exclude">🚫 Exclude from AI Context</option>
                               <option value="keep">⚠️ Keep Visible (Unmasked)</option>
                             </select>
@@ -280,6 +280,10 @@ export default function DataPrivacyPreviewModal({ isOpen, onClose, columns = [],
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              <div style={{ marginTop: 12, fontSize: 11.5, color: "#475569", background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "10px 14px", lineHeight: 1.4 }}>
+                🔒 <strong>Pseudonymization vs. Anonymization:</strong> Cryptographic hashes (SHA-256) provide <em>pseudonymity</em>, not true anonymity. Low-entropy inputs (e.g. phone numbers, zip codes) can be re-identified through rainbow table lookups. Use <strong>Redact</strong> or <strong>Exclude</strong> when data must not be reverse-engineered.
               </div>
             </div>
           )}

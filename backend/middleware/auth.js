@@ -15,6 +15,12 @@ export async function requireAuth(req, res, next) {
   if (!token) {
     return res.status(401).json({ error: "Missing authentication token." });
   }
+
+  // Explicit security guard: guest demo tokens are strictly isolated from production APIs & storage
+  if (token.startsWith("demo-")) {
+    return res.status(403).json({ error: "Guest Demo Mode: Access to production company storage and APIs is restricted." });
+  }
+
   const secret = process.env.JWT_SECRET || "aida_production_fallback_jwt_secret_2026";
 
   let payload;
@@ -22,6 +28,10 @@ export async function requireAuth(req, res, next) {
     payload = jwt.verify(token, secret);
   } catch (err) {
     return res.status(401).json({ error: "Invalid or expired token." });
+  }
+
+  if (payload?.isDemo) {
+    return res.status(403).json({ error: "Guest Demo Mode: Access to production company storage and APIs is restricted." });
   }
 
   try {

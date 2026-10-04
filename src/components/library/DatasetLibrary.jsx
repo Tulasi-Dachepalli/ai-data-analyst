@@ -1,20 +1,29 @@
 // src/components/library/DatasetLibrary.jsx
 import React, { useState, useEffect } from "react";
 import { useDataset } from "../../context/DatasetContext";
+import { useRole } from "../../context/RoleContext";
 
 export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
   const { activeDataset, loadDataset } = useDataset();
+  const { user } = useRole();
   const [search, setSearch] = useState("");
   const [serverDatasets, setServerDatasets] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch real datasets from backend API (if available)
+  // Fetch real datasets from backend API (if available and not in guest demo mode)
   useEffect(() => {
+    if (user?.isDemo) {
+      setServerDatasets([]);
+      return;
+    }
+
     let isMounted = true;
     async function fetchDatasets() {
       try {
         setLoading(true);
-        const res = await fetch("/api/datasets");
+        const token = localStorage.getItem("aida_token");
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch("/api/datasets", { headers });
         if (res.ok) {
           const data = await res.json();
           if (isMounted && Array.isArray(data.datasets)) {

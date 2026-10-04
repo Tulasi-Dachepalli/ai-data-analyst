@@ -48,15 +48,32 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
     try {
       const unique = parseInt(localStorage.getItem("aida_unique_visitors_count") || "0", 10);
       const sessions = parseInt(localStorage.getItem("aida_visit_sessions_count") || "0", 10);
-      const legacy = parseInt(localStorage.getItem("aida_visitor_count") || "0", 10);
       return {
-        uniqueVisitors: Math.max(unique, legacy > 0 ? 1 : 0),
-        pageSessions: Math.max(sessions, legacy)
+        uniqueBrowsers: unique,
+        totalSessions: sessions,
+        disclaimer: "Measures distinct browser clients recording visit events to backend analytics. Single users on multiple devices count separately."
       };
     } catch {
-      return { uniqueVisitors: 0, pageSessions: 0 };
+      return { uniqueBrowsers: 0, totalSessions: 0 };
     }
   });
+
+  // Fetch site-wide analytics from backend service
+  useEffect(() => {
+    fetch("/api/analytics/stats")
+      .then(r => r.json())
+      .then(d => {
+        if (d && typeof d.uniqueBrowsers === "number") {
+          setVisitorStats(prev => ({
+            ...prev,
+            uniqueBrowsers: Math.max(d.uniqueBrowsers, prev.uniqueBrowsers),
+            totalSessions: Math.max(d.totalSessions, prev.totalSessions),
+            disclaimer: d.disclaimer || prev.disclaimer
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Invites Manager State
   const [invites, setInvites] = useState([]);
@@ -305,12 +322,15 @@ export default function AdminPage({ currentUserEmail, onBack, initialTab }) {
             <>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 20 }}>
                 <div style={card}>
-                  <div style={label}>Landing Page Visitors</div>
+                  <div style={label}>Site-Wide Analytics (Unique Browsers)</div>
                   <div style={{ fontSize: 24, fontWeight: 800, color: "#2563EB", marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>👁️</span> <span>{visitorStats.uniqueVisitors.toLocaleString()}</span>
+                    <span>💻</span> <span>{(visitorStats.uniqueBrowsers || 0).toLocaleString()}</span>
                   </div>
                   <div style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
-                    Unique visitors ({visitorStats.pageSessions.toLocaleString()} browsing sessions)
+                    Unique browsers ({(visitorStats.totalSessions || 0).toLocaleString()} sessions)
+                  </div>
+                  <div style={{ fontSize: 9.5, color: "#94A3B8", marginTop: 3, lineHeight: 1.3 }}>
+                    Distinct browser clients via backend analytics. Multi-device users count separately.
                   </div>
                 </div>
                 <div style={card}>
