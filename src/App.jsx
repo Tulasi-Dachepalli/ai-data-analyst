@@ -189,55 +189,27 @@ export default function App() {
               Access Restricted — Administrator Authorization Required
             </h3>
             <p style={{ fontSize: 13, color: "var(--text-secondary, #475569)", margin: "0 0 16px 0", lineHeight: 1.6 }}>
-              The Team User Directory, Security Controls, and Audit Logs are strictly restricted to Workspace Administrators. Your current role is <strong>{user?.role?.toUpperCase() || "CEO"}</strong> ({user?.email || "User"}).
+              The Team User Directory, Security Controls, and Audit Logs are strictly restricted to Workspace Administrators. Your current role is <strong>{user?.role?.toUpperCase() || "CEO"}</strong> ({user?.email || "User"}). Administrator permissions must be assigned and verified by the backend system administrator.
             </p>
             <div style={{ display: "flex", gap: 12, justifyContent: "center", alignItems: "center", flexWrap: "wrap", marginTop: 20 }}>
               <button
-                onClick={() => {
-                  const adminUser = {
-                    ...user,
-                    role: "admin",
-                    email: user?.email === "demo.executive@enterprise.com" ? "admin@enterprise.com" : (user?.email || "admin@enterprise.com"),
-                    fullName: user?.fullName === "Guest Executive" ? "Workspace Administrator" : (user?.fullName || "Administrator")
-                  };
-                  localStorage.setItem("aida_user", JSON.stringify(adminUser));
-                  setUser(adminUser);
-                  if (typeof window !== "undefined") {
-                    window.dispatchEvent(new Event("aida_user_updated"));
-                  }
-                }}
+                onClick={() => setView("dashboard")}
                 style={{
                   background: "#2563EB",
-                  color: "#FFF",
+                  color: "#FFFFFF",
                   border: "none",
                   borderRadius: 8,
-                  padding: "10px 20px",
+                  padding: "10px 22px",
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 8,
-                  boxShadow: "0 2px 6px rgba(37,99,235,0.25)",
-                  transition: "all 0.15s ease"
+                  boxShadow: "0 2px 6px rgba(37,99,235,0.25)"
                 }}
               >
-                <span>🛡️</span> Switch to Administrator (View Analytics & Audit)
-              </button>
-              <button
-                onClick={() => setView("dashboard")}
-                style={{
-                  background: "var(--bg-secondary, #FFFFFF)",
-                  color: "var(--text-primary, #0F172A)",
-                  border: "1px solid var(--border-color, #CBD5E1)",
-                  borderRadius: 8,
-                  padding: "10px 20px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer"
-                }}
-              >
-                Return to BI Workspace
+                <span>⬅️</span> Return to BI Workspace
               </button>
             </div>
           </div>

@@ -64,6 +64,8 @@ import PowerBiDashboard from "./components/dashboard/PowerBiDashboard";
 import ExplainableErrorCard from "./components/common/ExplainableErrorCard";
 import BeginnerModePanel from "./components/beginner/BeginnerModePanel";
 import DataPrivacyPreviewModal from "./components/privacy/DataPrivacyPreviewModal";
+import StageDataQuality from "./components/stages/StageDataQuality";
+import StageCleanedData from "./components/stages/StageCleanedData";
 import { explainErrorForCopilot, createExplainableError, ERROR_CATEGORIES } from "./utils/errorExplainer.js";
 import { useDataset } from "./context/DatasetContext";
 import { getRoleConfig } from "./config/roleConfigs";
@@ -2267,24 +2269,32 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
           </div>
         </div>
 
-        {/* Clean Linear Workflow Stepper Bar */}
+        {/* Clean Linear Workflow Stepper Bar (Canonical 9 Stages + Power BI Dashboard) */}
         <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "4px 0", alignItems: "center" }}>
           {[
             { id: "dashboard", label: t("tab_dashboard", "📊 Power BI Dashboard"), icon: "📊", isPrimary: true },
-            { id: "data", label: t("tab_data", "01 Raw Data"), icon: "📁" },
-            { id: "cleaning", label: t("tab_cleaning", "02 Data Cleaning"), icon: "🧹" },
-            { id: "eda", label: t("tab_eda", "03 EDA"), icon: "🔍" },
-            { id: "insights_tab", label: t("tab_insights", "04 Insights"), icon: "💡" },
-            { id: "ml", label: t("tab_ml", "05 Modeling"), icon: "🤖" },
-            { id: "forecast", label: t("tab_forecast", "06 Forecasting"), icon: "🔮" },
-            { id: "stats", label: t("tab_stats", "07 Executive Report"), icon: "📑" }
+            { id: "data", label: t("tab_data", "01 Raw Data"), icon: "📁", stage: "raw" },
+            { id: "quality", label: t("tab_quality", "02 Data Quality"), icon: "🛡️", stage: "quality" },
+            { id: "cleaning", label: t("tab_cleaning", "03 Data Cleaning"), icon: "🧹", stage: "cleaning" },
+            { id: "cleaned", label: t("tab_cleaned", "04 Cleaned Data"), icon: "✨", stage: "cleaned" },
+            { id: "eda", label: t("tab_eda", "05 Exploratory Analysis"), icon: "🔍", stage: "explore" },
+            { id: "insights_tab", label: t("tab_insights", "06 AI Insights"), icon: "💡", stage: "insights" },
+            { id: "ml", label: t("tab_ml", "07 ML Modeling"), icon: "🤖", stage: "modeling" },
+            { id: "forecast", label: t("tab_forecast", "08 Forecasting"), icon: "🔮", stage: "forecast" },
+            { id: "stats", label: t("tab_stats", "09 Executive Report"), icon: "📑", stage: "report" }
           ].map(tab => {
             const isDash = tab.id === "dashboard";
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
-                onClick={() => { setActiveTab(tab.id); if (tab.id === "data") setDataPage(0); }}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  if (tab.id === "data") setDataPage(0);
+                  if (tab.stage && typeof setCurrentStage === "function") {
+                    setCurrentStage(tab.stage);
+                  }
+                }}
                 style={{
                   padding: isDash ? "7px 14px" : "6px 12px",
                   borderRadius: 7,
@@ -2359,6 +2369,14 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
             />
           )}
         </>
+      )}
+
+      {activeTab === "quality" && (
+        <StageDataQuality />
+      )}
+
+      {activeTab === "cleaned" && (
+        <StageCleanedData />
       )}
 
       {activeTab === "cleaning" && (
@@ -4220,9 +4238,10 @@ const SAMPLE_DATASETS = [];
 export default function DataAnalystDashboardBot({ currentView, setView, user: propUser }) {
   const user = propUser || JSON.parse(localStorage.getItem("aida_user") || "null");
   const { lang, t } = useLanguage();
-  const { activeDataset, loadDataset, setActiveDatasetFromThread } = useDataset();
+  const { activeDataset, loadDataset, setActiveDatasetFromThread, setCurrentStage } = useDataset();
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const [serverStatus, setServerStatus] = useState("connected");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [currentExplainableError, setCurrentExplainableError] = useState(null);
 
@@ -4493,6 +4512,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     api.listDatasets()
       .then((res) => {
         if (!res || !res.datasets) return;
+        setServerStatus("connected");
         setThreads(prev => {
           const known = new Set(prev.filter(t => t.serverId).map(t => t.serverId));
           const stubs = res.datasets
@@ -4512,7 +4532,40 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
           return [...prev, ...stubs];
         });
       })
-      .catch(err => console.error("Failed to load saved datasets:", err));
+      .catch((err) => {
+        // Non-blocking cold start handling: server spinning up on free tier
+        setServerStatus("cold_start");
+        console.warn("[Cloud Service] Cloud backend warming up; local browser analysis remains fully active.");
+        setTimeout(() => {
+          api.listDatasets()
+            .then(res => {
+              if (res && res.datasets) {
+                setServerStatus("connected");
+                setThreads(prev => {
+                  const known = new Set(prev.filter(t => t.serverId).map(t => t.serverId));
+                  const stubs = res.datasets
+                    .filter(d => !known.has(d.id))
+                    .map(d => ({
+                      id: `srv-${d.id}`,
+                      serverId: d.id,
+                      name: d.name,
+                      rows: null, columns: null, stats: null,
+                      quality: d.qualityScore != null ? { score: d.qualityScore, missingCells: 0, missingRate: 0 } : null,
+                      dashboard: null,
+                      messages: [],
+                      loaded: false,
+                      rowCountHint: d.rowCount,
+                      colCountHint: d.columnCount
+                    }));
+                  return [...prev, ...stubs];
+                });
+              }
+            })
+            .catch(() => {
+              setServerStatus("offline");
+            });
+        }, 5000);
+      });
 
     return () => {
       window.removeEventListener("aida_quota_exceeded", handleQuotaExceeded);
@@ -5290,7 +5343,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     };
     setThreads(prev => [demoThread, ...prev.filter(t => t.id !== demoId)]);
     setActiveId(demoId);
-    loadDataset("Superstore_Retail_Sales.csv", demoRows, demoCols, { isDemo: true, isUserExplicit: true });
+    loadDataset("Superstore_Retail_Sales.csv", demoRows, demoCols, { isDemo: true, isUserExplicit: true, quality: demoQuality, stats: demoStats, dashboard: demoDashboard });
     if (typeof setView === "function") setView("dashboard");
   };
 
@@ -6149,18 +6202,31 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         </div>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.tsv,.json,.txt,.md,.log,.xml,.html" multiple style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files.length) { handleFiles(e.target.files); e.target.value = ""; } }} />
         <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 6, padding: "0 4px" }}>Recent</div>
+        {serverStatus === "cold_start" && (
+          <div style={{ fontSize: 10.5, background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 6, padding: "5px 8px", color: "#92400E", display: "flex", alignItems: "center", gap: 5, margin: "2px 0 6px 0" }}>
+            <span>⏳</span>
+            <span>Cloud sync warming up • In-browser engine active</span>
+          </div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: 1 }}>
-          {threads.length === 0 && <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "6px 4px" }}>No recent files</div>}
-          {threads.map(t => (
-            <div key={t.id} onClick={() => handleSelectThread(t)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12.5, background: t.id === activeId ? "var(--bg-hover)" : "transparent", color: "var(--text-primary)" }}>
-              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", opacity: t.loaded ? 1 : 0.6 }}>{t.name}</span>
-              <button onClick={(e) => handleDeleteThread(t, e)} title="Delete dataset"
-                style={{ flexShrink: 0, background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1 }}>
-                ✕
-              </button>
-            </div>
-          ))}
+          {(() => {
+            const uniqueThreads = threads.filter((t, idx, arr) =>
+              idx === arr.findIndex(other => other.name === t.name || (other.serverId && other.serverId === t.serverId))
+            );
+            if (uniqueThreads.length === 0) {
+              return <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "6px 4px" }}>No recent files</div>;
+            }
+            return uniqueThreads.map(t => (
+              <div key={t.id} onClick={() => handleSelectThread(t)}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, padding: "8px 10px", borderRadius: 6, cursor: "pointer", fontSize: 12.5, background: t.id === activeId ? "var(--bg-hover)" : "transparent", color: "var(--text-primary)" }}>
+                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", opacity: t.loaded ? 1 : 0.6 }}>{t.name}</span>
+                <button onClick={(e) => handleDeleteThread(t, e)} title="Delete dataset"
+                  style={{ flexShrink: 0, background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: 13, padding: "0 2px", lineHeight: 1 }}>
+                  ✕
+                </button>
+              </div>
+            ));
+          })()}
         </div>
         {usageStats && (
           <div style={{ background: "linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-primary) 100%)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>

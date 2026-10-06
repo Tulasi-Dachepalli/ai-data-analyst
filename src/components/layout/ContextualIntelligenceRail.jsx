@@ -80,7 +80,7 @@ export default function ContextualIntelligenceRail() {
               • {activeDataset.columns?.length || 0} attributes profiled
             </div>
             <div style={{ background: "#F8FAFC", padding: 8, borderRadius: 6, borderLeft: "3px solid #64748B" }}>
-              • Quality health: {activeDataset.quality?.score ?? 95}/100
+              • Quality health: {activeDataset.quality?.score != null ? `${activeDataset.quality.score}/100` : "Not assessed"}
             </div>
           </div>
         ) : (

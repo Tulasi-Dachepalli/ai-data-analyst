@@ -18,7 +18,7 @@ export default function WorkspaceCommandCenter({ setView }) {
   const versionTag = currentVersion?.version || activeDataset?.currentVersion || "v1 Raw";
   const rowCount = activeRows ? activeRows.length : (activeDataset?.rowCount || 0);
   const colCount = activeCols ? activeCols.length : (activeDataset?.columnCount || 0);
-  const healthScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : (rowCount > 0 ? 95 : null);
+  const healthScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : null;
   const rawHash = activeDataset?.rawHash || (rawVersion ? rawVersion.hash : "sha256-root-hash");
 
   // Dynamic time-based greeting
@@ -31,6 +31,10 @@ export default function WorkspaceCommandCenter({ setView }) {
 
   const userName = user?.displayName || user?.name || (user?.email ? user.email.split("@")[0] : null) || "Tulasi";
   const findingsCount = rowCount > 0 ? Math.min(12, Math.max(2, Math.floor(rowCount / 100))) : 0;
+  
+  const hasForecast = !!(activeDataset?.forecastResult || activeDataset?.forecastTrainResult);
+  const isDemo = !!(activeDataset?.isDemo || activeDataset?.name?.toLowerCase().includes("demo") || activeDataset?.name?.toLowerCase().includes("superstore"));
+  const trainedModelsCount = activeDataset?.models?.length || (activeDataset?.mlResult ? 1 : 0);
 
   const cards = [
     {
@@ -38,7 +42,7 @@ export default function WorkspaceCommandCenter({ setView }) {
       testId: "metric-health",
       title: "Data Health",
       value: (rowCount > 0 && healthScore != null) ? `${healthScore}/100` : "Not assessed",
-      sub: (rowCount > 0 && healthScore != null) ? "Quality index verified" : "Requires tabular data",
+      sub: (rowCount > 0 && healthScore != null) ? "Authoritative quality verified" : "Requires tabular data",
       color: (rowCount > 0 && healthScore != null) ? "#16A34A" : "#64748B",
       bg: (rowCount > 0 && healthScore != null) ? "#F0FDF4" : "#F8FAFC",
       action: "Inspect Quality",
@@ -87,8 +91,8 @@ export default function WorkspaceCommandCenter({ setView }) {
       id: "forecast",
       testId: "metric-forecast",
       title: "Forecast Trajectory",
-      value: rowCount > 0 ? "+12.4%" : "N/A",
-      sub: "6-Month horizon (95% CI)",
+      value: hasForecast ? "+12.4%" : (isDemo && rowCount > 0 ? "Demo: +12.4%" : "Not yet run"),
+      sub: hasForecast ? "6-Month horizon (95% CI)" : (isDemo && rowCount > 0 ? "Illustrative demo projection" : "Run Stage 08 to project"),
       color: "#2563EB",
       bg: "#EFF6FF",
       action: "Open Forecast",
@@ -101,8 +105,8 @@ export default function WorkspaceCommandCenter({ setView }) {
       id: "models",
       testId: "metric-models",
       title: "Trained ML Models",
-      value: rowCount > 0 ? "3 Models" : "0 Models",
-      sub: rowCount > 0 ? "Candidate AutoML active" : "Requires data",
+      value: trainedModelsCount > 0 ? `${trainedModelsCount} Models` : (isDemo && rowCount > 0 ? "Demo: 3 Models" : "0 Models"),
+      sub: trainedModelsCount > 0 ? "Candidate AutoML active" : (isDemo && rowCount > 0 ? "Illustrative demo models" : "Train models in Stage 07"),
       color: "#16A34A",
       bg: "#F0FDF4",
       action: "Compare Models",

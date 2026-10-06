@@ -1,5 +1,5 @@
 // src/components/beginner/BeginnerModePanel.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useRole } from "../../context/RoleContext";
 import { useDataset } from "../../context/DatasetContext";
 
@@ -38,59 +38,68 @@ const GLOSSARY_TERMS = [
 
 export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCopilot, onExportReport }) {
   const { roleConfig } = useRole();
-  const { activeDataset, activeRows, activeColumns } = useDataset();
+  const { activeDataset, activeRows } = useDataset();
 
-  const [currentStep, setCurrentStep] = useState(() => {
-    return parseInt(localStorage.getItem("aida_beginner_step") || "1", 10);
-  });
   const [showGlossary, setShowGlossary] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+
+  const rowsCount = activeRows ? activeRows.length : 0;
+  const isDataLoaded = !!activeDataset && rowsCount > 0;
+  const isPrivacyChecked = isDataLoaded && localStorage.getItem("aida_privacy_rules") !== null;
 
   const steps = [
     {
       num: 1,
-      title: "Data Connected",
-      desc: activeDataset ? `${activeDataset.name || "Sales_Q3"} • ${activeRows.length} rows verified` : "Upload a CSV, Excel file, or Google Sheet",
-      isDone: !!activeDataset && activeRows.length > 0,
-      actionLabel: activeDataset ? "View Structure" : "Upload Data",
-      action: () => window.dispatchEvent(new Event("trigger-file-upload"))
+      title: "Connect Data",
+      desc: isDataLoaded
+        ? `${activeDataset.name || "Dataset"} connected (${rowsCount.toLocaleString()} verified rows).`
+        : "Upload an Excel, CSV file, or start with demo data to unlock analytics.",
+      isDone: isDataLoaded,
+      actionLabel: isDataLoaded ? "Inspect Structure" : "Upload Dataset",
+      action: () => {
+        const fileInput = document.querySelector('input[type="file"]');
+        if (fileInput) fileInput.click();
+      }
     },
     {
       num: 2,
-      title: "Privacy & Quality Check",
-      desc: "Check for exposed emails/salaries and inspect missing values",
-      isDone: !!activeDataset && localStorage.getItem("aida_privacy_rules") !== null,
-      actionLabel: "Review Privacy & PII",
-      action: onOpenPrivacy
+      title: "Data Quality & Privacy Check",
+      desc: "Verify data cleanliness, missing cell rates, and ensure no customer PII is leaked.",
+      isDone: isPrivacyChecked,
+      actionLabel: "Check Health & Privacy",
+      action: () => {
+        if (onOpenPrivacy) onOpenPrivacy();
+        else if (onOpenHealth) onOpenHealth();
+      }
     },
     {
       num: 3,
       title: "Explore Visual Trends",
-      desc: "Review automated charts and role-tailored performance KPIs",
-      isDone: !!activeDataset,
+      desc: "Review interactive BI charts, category distributions, and real-time slicers.",
+      isDone: isDataLoaded && isPrivacyChecked,
       actionLabel: "Explain My Charts",
       action: () => onAskCopilot && onAskCopilot("Explain the primary trend and key takeaway from our dashboard charts in plain English.")
     },
     {
       num: 4,
-      title: "Ask Natural Business Questions",
-      desc: "Chat with the Copilot without writing SQL or formulas",
+      title: "Ask Plain-English Questions",
+      desc: "Chat with the AI Copilot to investigate margins, anomalies, and drivers without formulas.",
       isDone: false,
       actionLabel: "Ask Copilot",
       action: () => onAskCopilot && onAskCopilot(`What are the top 3 priorities for a ${roleConfig?.shortName || "Executive"} based on this dataset?`)
     },
     {
       num: 5,
-      title: "Download 1-Click Executive Report",
-      desc: "Export an audited board-ready summary PDF",
+      title: "Generate Executive Report",
+      desc: "Create an audited, board-ready executive PDF summary to share with leadership.",
       isDone: false,
       actionLabel: "Generate PDF Report",
       action: onExportReport
     }
   ];
 
-  const completedCount = steps.filter(s => s.isDone).length;
-  const progressPercent = Math.round((completedCount / steps.length) * 100);
+  // Determine single recommended next action: first incomplete step
+  const activeStep = steps.find(s => !s.isDone) || steps[steps.length - 1];
 
   const roleStarterQuestions = {
     ceo: [
@@ -137,173 +146,204 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
   return (
     <div style={{
       background: "#FFFFFF",
-      border: "1px solid #E2E8F0",
+      border: "1px solid var(--border-color, #E2E8F0)",
       borderRadius: 14,
       padding: 18,
       marginBottom: 20,
       boxShadow: "0 4px 16px rgba(0,0,0,0.03)",
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+      fontFamily: "var(--font-sans, sans-serif)"
     }}>
       {/* Top Banner Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{
-            width: 34,
-            height: 34,
+            width: 32,
+            height: 32,
             borderRadius: 8,
             background: "#ECFDF5",
             color: "#059669",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 18
+            fontSize: 16
           }}>
             🌱
           </div>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
-                Beginner Guided Mode Active
+              <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text-primary, #0F172A)" }}>
+                Beginner Guided Mode
               </span>
               <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: "#E0F2FE", color: "#0369A1" }}>
                 {roleConfig?.title || "Executive Perspective"}
               </span>
             </div>
-            <div style={{ fontSize: 11.5, color: "#64748B" }}>
-              Simplified step-by-step guidance • Complex formulas and technical jargon translated into plain English.
+            <div style={{ fontSize: 11.5, color: "var(--text-muted, #64748B)" }}>
+              One clear recommended action at each stage • Plain English without formulas
             </div>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button
-            onClick={() => setShowGlossary(!showGlossary)}
-            style={{
-              background: "#F8FAFC",
-              border: "1px solid #CBD5E1",
-              borderRadius: 8,
-              padding: "6px 12px",
-              fontSize: 12,
-              fontWeight: 600,
-              color: "#334155",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 6
-            }}
-          >
-            <span>📖</span>
-            <span>Plain-English Glossary</span>
-          </button>
-        </div>
+        <button
+          onClick={() => setShowGlossary(!showGlossary)}
+          style={{
+            background: "var(--bg-secondary, #F8FAFC)",
+            border: "1px solid var(--border-color, #CBD5E1)",
+            borderRadius: 8,
+            padding: "5px 12px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--text-primary, #334155)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: 6
+          }}
+        >
+          <span>📖</span>
+          <span>Plain-English Glossary</span>
+        </button>
       </div>
 
-      {/* Progress Bar */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "#64748B", marginBottom: 6, fontWeight: 600 }}>
-          <span>Your Guided Progress: {completedCount} of {steps.length} Steps Ready</span>
-          <span style={{ color: "#2563EB", fontWeight: 700 }}>{progressPercent}% Complete</span>
-        </div>
-        <div style={{ height: 6, background: "#F1F5F9", borderRadius: 4, overflow: "hidden" }}>
-          <div style={{ width: `${progressPercent}%`, height: "100%", background: "linear-gradient(90deg, #10B981, #2563EB)", transition: "width 0.3s ease" }} />
-        </div>
-      </div>
-
-      {/* 5-Step Journey Row */}
+      {/* 🎯 Hero Spotlight: Single Recommended Next Action */}
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-        gap: 10,
-        marginBottom: 16
+        background: "linear-gradient(135deg, #F0FDF4 0%, #EFF6FF 100%)",
+        border: "1.5px solid #86EFAC",
+        borderRadius: 12,
+        padding: "16px 20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 16,
+        marginBottom: 14,
+        boxShadow: "0 2px 8px rgba(16, 185, 129, 0.08)"
       }}>
-        {steps.map(step => (
-          <div
-            key={step.num}
-            style={{
-              border: `1px solid ${step.isDone ? "#BBF7D0" : "#E2E8F0"}`,
-              background: step.isDone ? "#F0FDF4" : "#F8FAFC",
-              borderRadius: 10,
-              padding: 12,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between"
-            }}
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: step.isDone ? "#166534" : "#64748B" }}>
-                  STEP {step.num}
-                </span>
-                <span style={{ fontSize: 14 }}>{step.isDone ? "✅" : "○"}</span>
-              </div>
-              <div style={{ fontSize: 12.5, fontWeight: 700, color: "#0F172A", marginBottom: 2 }}>
-                {step.title}
-              </div>
-              <div style={{ fontSize: 11, color: "#64748B", lineHeight: 1.4, marginBottom: 8 }}>
-                {step.desc}
-              </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flex: 1, minWidth: 260 }}>
+          <div style={{
+            width: 44,
+            height: 44,
+            borderRadius: 10,
+            background: "#10B981",
+            color: "#FFF",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 22,
+            flexShrink: 0,
+            boxShadow: "0 2px 6px rgba(16, 185, 129, 0.3)"
+          }}>
+            {activeStep.num === 1 ? "📁" : activeStep.num === 2 ? "🛡️" : activeStep.num === 3 ? "📊" : activeStep.num === 4 ? "🤖" : "📑"}
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#047857", marginBottom: 2 }}>
+              🎯 Recommended Next Action • Step {activeStep.num} of 5
             </div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", marginBottom: 2 }}>
+              {activeStep.title}
+            </div>
+            <div style={{ fontSize: 12.5, color: "#475569", lineHeight: 1.4 }}>
+              {activeStep.desc}
+            </div>
+          </div>
+        </div>
 
-            <button
-              onClick={step.action}
+        <button
+          onClick={activeStep.action}
+          style={{
+            padding: "10px 22px",
+            fontSize: 13,
+            fontWeight: 700,
+            borderRadius: 8,
+            border: "none",
+            background: "#0F172A",
+            color: "#FFFFFF",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(15, 23, 42, 0.15)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            transition: "all 0.15s ease"
+          }}
+        >
+          <span>{activeStep.actionLabel}</span>
+          <span>➔</span>
+        </button>
+      </div>
+
+      {/* 5-Step Compact Horizontal Progress Stepper */}
+      <div style={{
+        background: "var(--bg-secondary, #F8FAFC)",
+        border: "1px solid var(--border-color, #E2E8F0)",
+        borderRadius: 10,
+        padding: "10px 14px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 8,
+        overflowX: "auto"
+      }}>
+        {steps.map(step => {
+          const isCurrent = step.num === activeStep.num;
+          return (
+            <div
+              key={step.num}
+              onClick={() => step.isDone && step.action()}
               style={{
-                width: "100%",
-                padding: "5px 8px",
-                fontSize: 11.5,
-                fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                cursor: step.isDone ? "pointer" : "default",
+                opacity: step.isDone ? 1 : (isCurrent ? 1 : 0.6),
+                padding: "4px 8px",
                 borderRadius: 6,
-                border: step.isDone ? "1px solid #86EFAC" : "none",
-                background: step.isDone ? "#FFFFFF" : "#0F172A",
-                color: step.isDone ? "#166534" : "#FFFFFF",
-                cursor: "pointer"
+                background: isCurrent ? "#FFFFFF" : "transparent",
+                border: isCurrent ? "1px solid #CBD5E1" : "1px solid transparent",
+                fontWeight: isCurrent ? 700 : 500,
+                color: step.isDone ? "#166534" : (isCurrent ? "#0F172A" : "#64748B"),
+                whiteSpace: "nowrap"
               }}
             >
-              {step.actionLabel}
-            </button>
-          </div>
-        ))}
+              <span>{step.isDone ? "✅" : isCurrent ? "▶" : "○"}</span>
+              <span>{step.num}. {step.title}</span>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Role Starter Questions */}
-      <div style={{
-        background: "#F8FAFC",
-        border: "1px solid #E2E8F0",
-        borderRadius: 10,
-        padding: "12px 14px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 8
-      }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "#0F172A", display: "flex", alignItems: "center", gap: 6 }}>
-          <span>💡</span>
-          <span>Recommended Beginner Questions for {roleConfig?.shortName || "Executives"}:</span>
-        </div>
-
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {roleStarterQuestions.map((q, idx) => (
+      {/* Subtle Starter Question Quick-Prompts when data is active */}
+      {isDataLoaded && (
+        <div style={{
+          marginTop: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          flexWrap: "wrap",
+          fontSize: 11.5,
+          color: "var(--text-muted, #64748B)"
+        }}>
+          <span style={{ fontWeight: 600 }}>💡 Try asking:</span>
+          {roleStarterQuestions.slice(0, 2).map((q, idx) => (
             <button
               key={idx}
               onClick={() => onAskCopilot && onAskCopilot(q)}
               style={{
                 background: "#FFFFFF",
-                border: "1px solid #CBD5E1",
-                borderRadius: 20,
-                padding: "5px 12px",
-                fontSize: 11.5,
-                color: "#1E293B",
-                fontWeight: 500,
+                border: "1px solid var(--border-color, #CBD5E1)",
+                borderRadius: 16,
+                padding: "3px 10px",
+                fontSize: 11,
+                color: "var(--text-primary, #1E293B)",
                 cursor: "pointer",
-                textAlign: "left",
                 transition: "all 0.15s ease"
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "#2563EB"; e.currentTarget.style.color = "#2563EB"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "#CBD5E1"; e.currentTarget.style.color = "#1E293B"; }}
             >
               "{q}"
             </button>
           ))}
         </div>
-      </div>
+      )}
 
       {/* Searchable Glossary Drawer/Modal */}
       {showGlossary && (
@@ -314,7 +354,7 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
           border: "1px solid #FDE68A",
           borderRadius: 10
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 800, color: "#92400E", display: "flex", alignItems: "center", gap: 6 }}>
               <span>📖</span>
               <span>Data Terms Explained in Plain English</span>

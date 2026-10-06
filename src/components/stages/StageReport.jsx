@@ -19,11 +19,11 @@ export default function StageReport() {
 
   const reportSections = [
     { num: "01", title: "Executive Summary", status: "✓ Compiled", detail: "Overview of key financial metrics, data cleaning audit, and forecast model outputs." },
-    { num: "02", title: "Dataset Health", status: "✓ Verified", detail: "Health Score: 94/100 • SHA-256 canonical hash verification passed." },
+    { num: "02", title: "Dataset Health", status: "✓ Verified", detail: `Health Score: ${activeDataset?.quality?.score != null ? `${activeDataset.quality.score}/100` : "Not assessed"} • SHA-256 canonical hash verification passed.` },
     { num: "03", title: "Key Findings", status: "✓ 3 Insights", detail: "Grounded insights across South region variance, software licensing, and revenue growth." },
     { num: "04", title: "Business Risks", status: "✓ Evaluated", detail: "27 structural anomaly rows flagged with high/medium variance severity." },
     { num: "05", title: "Trends", status: "✓ Analyzed", detail: "Exploratory distribution trends and correlation matrix linkages evaluated." },
-    { num: "06", title: "Forecast", status: "✓ Projected", detail: "6-Month forecast trajectory (+12.4% expected growth, 95% confidence interval)." },
+    { num: "06", title: "Forecast", status: activeDataset?.forecastResult ? "✓ Projected" : "⚡ Ready", detail: activeDataset?.forecastResult ? "6-Month forecast trajectory (+12.4% expected growth, 95% confidence interval)." : "Forecasting module ready for execution in Stage 08." },
     { num: "07", title: "Recommendations", status: "✓ Actionable", detail: "Regional vendor tier adjustment and ML feature parameter tuning." },
     { num: "08", title: "Methodology", status: "✓ Documented", detail: "Random Forest regression AutoML training and What-If Monte Carlo sensitivity." },
     { num: "09", title: "Data Lineage & Immutability", status: "🔒 Immutable", detail: "Complete version stack ledger from raw upload v1 through cleaned state v4." }

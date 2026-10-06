@@ -128,7 +128,7 @@ export default function StageExplore() {
             <span style={{ color: "#FFF", fontWeight: 800 }}>Columns:</span> {colCount}
           </div>
           <div>
-            <span style={{ color: "#FFF", fontWeight: 800 }}>Health Score:</span> <span style={{ color: "#4ADE80", fontWeight: 800 }}>94/100</span>
+            <span style={{ color: "#FFF", fontWeight: 800 }}>Health Score:</span> <span style={{ color: "#4ADE80", fontWeight: 800 }}>{activeDataset?.quality?.score != null ? `${activeDataset.quality.score}/100` : "Not assessed"}</span>
           </div>
         </div>
       </div>

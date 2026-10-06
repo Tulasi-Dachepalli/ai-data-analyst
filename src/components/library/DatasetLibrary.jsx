@@ -34,7 +34,7 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
               rows: d.rowCount || 0,
               cols: d.columnCount || 0,
               size: "Server",
-              health: d.qualityScore ? `${Math.round(d.qualityScore)}/100` : "100/100",
+              health: d.qualityScore != null ? `${Math.round(d.qualityScore)}/100` : "Not assessed",
               updated: d.updatedAt ? new Date(d.updatedAt).toLocaleDateString() : "Saved",
               color: "#2563EB",
               isServer: true
@@ -61,7 +61,7 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
       rows: activeDataset.rowCount || activeDataset.rows?.length || 0,
       cols: activeDataset.columnCount || activeDataset.columns?.length || 0,
       size: `${Math.max(1, Math.round((activeDataset.size || 1024) / 1024))} KB`,
-      health: "100/100",
+      health: activeDataset?.quality?.score != null ? `${activeDataset.quality.score}/100` : "Not assessed",
       updated: "Active in Workspace",
       color: "#16A34A",
       isActive: true

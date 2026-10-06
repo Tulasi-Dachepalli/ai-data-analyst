@@ -5,6 +5,32 @@ import { createInitialVersionStack, applyTransactionalOperation, compareVersions
 
 const DatasetContext = createContext(null);
 
+function computeAuthoritativeQuality(rows, cols) {
+  if (!rows || rows.length === 0 || !cols || cols.length === 0) {
+    return { score: null, status: "not_assessed", missingCells: 0, missingRate: 0, duplicateRows: 0 };
+  }
+  const evalRows = rows.length > 2500 ? rows.slice(0, 2500) : rows;
+  const sampleCells = evalRows.length * cols.length;
+  let missingCells = 0;
+  evalRows.forEach(row => {
+    cols.forEach(col => {
+      const v = row[col];
+      if (v === null || v === undefined || String(v).trim() === "" || String(v).trim() === "null" || String(v).trim() === "NaN") {
+        missingCells++;
+      }
+    });
+  });
+  const missingRate = sampleCells > 0 ? missingCells / sampleCells : 0;
+  const score = Math.max(0, Math.round((1 - missingRate) * 100));
+  return {
+    score,
+    status: "assessed",
+    missingCells,
+    missingRate: +(missingRate * 100).toFixed(2),
+    duplicateRows: 0
+  };
+}
+
 export function DatasetProvider({ children }) {
   const [activeDataset, setActiveDataset] = useState(null);
   const [currentStage, setCurrentStage] = useState("raw"); // Stage ID
@@ -31,6 +57,8 @@ export function DatasetProvider({ children }) {
       }
     }
     
+    const computedQuality = meta.quality || computeAuthoritativeQuality(rows, cols);
+
     setActiveDataset({
       id: datasetId,
       name,
@@ -46,7 +74,7 @@ export function DatasetProvider({ children }) {
       rawHash: rawHash,
       currentVersion: "v1",
       stats: meta.stats || [],
-      quality: meta.quality || (rows.length > 0 ? { score: 95, status: "assessed" } : { score: null, status: "not_assessed" }),
+      quality: computedQuality,
       tables: meta.tables || null,
       selectedTableIndex: meta.selectedTableIndex ?? 0,
       parsingStatus: meta.parsingStatus || (rows.length > 0 ? "parsed" : "empty"),
@@ -104,7 +132,7 @@ export function DatasetProvider({ children }) {
       rawHash: rawHash,
       currentVersion: "v1",
       stats: thread.stats || [],
-      quality: thread.quality || (rows.length > 0 ? { score: 95, status: "assessed" } : { score: null, status: "not_assessed" }),
+      quality: thread.quality || computeAuthoritativeQuality(rows, cols),
       tables: thread.tables || null,
       selectedTableIndex: thread.selectedTableIndex ?? 0,
       parsingStatus: thread.parsingStatus || (rows.length > 0 ? "parsed" : "empty"),

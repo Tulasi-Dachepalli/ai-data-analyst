@@ -171,7 +171,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
       title: "4. Ask Questions In Everyday English",
       desc: "You don't need SQL or Excel formulas. Simply ask: 'Why did sales drop last month?' or 'Show top 5 products by margin'. Your Copilot answers with numbers and evidence.",
       icon: "🤖",
-      visual: "Grounded AI Chat • Verifiable Evidence • Zero Hallucinations"
+      visual: "Grounded AI Chat • Verifiable Evidence • Auditable Metric Citations"
     },
     {
       num: 5,
@@ -460,6 +460,14 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
 
             {/* Mock Dashboard Body */}
             <div style={{ padding: 16, background: "#F8FAFC", display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                <span style={{ fontSize: 10.5, fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#FEF3C7", color: "#92400E", border: "1px solid #FDE68A" }}>
+                  Illustrative Sample Data Preview
+                </span>
+                <span style={{ fontSize: 10, color: "#64748B" }}>
+                  Active Template: Superstore_Q3.csv
+                </span>
+              </div>
               {/* Slicers Row */}
               <div style={{ display: "flex", gap: 8 }}>
                 <div style={{ background: "#FFFFFF", border: "1px solid #CBD5E1", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, color: "#0F172A" }}>
@@ -641,7 +649,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
             <div style={{ fontSize: 24, marginBottom: 8 }}>🤖</div>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", margin: "0 0 6px 0" }}>3. Grounded Copilot Q&A</h3>
             <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, margin: 0 }}>
-              Ask questions in plain English. Every answer is mathematically grounded in your verified rows with zero hallucinated numbers or fabricated metrics.
+              Ask questions in plain English. Every answer is mathematically grounded in your verified rows, backed by explicit row citations and auditable calculation proofs.
             </p>
           </div>
 
