@@ -9,6 +9,7 @@ import AIActivityDrawer from "../activity/AIActivityDrawer";
 import GlobalSearch from "../search/GlobalSearch";
 import DecisionInbox from "../command-center/DecisionInbox";
 import ShareDialog from "../collaboration/ShareDialog";
+import CreditsBadge from "../common/CreditsBadge";
 import { useSearch } from "../../context/SearchContext";
 import { useDecision } from "../../context/DecisionContext";
 import { useCollaboration } from "../../context/CollaborationContext";
@@ -79,8 +80,11 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
         </button>
       </div>
 
-      {/* Right: AI Activity, Decision Inbox, Theme Toggle, Profile */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      {/* Right: AI Activity, Credits, Decision Inbox, Theme Toggle, Profile */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {/* Real-time Credits & Token Status Pill */}
+        <CreditsBadge variant="compact" />
+
         {/* Decision Inbox Badge Button */}
         <button
           data-testid="topbar-decisions-btn"
@@ -267,6 +271,23 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
                     🟡 Guest Demo Mode
                   </span>
                 )}
+              </div>
+
+              {/* Quick Credits Balance in User Menu */}
+              <div
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  const btn = document.querySelector('[data-testid="credits-badge"]');
+                  if (btn) btn.click();
+                }}
+                style={{ padding: "8px 14px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", color: "#334155", borderBottom: "1px solid #F1F5F9" }}
+                onMouseEnter={e => e.currentTarget.style.background = "#F8FAFC"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: "#F59E0B" }}>⚡</span> <span>Credits & Quota</span>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#059669" }}>View Details ➔</span>
               </div>
 
               <div

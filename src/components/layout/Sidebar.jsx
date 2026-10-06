@@ -1,6 +1,7 @@
 // src/components/layout/Sidebar.jsx
 import React from "react";
 import { useRole } from "../../context/RoleContext";
+import CreditsBadge from "../common/CreditsBadge";
 
 export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
   const { roleConfig, user } = useRole();
@@ -103,6 +104,11 @@ export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
           );
         })}
       </nav>
+
+      {/* Real-time Credits & Quota Status Card */}
+      <div style={{ padding: "0 12px 10px" }}>
+        <CreditsBadge variant="card" />
+      </div>
 
       {/* System Footer Link */}
       <div style={{ padding: 12, borderTop: "1px solid var(--border-color, #E2E8F0)", display: "flex", flexDirection: "column", gap: 4 }}>

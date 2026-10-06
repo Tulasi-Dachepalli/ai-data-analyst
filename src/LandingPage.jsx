@@ -185,7 +185,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
 
   return (
     <div style={{
-      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+      fontFamily: "var(--font-sans, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)",
       color: "#0F172A",
       backgroundColor: "#FFFFFF",
       minHeight: "100vh",

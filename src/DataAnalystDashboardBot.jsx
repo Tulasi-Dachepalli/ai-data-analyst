@@ -926,7 +926,7 @@ const FileChip = ({ name, rows, cols }) => (
 function KpiCard({ label, value }) {
   return (
     <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 14px", minWidth: 110 }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', Consolas, monospace", fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>{value}</div>
+      <div style={{ fontFamily: "var(--font-mono, 'JetBrains Mono', Consolas, monospace)", fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>{value}</div>
       <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
     </div>
   );
@@ -938,7 +938,7 @@ function QualityCard({ quality }) {
   return (
     <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border-color)", borderRadius: 8, padding: "10px 14px", minWidth: 150 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-        <div style={{ fontFamily: "'IBM Plex Mono', Consolas, monospace", fontSize: 18, fontWeight: 600, color }}>{quality.score}%</div>
+        <div style={{ fontFamily: "var(--font-mono, 'JetBrains Mono', Consolas, monospace)", fontSize: 18, fontWeight: 600, color }}>{quality.score}%</div>
         <div style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>Data Quality</div>
       </div>
       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{quality.missingCells.toLocaleString()} missing cells ({quality.missingRate}%)</div>
@@ -4286,18 +4286,21 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   };
 
   const [usageStats, setUsageStats] = useState({
+    credits: parseInt(localStorage.getItem("aida_credits") || "50", 10),
     usedTokens: getLocalUsedTokens(),
-    limit: 1000000,
+    limit: 50000,
     tier: user?.tier || "pro",
     nextResetTime: getNextResetTime()
   });
 
   useEffect(() => {
     const handleCreditUpdate = (e) => {
+      const newCredits = e?.detail?.credits ?? parseInt(localStorage.getItem("aida_credits") || "50", 10);
       const newUsed = e?.detail?.usedTokens ?? getLocalUsedTokens();
       const newReset = e?.detail?.resetTime ?? getNextResetTime();
       setUsageStats(prev => ({
         ...prev,
+        credits: newCredits,
         usedTokens: newUsed,
         nextResetTime: newReset
       }));
@@ -6156,32 +6159,43 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
             </div>
           ))}
         </div>
-        {usageStats && usageStats.tier === "free" && (
+        {usageStats && (
           <div style={{ background: "linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-primary) 100%)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 6, margin: "6px 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>Token Usage</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ color: "#F59E0B", fontSize: 13 }}>⚡</span>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: "var(--text-primary)" }}>AI Credits</span>
+              </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--text-secondary)" }}>
-                  {Math.round(usageStats.usedTokens).toLocaleString()} / {usageStats.limit.toLocaleString()} Used
+                <span style={{ fontSize: 11, fontWeight: 700, color: (usageStats.credits || 0) <= 5 ? "var(--danger)" : "#059669" }}>
+                  {usageStats.credits ?? 50} / 50 Left
                 </span>
                 <button
                   onClick={() => {
                     localStorage.setItem("aida_used_tokens", "0");
                     localStorage.setItem("aida_credits", "50");
-                    window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: 50, usedTokens: 0 } }));
+                    localStorage.removeItem("aida_token_reset_time");
+                    window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: 50, usedTokens: 0, resetTime: null } }));
                   }}
-                  title="Reset Token & Credit counter"
+                  title="Instant Refill to 50 Credits"
                   style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10B981", borderRadius: 4, padding: "1px 6px", fontSize: 10, cursor: "pointer", fontWeight: 700 }}
                 >
                   + Reset
                 </button>
               </div>
             </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: "var(--text-secondary)" }}>
+              <span>Tokens Used:</span>
+              <span style={{ fontFamily: "var(--font-mono, monospace)" }}>
+                {Math.round(usageStats.usedTokens).toLocaleString()} / {usageStats.limit.toLocaleString()}
+              </span>
+            </div>
             
-            <div style={{ background: "var(--border-color)", height: 8, borderRadius: 4, overflow: "hidden" }}>
+            <div style={{ background: "var(--border-color)", height: 6, borderRadius: 4, overflow: "hidden" }}>
               <div style={{ 
                 width: `${Math.min(100, (usageStats.usedTokens / usageStats.limit) * 100)}%`, 
-                background: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--success, #10B981)", 
+                background: usageStats.usedTokens >= usageStats.limit ? "var(--danger)" : "var(--brand-blue, #2563EB)", 
                 height: "100%", 
                 borderRadius: 4,
                 transition: "width 0.3s ease"
@@ -6190,24 +6204,20 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
             {usageStats.nextResetTime ? (
               <div style={{ fontSize: 9.5, color: "#C98A3E", fontWeight: 600, marginTop: 2, textAlign: "center" }}>
-                ⏳ Quota Limit Reached. Free tokens auto-refresh at {new Date(usageStats.nextResetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (5-hour cooldown)
+                ⏳ Quota Limit Reached. Auto-refreshes at {new Date(usageStats.nextResetTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (5-hour cooldown)
               </div>
             ) : (
               <div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 2, textAlign: "center" }}>
-                Free Plan • Auto-refreshes 5 hours after quota completion
+                {usageStats.tier === "free" ? "Free Plan • Auto-refreshes every 5 hours" : "Enterprise Pro Tier • Rolling 5-hour refresh window"}
               </div>
             )}
 
-            <button onClick={() => setShowUpgradeModal(true)}
-              style={{ width: "100%", background: "var(--text-primary)", color: "var(--bg-secondary)", border: "none", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}>
-              Upgrade to Pro ➔
-            </button>
-          </div>
-        )}
-        {usageStats && usageStats.tier !== "free" && (
-          <div style={{ background: "linear-gradient(135deg, var(--bg-hover) 0%, var(--bg-primary) 100%)", border: "1px solid var(--border-color)", borderRadius: 10, padding: 10, display: "flex", flexDirection: "column", gap: 4, margin: "6px 0", textAlign: "center" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", textTransform: "uppercase" }}>Pro Version Active</span>
-            <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Unlimited tokens unlocked</span>
+            {usageStats.tier === "free" && (
+              <button onClick={() => setShowUpgradeModal(true)}
+                style={{ width: "100%", background: "var(--text-primary)", color: "var(--bg-secondary)", border: "none", borderRadius: 6, padding: "6px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", transition: "background 0.2s ease" }}>
+                Upgrade to Pro ➔
+              </button>
+            )}
           </div>
         )}
 
@@ -7355,8 +7365,9 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
             </div>
 
             {/* Grounding & Enterprise Security Disclaimer Footer */}
-            <div style={{ marginTop: 8, textAlign: "center", fontSize: 10.5, color: "var(--text-secondary, #94A3B8)" }}>
-              🔒 HTTPS • Role-Based Access Controls • Verified Dataset Scoping
+            <div style={{ marginTop: 8, textAlign: "center", fontSize: 10.5, color: "var(--text-secondary, #94A3B8)", display: "flex", justifyContent: "center", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span>🔒 HTTPS • Role-Based Access Controls • Verified Dataset Scoping</span>
+              <span style={{ color: "#059669", fontWeight: 700 }}>• ⚡ 1 Credit / Query ({usageStats?.credits ?? parseInt(localStorage.getItem("aida_credits") || "50", 10)} Left)</span>
             </div>
           </div>
         </div>

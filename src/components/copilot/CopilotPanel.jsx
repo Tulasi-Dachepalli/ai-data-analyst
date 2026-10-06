@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import CopilotPromptChips from "./CopilotPromptChips";
 import GroundingBadge from "./GroundingBadge";
+import CreditsBadge from "../common/CreditsBadge";
 import { useDataset } from "../../context/DatasetContext";
 import { useRole } from "../../context/RoleContext";
 import { useCopilot } from "../../context/CopilotContext";
@@ -97,6 +98,7 @@ export default function CopilotPanel({ onAskQuestion }) {
             return null;
           })()}
           <GroundingBadge type="dataset" version={currentVersion?.version || "v1"} records={activeRows.length} />
+          <CreditsBadge variant="compact" />
         </div>
       </div>
 

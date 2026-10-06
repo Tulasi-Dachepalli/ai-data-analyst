@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#0F172A" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
     <meta property="og:title" content="AI Business Copilot — One AI. Every Business Role." />
     <meta property="og:description" content="One AI. Every Business Role. Turn enterprise data into interactive Power BI-style dashboards, automated forecasts, and executive reports." />
     <meta property="og:image" content="https://ai-data-analyst-tawny.vercel.app/og-image.jpg" />
@@ -19,14 +19,29 @@
   <body style="margin:0; background:#F0EEE9;">
     <div id="root"></div>
     <script>
-      window.consumeCredit = function() {
+      window.consumeCredit = function(tokens) {
+        tokens = tokens || 500;
         try {
           var current = parseInt(localStorage.getItem("aida_credits") || "50", 10);
           var next = Math.max(0, current - 1);
           localStorage.setItem("aida_credits", String(next));
+          var used = parseInt(localStorage.getItem("aida_used_tokens") || "0", 10) + tokens;
+          localStorage.setItem("aida_used_tokens", String(used));
+          window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: next, usedTokens: used } }));
           window.dispatchEvent(new Event("storage"));
         } catch (e) {
           console.warn("Credit update warning:", e);
+        }
+      };
+      window.resetCredits = function() {
+        try {
+          localStorage.setItem("aida_credits", "50");
+          localStorage.setItem("aida_used_tokens", "0");
+          localStorage.removeItem("aida_token_reset_time");
+          window.dispatchEvent(new CustomEvent("aida_credits_updated", { detail: { credits: 50, usedTokens: 0, resetTime: null } }));
+          window.dispatchEvent(new Event("storage"));
+        } catch (e) {
+          console.warn("Credit reset warning:", e);
         }
       };
     </script>
