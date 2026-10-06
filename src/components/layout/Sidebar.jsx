@@ -2,16 +2,18 @@
 import React from "react";
 import { useRole } from "../../context/RoleContext";
 import CreditsBadge from "../common/CreditsBadge";
+import { useLanguage } from "../../utils/i18n";
 
 export default function Sidebar({ currentView, setView, isOpen, setIsOpen }) {
   const { roleConfig, user } = useRole();
+  const { t } = useLanguage();
   const isAdmin = user?.role === "admin";
-  const navItems = roleConfig?.navigation || [
-    { id: "overview", label: "Executive Overview", icon: "🏠" },
-    { id: "datasets", label: "Datasets", icon: "📂" },
-    { id: "ai-analyst", label: "AI Copilot Chat", icon: "🤖" },
-    { id: "exec-reports", label: "Reports", icon: "📄" },
-    { id: "settings", label: "Settings", icon: "⚙" }
+  const navItems = [
+    { id: "overview", label: t("nav_overview", "Executive Overview"), icon: "🏠" },
+    { id: "datasets", label: t("nav_datasets", "Datasets"), icon: "📂" },
+    { id: "ai-analyst", label: t("nav_ai_analyst", "AI Copilot Chat"), icon: "🤖" },
+    { id: "exec-reports", label: t("nav_reports", "Reports"), icon: "📄" },
+    { id: "settings", label: t("nav_settings", "Settings"), icon: "⚙" }
   ];
 
   return (

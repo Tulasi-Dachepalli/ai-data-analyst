@@ -19,6 +19,7 @@ import SqlQueryGenerator from "./SqlQueryGenerator";
 import ClusterSegmentation from "./ClusterSegmentation";
 import ChartThemeSelector, { getChartPalette } from "./ChartThemeSelector";
 import LanguageTranslator, { getAppLanguage } from "./LanguageTranslator";
+import { useLanguage } from "./utils/i18n";
 import PivotTableEngine from "./PivotTableEngine";
 import CohortRetentionHeatmap from "./CohortRetentionHeatmap";
 import DataFormulaStudio from "./DataFormulaStudio";
@@ -1132,6 +1133,7 @@ function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slice
   const validCols = useMemo(() => (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c)), [columns]);
   const quality = useMemo(() => calculateDataQuality(currentRows, (validCols.length > 0 ? validCols : columns || []).filter(c => c && !c.startsWith("__"))), [currentRows, validCols, columns]);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (isMisAnalyst && (activeTab === "ml" || activeTab === "forecast")) {
@@ -2268,14 +2270,14 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
         {/* Clean Linear Workflow Stepper Bar */}
         <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "4px 0", alignItems: "center" }}>
           {[
-            { id: "dashboard", label: "📊 Power BI Dashboard", icon: "📊", isPrimary: true },
-            { id: "data", label: "01 Raw Data", icon: "📁" },
-            { id: "cleaning", label: "02 Data Cleaning", icon: "🧹" },
-            { id: "eda", label: "03 EDA", icon: "🔍" },
-            { id: "insights_tab", label: "04 Insights", icon: "💡" },
-            { id: "ml", label: "05 Modeling", icon: "🤖" },
-            { id: "forecast", label: "06 Forecasting", icon: "🔮" },
-            { id: "stats", label: "07 Executive Report", icon: "📑" }
+            { id: "dashboard", label: t("tab_dashboard", "📊 Power BI Dashboard"), icon: "📊", isPrimary: true },
+            { id: "data", label: t("tab_data", "01 Raw Data"), icon: "📁" },
+            { id: "cleaning", label: t("tab_cleaning", "02 Data Cleaning"), icon: "🧹" },
+            { id: "eda", label: t("tab_eda", "03 EDA"), icon: "🔍" },
+            { id: "insights_tab", label: t("tab_insights", "04 Insights"), icon: "💡" },
+            { id: "ml", label: t("tab_ml", "05 Modeling"), icon: "🤖" },
+            { id: "forecast", label: t("tab_forecast", "06 Forecasting"), icon: "🔮" },
+            { id: "stats", label: t("tab_stats", "07 Executive Report"), icon: "📑" }
           ].map(tab => {
             const isDash = tab.id === "dashboard";
             const isActive = activeTab === tab.id;
@@ -4217,6 +4219,7 @@ const SAMPLE_DATASETS = [];
 // ---------------- main component ----------------
 export default function DataAnalystDashboardBot({ currentView, setView, user: propUser }) {
   const user = propUser || JSON.parse(localStorage.getItem("aida_user") || "null");
+  const { lang, t } = useLanguage();
   const { activeDataset, loadDataset, setActiveDatasetFromThread } = useDataset();
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
@@ -6226,7 +6229,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative", background: dragOver ? "var(--bg-hover)" : "var(--bg-secondary)", height: "100%", overflow: "hidden" }}>
         {dragOver && (
           <div style={{ position: "absolute", inset: 8, border: "2px dashed #3E6F8E", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: "#3E6F8E", background: "rgba(255,255,255,0.85)", zIndex: 5, fontWeight: 600 }}>
-            Drop file to analyze
+            {t("drop_file", "Drop file to analyze")}
           </div>
         )}
 
@@ -6317,7 +6320,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
               <button
                 onClick={toggleFullScreen}
-                title={isFullScreen ? "Exit Fullscreen Mode" : "Expand Analysis to Fullscreen"}
+                title={isFullScreen ? t("exit_fullscreen", "↙ Exit Fullscreen") : t("fullscreen", "⛶ Fullscreen")}
                 style={{
                   fontSize: 12, fontWeight: 600,
                   color: isFullScreen ? "#FFF" : "var(--text-primary)",
@@ -6328,11 +6331,11 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   display: "flex", alignItems: "center", gap: 6
                 }}
               >
-                {isFullScreen ? "↙ Exit Fullscreen" : "⛶ Fullscreen"}
+                {isFullScreen ? t("exit_fullscreen", "↙ Exit Fullscreen") : t("fullscreen", "⛶ Fullscreen")}
               </button>
 
               <ChartThemeSelector onThemeChange={() => setThreads(prev => [...prev])} />
-              <LanguageTranslator />
+              <LanguageTranslator onLanguageChange={() => setThreads(prev => [...prev])} />
 
               <button
                 onClick={() => {
@@ -6352,7 +6355,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   display: "flex", alignItems: "center", gap: 6
                 }}
               >
-                💼 Share
+                {t("share", "💼 Share")}
               </button>
 
               <PwaInstallPrompt />
@@ -6372,7 +6375,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                     display: "flex", alignItems: "center", gap: 6
                   }}
                 >
-                  ⬇ Download Report <span style={{ fontSize: 10 }}>▾</span>
+                  {t("download_report", "⬇ Download Report")} <span style={{ fontSize: 10 }}>▾</span>
                 </button>
               {showDownloadMenu && active.dashboard && active.rows && (
                 <div
@@ -6385,10 +6388,10 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                   onMouseLeave={() => setShowDownloadMenu(false)}
                 >
                   {[
-                    { label: "📕 Executive PDF Deck", action: () => { handleDownloadExecutivePdf(active); setShowDownloadMenu(false); } },
-                    { label: "📊 Excel (.xlsx)", action: () => { handleDownloadExcel(active); setShowDownloadMenu(false); } },
-                    { label: "🌐 HTML Report", action: () => { handleDownloadReport(active); setShowDownloadMenu(false); } },
-                    { label: "📄 Word (.doc)", action: () => { handleDownloadWord(active); setShowDownloadMenu(false); } }
+                    { label: t("executive_pdf", "📕 Executive PDF Deck"), action: () => { handleDownloadExecutivePdf(active); setShowDownloadMenu(false); } },
+                    { label: t("excel_export", "📊 Excel (.xlsx)"), action: () => { handleDownloadExcel(active); setShowDownloadMenu(false); } },
+                    { label: t("html_report", "🌐 HTML Report"), action: () => { handleDownloadReport(active); setShowDownloadMenu(false); } },
+                    { label: t("word_doc", "📄 Word (.doc)"), action: () => { handleDownloadWord(active); setShowDownloadMenu(false); } }
                   ].map(item => (
                     <button
                       key={item.label}
@@ -7315,7 +7318,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoGrow(e); }}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder={(active && (active.rows || []).length > 0) ? "Ask anything about your dataset (e.g. 'Predict Q4 revenue', 'Find anomalies')..." : "Upload a tabular dataset (.csv, .xlsx) to begin analysis..."}
+                placeholder={(active && (active.rows || []).length > 0) ? t("prompt_placeholder_active", "Ask anything about your dataset (e.g. 'Predict Q4 revenue', 'Find anomalies')...") : t("prompt_placeholder_empty", "Upload a tabular dataset (.csv, .xlsx) to begin analysis...")}
                 disabled={!active || (active.rows || []).length === 0}
                 rows={1}
                 style={{

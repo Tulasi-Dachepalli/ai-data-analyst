@@ -13,12 +13,14 @@ import CreditsBadge from "../common/CreditsBadge";
 import { useSearch } from "../../context/SearchContext";
 import { useDecision } from "../../context/DecisionContext";
 import { useCollaboration } from "../../context/CollaborationContext";
+import { useLanguage } from "../../utils/i18n";
 
 export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarOpen, onLogout, setView, onOpenGuide }) {
   const { user } = useRole();
   const { openSearch } = useSearch();
   const { pendingDecisions, openInbox } = useDecision();
   const { openShareModal } = useCollaboration();
+  const { t } = useLanguage();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   return (
@@ -75,7 +77,7 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
           }}
         >
           <span>🔍</span>
-          <span style={{ fontWeight: 600 }}>Quick Search...</span>
+          <span style={{ fontWeight: 600 }}>{t("quick_search", "Quick Search...")}</span>
           <kbd style={{ fontSize: 10, background: "var(--bg-secondary, #FFFFFF)", border: "1px solid #CBD5E1", padding: "1px 5px", borderRadius: 4 }}>Ctrl+K</kbd>
         </button>
       </div>
@@ -104,7 +106,7 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
           }}
         >
           <span>⚡</span>
-          <span>Decisions</span>
+          <span>{t("decisions", "Decisions")}</span>
           {pendingDecisions.length > 0 && (
             <span style={{
               background: "#DC2626",
@@ -138,7 +140,7 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
           }}
         >
           <span>✨</span>
-          <span>Copilot Guide</span>
+          <span>{t("copilot_guide", "Copilot Guide")}</span>
         </button>
 
         {/* Workspace Share Button */}
@@ -160,7 +162,7 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
           }}
         >
           <span>👥</span>
-          <span>Share</span>
+          <span>{t("share", "Share")}</span>
         </button>
 
         {/* Global AI Activity Stream Indicator */}
@@ -296,7 +298,7 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
                 onMouseEnter={e => e.currentTarget.style.background = "#F8FAFC"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}
               >
-                <span>⚙️</span> <span>Workspace Settings</span>
+                <span>⚙️</span> <span>{t("workspace_settings", "Workspace Settings")}</span>
               </div>
 
               <div
@@ -308,7 +310,7 @@ export default function Topbar({ darkMode, setDarkMode, sidebarOpen, setSidebarO
                 onMouseEnter={e => e.currentTarget.style.background = "#FEE2E2"}
                 onMouseLeave={e => e.currentTarget.style.background = "transparent"}
               >
-                <span>🚪</span> <span>{user?.isDemo ? "Exit Demo Mode" : "Sign Out"}</span>
+                <span>🚪</span> <span>{user?.isDemo ? "Exit Demo Mode" : t("sign_out", "Sign Out")}</span>
               </div>
             </div>
           )}
