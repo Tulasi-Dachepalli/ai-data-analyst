@@ -244,6 +244,17 @@ export function DecisionProvider({ children }) {
 
 export function useDecision() {
   const ctx = useContext(DecisionContext);
-  if (!ctx) throw new Error("useDecision must be used within a DecisionProvider");
+  if (!ctx) {
+    return {
+      pendingDecisions: [],
+      inboxOpen: false,
+      openInbox: () => {},
+      closeInbox: () => {},
+      applyDecision: () => {},
+      rejectDecision: () => {},
+      requestDecision: () => {},
+      decisions: []
+    };
+  }
   return ctx;
 }

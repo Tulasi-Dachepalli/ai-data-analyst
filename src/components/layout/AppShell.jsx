@@ -5,6 +5,11 @@ import Topbar from "./Topbar";
 import { RoleProvider } from "../../context/RoleContext";
 import { DatasetProvider } from "../../context/DatasetContext";
 import { CopilotProvider } from "../../context/CopilotContext";
+import { ActivityProvider } from "../../context/ActivityContext";
+import { SettingsProvider } from "../../context/SettingsContext";
+import { DecisionProvider } from "../../context/DecisionContext";
+import { CollaborationProvider } from "../../context/CollaborationContext";
+import { SearchProvider } from "../../context/SearchContext";
 
 import OnboardingWizardModal from "../onboarding/OnboardingWizardModal";
 
@@ -216,12 +221,6 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
     </div>
   );
 }
-
-import { ActivityProvider } from "../../context/ActivityContext";
-import { SettingsProvider } from "../../context/SettingsContext";
-import { DecisionProvider } from "../../context/DecisionContext";
-import { CollaborationProvider } from "../../context/CollaborationContext";
-import { SearchProvider } from "../../context/SearchContext";
 
 export default function AppShell(props) {
   return (

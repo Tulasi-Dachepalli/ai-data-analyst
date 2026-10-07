@@ -236,7 +236,26 @@ export function DatasetProvider({ children }) {
 export function useDataset() {
   const context = useContext(DatasetContext);
   if (!context) {
-    throw new Error("useDataset must be used within a DatasetProvider");
+    return {
+      activeDataset: null,
+      currentDataset: null,
+      currentStage: "import",
+      setCurrentStage: () => {},
+      versionStack: [],
+      currentVersion: null,
+      rawVersion: null,
+      history: [],
+      activeRows: [],
+      activeCols: [],
+      versionDiff: null,
+      loadDataset: () => {},
+      setActiveDatasetFromThread: () => {},
+      applyTransformation: () => {},
+      restoreVersion: () => {},
+      investigationItem: null,
+      openInvestigation: () => {},
+      closeInvestigation: () => {}
+    };
   }
   return context;
 }

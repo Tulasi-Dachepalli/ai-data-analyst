@@ -2211,6 +2211,7 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
                 const next = !isBeginnerMode;
                 setIsBeginnerMode(next);
                 localStorage.setItem("aida_user_mode", next ? "beginner" : "pro");
+                window.dispatchEvent(new Event("aida_mode_changed"));
               }}
               style={{
                 fontSize: 11.5,
@@ -4244,6 +4245,21 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   const [serverStatus, setServerStatus] = useState("connected");
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [currentExplainableError, setCurrentExplainableError] = useState(null);
+  const [isBeginnerMode, setIsBeginnerMode] = useState(() => {
+    return localStorage.getItem("aida_user_mode") !== "pro";
+  });
+
+  useEffect(() => {
+    const handleModeChange = () => {
+      setIsBeginnerMode(localStorage.getItem("aida_user_mode") !== "pro");
+    };
+    window.addEventListener("aida_mode_changed", handleModeChange);
+    window.addEventListener("storage", handleModeChange);
+    return () => {
+      window.removeEventListener("aida_mode_changed", handleModeChange);
+      window.removeEventListener("storage", handleModeChange);
+    };
+  }, []);
 
   // Synchronize threads and activeId when activeDataset in DatasetContext updates (e.g. from DatasetImportCenter or Library)
   useEffect(() => {
