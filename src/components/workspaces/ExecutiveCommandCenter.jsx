@@ -221,7 +221,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
               fontSize: "13px",
               color: "#E2E8F0"
             }}>
-              Status: <span style={{ color: "#4ADE80", fontWeight: 700 }}>{hasActiveData ? t("lbl_status_live", "🟢 Live Grounded Data") : t("lbl_status_preview", "⚪ Illustrative Preview")}</span>
+              Status: <span style={{ color: "#4ADE80", fontWeight: 700 }}>{hasActiveData ? t("lbl_status_live", "🟢 Dataset Connected") : t("lbl_status_preview", "⚪ Illustrative Preview")}</span>
             </div>
           </div>
         </div>

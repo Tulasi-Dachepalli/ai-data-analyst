@@ -40,7 +40,7 @@ export default function SettingsPage({ user, onUserChange, onBack }) {
       <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--border-color)", paddingBottom: 8, overflowX: "auto" }}>
         {[
           { id: "general", label: "🌐 General & Workspace", icon: "🌐" },
-          { id: "roles", label: "🛡 Role Scope & RBAC", icon: "🛡" },
+          { id: "roles", label: "🛡 Role Scope & Access Control", icon: "🛡" },
           { id: "ai", label: "🤖 AI Copilot Rules", icon: "🤖" },
           { id: "data", label: "📥 Data Import & Retention", icon: "📥" },
           { id: "notifications", label: "🔔 Alerts & Notifications", icon: "🔔" },
@@ -75,7 +75,7 @@ export default function SettingsPage({ user, onUserChange, onBack }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Active Role & Capabilities Scope</h3>
             <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
-              The selected role configures your front page command center, KPI metrics, AI briefs, and RBAC authorization guard.
+              The selected role configures your front page command center, KPI metrics, AI briefs, and role-based access control.
             </p>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>

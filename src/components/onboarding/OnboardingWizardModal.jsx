@@ -398,7 +398,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
                 </div>
                 <div style={{ fontSize: 11.5, color: "#16A34A", display: "flex", flexDirection: "column", gap: 4, fontFamily: "monospace" }}>
                   <div>✓ Role perspective initialized: {roleConfig?.title || "Executive"}</div>
-                  <div>✓ Security and RBAC policies verified</div>
+                  <div>✓ Access controlled by your role verified</div>
                   <div>✓ Power BI-style dashboard engine loaded</div>
                   <div>✓ Copilot grounding ready</div>
                 </div>

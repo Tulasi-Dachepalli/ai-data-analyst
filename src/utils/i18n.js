@@ -112,7 +112,7 @@ export const TRANSLATIONS = {
     sec_try_asking: "Try asking:",
     sec_recommended_action: "Recommended Action:",
     lbl_status_healthy: "🟢 Business Healthy",
-    lbl_status_live: "🟢 Live Grounded Data",
+    lbl_status_live: "🟢 Dataset Connected",
     lbl_status_preview: "⚪ Illustrative Preview",
     lbl_calculated_from: "Calculated from",
     lbl_illustrative_template: "⚠️ Illustrative Template (Upload dataset to calculate live KPIs)",

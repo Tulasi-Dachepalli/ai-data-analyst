@@ -4265,7 +4265,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   useEffect(() => {
     if (!activeDataset || !activeDataset.name) return;
     setThreads(prev => {
-      const existing = prev.find(t => t.id === activeDataset.id || (t.name === activeDataset.name && t.rows === activeDataset.rows));
+      const existing = prev.find(t => t.id === activeDataset.id || t.name === activeDataset.name || (t.fileName && t.fileName === activeDataset.name));
       if (existing) {
         if (activeId !== existing.id) setActiveId(existing.id);
         return prev;
@@ -5359,7 +5359,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     };
     setThreads(prev => [demoThread, ...prev.filter(t => t.id !== demoId)]);
     setActiveId(demoId);
-    loadDataset("Superstore_Retail_Sales.csv", demoRows, demoCols, { isDemo: true, isUserExplicit: true, quality: demoQuality, stats: demoStats, dashboard: demoDashboard });
+    loadDataset("Superstore_Retail_Sales.csv", demoRows, demoCols, { id: demoId, isDemo: true, isUserExplicit: true, quality: demoQuality, stats: demoStats, dashboard: demoDashboard });
     if (typeof setView === "function") setView("dashboard");
   };
 
@@ -6878,7 +6878,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                 <EvidenceAnswerCard
                   answer={answerToast.answer}
                   why={`Question: "${answerToast.question}"`}
-                  evidence={answerToast.answer.includes("Unauthorized") ? "Enterprise RBAC Authorization Policy Guard" : "Role Context & Verified Workspace Dataset"}
+                  evidence={answerToast.answer.includes("Unauthorized") ? "Access controlled by your role policy guard" : "Role Context & Verified Workspace Dataset"}
                   recommendedAction={answerToast.answer.includes("Unauthorized") ? "Switch to an authorized enterprise role (e.g. HR or Executive) to request restricted compensation data." : "Review evidence metrics and adjust business targets."}
                   dataFreshness="Evaluated Live"
                 />

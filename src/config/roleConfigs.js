@@ -28,10 +28,10 @@ export const ROLE_CONFIGS = {
       { id: "ai_copilot", label: "AI Executive Assistant", icon: "🤖" }
     ],
     kpiCards: [
-      { title: "Revenue", value: "₹24.6M", trend: "+12.4% (vs Target)", status: "positive", detail: "Quarterly Target: ₹22.0M", howCalculated: "Formula: Illustrative Q1 run-rate | Comparison: vs Target | Version: Template" },
-      { title: "Net Profit", value: "₹5.8M", trend: "+8.6% (vs Benchmark)", status: "positive", detail: "Margin: 23.5%", howCalculated: "Formula: Revenue - Operating Expenses | Comparison: vs Benchmark | Version: Template" },
-      { title: "Growth", value: "+12.4%", trend: "YoY Baseline", status: "positive", detail: "Ahead of industry benchmark", howCalculated: "Formula: (Current Q - Prior Q) / Prior Q | Comparison: YoY | Version: Template" },
-      { title: "Operating Expenses", value: "₹18.8M", trend: "+4.8% (vs Budget)", status: "warning", detail: "Budget variance: +2.1%", howCalculated: "Formula: Sum of OPEX line items | Comparison: vs Budget | Version: Template" },
+      { title: "Revenue", value: "₹12.2K", trend: "Demo Benchmark", status: "positive", detail: "Sum: ₹12,170 (Illustrative run-rate)", howCalculated: "Formula: Σ(Sales) across sample orders | Comparison: Q1 Demo | Version: Template" },
+      { title: "Net Profit", value: "₹2.67K", trend: "21.9% Margin", status: "positive", detail: "Sum: ₹2,670 (Illustrative EBITDA)", howCalculated: "Formula: Σ(Profit) across orders | Comparison: Q1 Demo | Version: Template" },
+      { title: "Growth", value: "+12.4%", trend: "vs Prior Q", status: "positive", detail: "Calculated: (Q1 ₹12.2K - Q4 ₹10.8K) / Q4 ₹10.8K", howCalculated: "Formula: ((Current Q1 - Prior Q4) / Prior Q4) × 100 | Comparison: Q1 vs Q4 (90-day baseline) | Version: Template" },
+      { title: "Operating Expenses", value: "₹9.5K", trend: "Derived Cost", status: "positive", detail: "Derived: Sales (₹12.2K) - Profit (₹2.67K)", howCalculated: "Formula: Σ(Sales) - Σ(Profit) | Comparison: Q1 Demo | Version: Template" },
       { title: "Cash Position", value: "₹9.2M", trend: "Stable", status: "neutral", detail: "6.2 months runway", howCalculated: "Formula: Liquid assets + receivables | Version: Template" },
       { title: "Customer Growth", value: "+11.0%", trend: "MoM Baseline", status: "positive", detail: "Active enterprise clients", howCalculated: "Formula: New clients / Total clients | Comparison: MoM | Version: Template" },
       { title: "Business Risk Score", value: "Medium", trend: "Benchmark", status: "warning", detail: "Regional revenue variance", howCalculated: "Formula: Weighted composite risk index | Version: Template" }
@@ -39,9 +39,9 @@ export const ROLE_CONFIGS = {
     aiBrief: {
       greeting: "Good morning. Here is your executive summary.",
       highlights: [
-        { type: "positive", text: "Business performance is healthy with overall revenue up 12.4% this quarter (vs quarterly target)." },
-        { type: "warning", text: "Operating expenses increased by 4.8% due to marketing expansion (vs planned budget)." },
-        { type: "danger", text: "[Illustrative Benchmark] The South region revenue is 8.2% below forecast target (Requires target column)." }
+        { type: "positive", text: "Business performance is healthy with revenue up 12.4% vs Q4 baseline (Calculated across 90-day comparison)." },
+        { type: "warning", text: "Operating expenses at ₹9.5K reflect stable run-rate across active product categories." },
+        { type: "danger", text: "[Demo Benchmark] South Region: 8.2% below target (Dataset has no target column)." }
       ],
       recommendedAction: "Review South region customer retention drivers and optimize marketing expenditure."
     },
@@ -193,10 +193,10 @@ export const ROLE_CONFIGS = {
       { id: "ai_copilot", label: "AI Finance Assistant", icon: "🤖" }
     ],
     kpiCards: [
-      { title: "Total Revenue", value: "₹24.6M", trend: "+12.4% (vs Target)", status: "positive", detail: "QTD Actual", howCalculated: "Formula: Sum of ledger revenue | Comparison: vs Target | Version: Template" },
-      { title: "Operating Expenses", value: "₹18.8M", trend: "+4.8% (vs Budget)", status: "warning", detail: "Budget: ₹18.4M", howCalculated: "Formula: Operating expenditures | Comparison: vs Budget | Version: Template" },
-      { title: "Gross Profit", value: "₹10.2M", trend: "41.5% Margin", status: "positive", detail: "Gross Margin %", howCalculated: "Formula: Revenue - Cost of Goods Sold | Version: Template" },
-      { title: "Net Profit", value: "₹5.8M", trend: "+8.6% (vs Benchmark)", status: "positive", detail: "Net Margin: 23.5%", howCalculated: "Formula: EBITDA - Taxes & Depreciation | Comparison: vs Benchmark | Version: Template" },
+      { title: "Total Revenue", value: "₹12.2K", trend: "Demo Benchmark", status: "positive", detail: "Sum: ₹12,170 (Sample run-rate)", howCalculated: "Formula: Sum of ledger revenue | Period: Q1 Demo | Version: Template" },
+      { title: "Operating Expenses", value: "₹9.5K", trend: "Derived Cost", status: "positive", detail: "Derived: Sales - Profit", howCalculated: "Formula: Operating expenditures | Version: Template" },
+      { title: "Gross Profit", value: "₹2.67K", trend: "21.9% Margin", status: "positive", detail: "Gross Margin %", howCalculated: "Formula: Revenue - Cost of Goods Sold | Version: Template" },
+      { title: "Net Profit", value: "₹2.67K", trend: "Net Positive", status: "positive", detail: "Net Margin: 21.9%", howCalculated: "Formula: EBITDA | Version: Template" },
       { title: "Cash Balance", value: "₹9.2M", trend: "Healthy", status: "positive", detail: "Liquidity reserve", howCalculated: "Formula: Cash & liquid reserves | Version: Template" },
       { title: "Budget Variance", value: "+₹400K", trend: "2.1% Over Budget", status: "warning", detail: "Driven by marketing", howCalculated: "Formula: Actual spend - Planned budget | Comparison: vs Budget | Version: Template" }
     ],
