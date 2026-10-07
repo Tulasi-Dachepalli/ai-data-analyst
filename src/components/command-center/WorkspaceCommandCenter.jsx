@@ -5,8 +5,10 @@ import { useDecision } from "../../context/DecisionContext";
 import { useActivity } from "../../context/ActivityContext";
 import { useRole } from "../../context/RoleContext";
 import { WORKFLOW_STAGES, getStageLockState } from "../../config/workflowStages";
+import { useLanguage } from "../../utils/i18n";
 
 export default function WorkspaceCommandCenter({ setView }) {
+  const { t } = useLanguage();
   const { currentVersion, rawVersion, activeDataset, activeRows, activeCols, history, setCurrentStage, currentStage, openInvestigation } = useDataset();
   const { pendingDecisions, openInbox, applyDecision, rejectDecision } = useDecision();
   const { events, openActivityDrawer } = useActivity();
@@ -40,12 +42,12 @@ export default function WorkspaceCommandCenter({ setView }) {
     {
       id: "health",
       testId: "metric-health",
-      title: "Data Health",
+      title: t("kpi_data_health", "Data Health"),
       value: (rowCount > 0 && healthScore != null) ? `${healthScore}/100` : "Not assessed",
       sub: (rowCount > 0 && healthScore != null) ? "Authoritative quality verified" : "Requires tabular data",
       color: (rowCount > 0 && healthScore != null) ? "#16A34A" : "#64748B",
       bg: (rowCount > 0 && healthScore != null) ? "#F0FDF4" : "#F8FAFC",
-      action: "Inspect Quality",
+      action: t("btn_inspect_quality", "Inspect Quality"),
       onClick: () => {
         setCurrentStage("quality");
         if (setView) setView("health");
@@ -54,34 +56,34 @@ export default function WorkspaceCommandCenter({ setView }) {
     {
       id: "records",
       testId: "metric-records",
-      title: "Dataset Records",
+      title: t("kpi_total_records", "Dataset Records"),
       value: rowCount.toLocaleString(),
       sub: `${colCount} active columns`,
       color: "#2563EB",
       bg: "#EFF6FF",
-      action: "Explore Data",
+      action: t("btn_explore_data", "Explore Data"),
       onClick: () => setCurrentStage("explore")
     },
     {
       id: "findings",
       testId: "metric-findings",
-      title: "AI Findings",
+      title: t("kpi_ai_findings", "AI Findings"),
       value: findingsCount.toString(),
       sub: rowCount > 0 ? "Insights auto-scanned" : "No active dataset",
       color: "#DC2626",
       bg: "#FEF2F2",
-      action: "Investigate",
+      action: t("btn_investigate", "Investigate"),
       onClick: () => setCurrentStage("insights")
     },
     {
       id: "transformations",
       testId: "metric-transformations",
-      title: "Transformations",
+      title: t("kpi_transformations", "Transformations"),
       value: Math.max(0, history.length - 1).toString(),
       sub: `Lineage steps v1 → ${versionTag}`,
       color: "#D97706",
       bg: "#FFFBEB",
-      action: "View Lineage",
+      action: t("btn_view_lineage", "View Lineage"),
       onClick: () => {
         if (setView) setView("lineage");
         else openActivityDrawer();
@@ -90,12 +92,12 @@ export default function WorkspaceCommandCenter({ setView }) {
     {
       id: "forecast",
       testId: "metric-forecast",
-      title: "Forecast Trajectory",
+      title: t("kpi_forecast_trajectory", "Forecast Trajectory"),
       value: hasForecast ? "+12.4%" : (isDemo && rowCount > 0 ? "Demo: +12.4%" : "Not yet run"),
       sub: hasForecast ? "6-Month horizon (95% CI)" : (isDemo && rowCount > 0 ? "Illustrative demo projection" : "Run Stage 08 to project"),
       color: "#2563EB",
       bg: "#EFF6FF",
-      action: "Open Forecast",
+      action: t("btn_open_forecast", "Open Forecast"),
       onClick: () => {
         setCurrentStage("forecast");
         if (setView) setView("forecast");
@@ -104,12 +106,12 @@ export default function WorkspaceCommandCenter({ setView }) {
     {
       id: "models",
       testId: "metric-models",
-      title: "Trained ML Models",
+      title: t("kpi_trained_models", "Trained ML Models"),
       value: trainedModelsCount > 0 ? `${trainedModelsCount} Models` : (isDemo && rowCount > 0 ? "Demo: 3 Models" : "0 Models"),
       sub: trainedModelsCount > 0 ? "Candidate AutoML active" : (isDemo && rowCount > 0 ? "Illustrative demo models" : "Train models in Stage 07"),
       color: "#16A34A",
       bg: "#F0FDF4",
-      action: "Compare Models",
+      action: t("btn_compare_models", "Compare Models"),
       onClick: () => {
         setCurrentStage("modeling");
         if (setView) setView("models");
@@ -181,7 +183,7 @@ export default function WorkspaceCommandCenter({ setView }) {
               boxShadow: "0 2px 6px rgba(37,99,235,0.3)"
             }}
           >
-            <span>⬆ Upload Dataset</span>
+            <span>⬆ {t("btn_upload_dataset", "Upload Dataset")}</span>
           </button>
 
           <button
@@ -201,7 +203,7 @@ export default function WorkspaceCommandCenter({ setView }) {
               gap: 6
             }}
           >
-            <span>📥 Decisions Inbox</span>
+            <span>📥 {t("decisions", "Decisions Inbox")}</span>
             {pendingDecisions.length > 0 && (
               <span data-testid="command-center-decision-badge" style={{ background: "#FFF", color: "#DC2626", borderRadius: "50%", width: 18, height: 18, fontSize: 11, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 800 }}>
                 {pendingDecisions.length}
@@ -229,7 +231,7 @@ export default function WorkspaceCommandCenter({ setView }) {
               gap: 6
             }}
           >
-            <span>🌳 Data Lineage</span>
+            <span>🌳 {t("btn_view_lineage", "Data Lineage")}</span>
           </button>
 
           <button

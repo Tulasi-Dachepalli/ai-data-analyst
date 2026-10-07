@@ -118,7 +118,7 @@ let passedCount = 0;
 // Test 9: Simplified Beginner Mode with Single Recommended Action
 {
   const begCode = fs.readFileSync(path.join(__dirname, "src/components/beginner/BeginnerModePanel.jsx"), "utf-8");
-  assert(begCode.includes("Recommended Next Action • Step"), "BeginnerModePanel must spotlight Recommended Next Action");
+  assert(begCode.includes("Recommended Next Action • Step") || begCode.includes("lbl_recommended_next_action"), "BeginnerModePanel must spotlight Recommended Next Action");
   assert(begCode.includes("const activeStep = steps.find"), "BeginnerModePanel must dynamically determine active step");
   assert(begCode.includes("Compact Horizontal Progress Stepper") || begCode.includes("Progress Stepper"), "BeginnerModePanel must use streamlined progress stepper");
   console.log("✅ [PASS] Item 9: Beginner Mode simplified with single clear recommended next action hero card");

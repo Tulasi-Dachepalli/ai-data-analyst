@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { getRoleConfig } from "../../config/roleConfigs";
 import { useDataset } from "../../context/DatasetContext";
+import { useLanguage } from "../../utils/i18n";
 
 export default function ExecutiveCommandCenter({ onAskQuestion }) {
+  const { t } = useLanguage();
   const config = getRoleConfig("ceo");
   const { activeDataset, activeRows, activeCols } = useDataset() || {};
   const [query, setQuery] = useState("");
@@ -38,35 +40,35 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
 
     displayKpiCards = [
       {
-        title: "Total Revenue",
+        title: t("kpi_total_revenue", "Total Revenue"),
         value: revenueFormatted,
         trend: "+12.4%",
         status: "positive",
         detail: revenueDetail
       },
       {
-        title: "Net Profit",
+        title: t("kpi_net_profit", "Net Profit"),
         value: profitCol ? `₹${Math.round(totalProfit).toLocaleString()}` : "N/A",
         trend: totalProfit >= 0 ? "+8.2%" : "-4.1%",
         status: totalProfit >= 0 ? "positive" : "warning",
         detail: profitCol ? `Margin: ${margin}` : "Profit metric"
       },
       {
-        title: "Operating Margin",
+        title: t("kpi_operating_margin", "Operating Margin"),
         value: margin,
         trend: "+1.8%",
         status: "positive",
         detail: "Net margin index"
       },
       {
-        title: "Total Records / Orders",
+        title: t("kpi_total_orders", "Total Records / Orders"),
         value: activeRows.length.toLocaleString(),
         trend: "Live",
         status: "positive",
         detail: `${(activeCols || []).length} active columns`
       },
       {
-        title: "Data Quality Health",
+        title: t("kpi_data_health", "Data Quality Health"),
         value: activeDataset?.quality?.score != null ? `${activeDataset.quality.score}/100` : "Not assessed",
         trend: "Verified",
         status: (activeDataset?.quality?.score || 0) >= 80 ? "positive" : "warning",
@@ -96,7 +98,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
               👔 EXECUTIVE WORKSPACE
             </div>
             <h1 style={{ fontSize: "22px", fontWeight: 800, margin: "0 0 6px 0" }}>
-              Executive Command Center
+              {t("hdr_executive_command_center", "Executive Command Center")}
             </h1>
             <p style={{ fontSize: "14px", color: "#94A3B8", margin: 0 }}>
               {hasActiveData ? `Real-time intelligence grounded on ${activeDataset?.name || "active dataset"}` : config.aiBrief.greeting}
@@ -109,7 +111,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
             fontSize: "13px",
             color: "#E2E8F0"
           }}>
-            Status: <span style={{ color: "#4ADE80", fontWeight: 700 }}>{hasActiveData ? "🟢 Live Grounded Data" : "⚪ Illustrative Preview"}</span>
+            Status: <span style={{ color: "#4ADE80", fontWeight: 700 }}>{hasActiveData ? t("lbl_status_live", "🟢 Live Grounded Data") : t("lbl_status_preview", "⚪ Illustrative Preview")}</span>
           </div>
         </div>
       </div>
@@ -118,7 +120,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
-            Key Business Performance Metrics
+            {t("sec_key_metrics", "Key Business Performance Metrics")}
           </div>
           <span style={{
             fontSize: "11.5px",
@@ -129,7 +131,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
             color: hasActiveData ? "#166534" : "#92400E",
             border: `1px solid ${hasActiveData ? "#86EFAC" : "#FDE68A"}`
           }}>
-            {hasActiveData ? `🟢 Calculated from ${activeDataset?.name || "Active Dataset"}` : "⚠️ Illustrative Template (Upload dataset to calculate live KPIs)"}
+            {hasActiveData ? `${t("lbl_calculated_from", "🟢 Calculated from")} ${activeDataset?.name || "Active Dataset"}` : t("lbl_illustrative_template", "⚠️ Illustrative Template (Upload dataset to calculate live KPIs)")}
           </span>
         </div>
         <div style={{
@@ -188,7 +190,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "18px" }}>🧠</span>
             <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
-              AI Executive Brief
+              {t("sec_ai_brief", "AI Executive Brief")}
             </h3>
           </div>
 
@@ -213,7 +215,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
             borderRadius: "4px",
             fontSize: "12.5px"
           }}>
-            <strong>Recommended Action:</strong> {hasActiveData ? `Explore category distributions and run predictive AutoML modeling on ${activeDataset?.name || "this dataset"}.` : config.aiBrief.recommendedAction}
+            <strong>{t("sec_recommended_action", "Recommended Action:")}</strong> {hasActiveData ? `Explore category distributions and run predictive AutoML modeling on ${activeDataset?.name || "this dataset"}.` : config.aiBrief.recommendedAction}
           </div>
         </div>
 
@@ -230,7 +232,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <span style={{ fontSize: "18px" }}>🔴</span>
             <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
-              Needs Attention
+              {t("sec_needs_attention", "Needs Attention")}
             </h3>
           </div>
 
@@ -278,7 +280,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
         padding: "20px"
       }}>
         <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
-          💬 Ask your Executive AI Copilot anything...
+          {t("copilot_ask_anything", "💬 Ask your Executive AI Copilot anything...")}
         </div>
         <form onSubmit={handleSubmit} style={{ display: "flex", gap: "10px" }}>
           <input
@@ -310,13 +312,13 @@ export default function ExecutiveCommandCenter({ onAskQuestion }) {
               cursor: "pointer"
             }}
           >
-            Ask Executive AI →
+            {t("btn_ask_copilot", "Ask Executive AI →")}
           </button>
         </form>
 
         {/* Quick Sample Questions */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
-          <span style={{ fontSize: "12px", color: "var(--text-muted)", alignSelf: "center" }}>Try asking:</span>
+          <span style={{ fontSize: "12px", color: "var(--text-muted)", alignSelf: "center" }}>{t("sec_try_asking", "Try asking:")}</span>
           {config.sampleQuestions.map((q, idx) => (
             <button
               key={idx}

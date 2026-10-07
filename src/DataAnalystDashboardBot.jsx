@@ -6192,20 +6192,20 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
             }
           }}
             style={{ display: "flex", alignItems: "center", gap: 8, background: "#3E6F8E", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(62, 111, 142, 0.25)" }}>
-            <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> New analysis
+            <span style={{ fontSize: 15, lineHeight: 1 }}>+</span> {t("nav_new_analysis", "+ New analysis").replace(/^\+\s*/, "")}
           </button>
           
           <button onClick={() => setShowGoogleSheetsModal(true)}
             style={{ display: "flex", alignItems: "center", gap: 8, background: "#10B981", color: "#fff", border: "none", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s ease-in-out", boxShadow: "0 2px 8px rgba(16, 185, 129, 0.25)" }}>
-            <span style={{ fontSize: 14 }}>🔗</span> Import Google Sheet
+            <span style={{ fontSize: 14 }}>🔗</span> {t("nav_import_sheet", "Import Google Sheet").replace(/^🔗\s*/, "")}
           </button>
         </div>
         <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.tsv,.json,.txt,.md,.log,.xml,.html" multiple style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files.length) { handleFiles(e.target.files); e.target.value = ""; } }} />
-        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 6, padding: "0 4px" }}>Recent</div>
+        <div style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)", marginTop: 6, padding: "0 4px" }}>{t("nav_recent", "Recent")}</div>
         {serverStatus === "cold_start" && (
           <div style={{ fontSize: 10.5, background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: 6, padding: "5px 8px", color: "#92400E", display: "flex", alignItems: "center", gap: 5, margin: "2px 0 6px 0" }}>
             <span>⏳</span>
-            <span>Cloud sync warming up • In-browser engine active</span>
+            <span>{t("cloud_warming_up", "Cloud sync warming up • In-browser engine active")}</span>
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 3, overflowY: "auto", flex: 1 }}>
@@ -6214,7 +6214,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
               idx === arr.findIndex(other => other.name === t.name || (other.serverId && other.serverId === t.serverId))
             );
             if (uniqueThreads.length === 0) {
-              return <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "6px 4px" }}>No recent files</div>;
+              return <div style={{ fontSize: 11.5, color: "var(--text-muted)", padding: "6px 4px" }}>{t("nav_no_recent", "No recent files")}</div>;
             }
             return uniqueThreads.map(t => (
               <div key={t.id} onClick={() => handleSelectThread(t)}

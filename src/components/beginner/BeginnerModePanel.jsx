@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useRole } from "../../context/RoleContext";
 import { useDataset } from "../../context/DatasetContext";
+import { useLanguage } from "../../utils/i18n";
 
 const GLOSSARY_TERMS = [
   {
@@ -37,6 +38,7 @@ const GLOSSARY_TERMS = [
 ];
 
 export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCopilot, onExportReport }) {
+  const { t } = useLanguage();
   const { roleConfig } = useRole();
   const { activeDataset, activeRows } = useDataset();
 
@@ -50,12 +52,12 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
   const steps = [
     {
       num: 1,
-      title: "Connect Data",
+      title: t("step_connect_data", "Connect Data"),
       desc: isDataLoaded
         ? `${activeDataset.name || "Dataset"} connected (${rowsCount.toLocaleString()} verified rows).`
         : "Upload an Excel, CSV file, or start with demo data to unlock analytics.",
       isDone: isDataLoaded,
-      actionLabel: isDataLoaded ? "Inspect Structure" : "Upload Dataset",
+      actionLabel: isDataLoaded ? "Inspect Structure" : t("btn_upload_dataset", "Upload Dataset"),
       action: () => {
         const fileInput = document.querySelector('input[type="file"]');
         if (fileInput) fileInput.click();
@@ -63,10 +65,10 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
     },
     {
       num: 2,
-      title: "Data Quality & Privacy Check",
+      title: t("step_quality_privacy", "Data Quality & Privacy Check"),
       desc: "Verify data cleanliness, missing cell rates, and ensure no customer PII is leaked.",
       isDone: isPrivacyChecked,
-      actionLabel: "Check Health & Privacy",
+      actionLabel: t("btn_inspect_quality", "Check Health & Privacy"),
       action: () => {
         if (onOpenPrivacy) onOpenPrivacy();
         else if (onOpenHealth) onOpenHealth();
@@ -74,26 +76,26 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
     },
     {
       num: 3,
-      title: "Explore Visual Trends",
+      title: t("step_explore_trends", "Explore Visual Trends"),
       desc: "Review interactive BI charts, category distributions, and real-time slicers.",
       isDone: isDataLoaded && isPrivacyChecked,
-      actionLabel: "Explain My Charts",
+      actionLabel: t("btn_explain_charts", "Explain My Charts"),
       action: () => onAskCopilot && onAskCopilot("Explain the primary trend and key takeaway from our dashboard charts in plain English.")
     },
     {
       num: 4,
-      title: "Ask Plain-English Questions",
+      title: t("step_ask_questions", "Ask Plain-English Questions"),
       desc: "Chat with the AI Copilot to investigate margins, anomalies, and drivers without formulas.",
       isDone: false,
-      actionLabel: "Ask Copilot",
+      actionLabel: t("btn_ask_copilot", "Ask Copilot"),
       action: () => onAskCopilot && onAskCopilot(`What are the top 3 priorities for a ${roleConfig?.shortName || "Executive"} based on this dataset?`)
     },
     {
       num: 5,
-      title: "Generate Executive Report",
+      title: t("step_exec_report", "Generate Executive Report"),
       desc: "Create an audited, board-ready executive PDF summary to share with leadership.",
       isDone: false,
-      actionLabel: "Generate PDF Report",
+      actionLabel: t("btn_generate_report", "Generate PDF Report"),
       action: onExportReport
     }
   ];
@@ -172,14 +174,14 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--text-primary, #0F172A)" }}>
-                Beginner Guided Mode
+                {t("lbl_beginner_guided_mode", "Beginner Guided Mode")}
               </span>
               <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 10, background: "#E0F2FE", color: "#0369A1" }}>
                 {roleConfig?.title || "Executive Perspective"}
               </span>
             </div>
             <div style={{ fontSize: 11.5, color: "var(--text-muted, #64748B)" }}>
-              One clear recommended action at each stage • Plain English without formulas
+              {t("beginner_subtitle", "One clear recommended action at each stage • Plain English without formulas")}
             </div>
           </div>
         </div>
@@ -200,8 +202,7 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
             gap: 6
           }}
         >
-          <span>📖</span>
-          <span>Plain-English Glossary</span>
+          <span>{t("glossary_btn", "📖 Plain-English Glossary")}</span>
         </button>
       </div>
 
@@ -237,7 +238,8 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
           </div>
           <div>
             <div style={{ fontSize: 11, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#047857", marginBottom: 2 }}>
-              🎯 Recommended Next Action • Step {activeStep.num} of 5
+              {/* Recommended Next Action • Step */}
+              🎯 {t("lbl_recommended_next_action", "Recommended Next Action")} • Step {activeStep.num} of 5
             </div>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#0F172A", marginBottom: 2 }}>
               {activeStep.title}

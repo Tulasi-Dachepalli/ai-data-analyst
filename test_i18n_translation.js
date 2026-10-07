@@ -59,6 +59,51 @@ test("i18n 4: Sidebar and Topbar update labels dynamically with useLanguage", ()
   assert(topbar.includes("t(\"decisions\""), "Topbar decisions button must be translated");
 });
 
+test("i18n 5: ExecutiveCommandCenter & FinanceCommandCenter reactively translate KPIs and headers", () => {
+  const exec = fs.readFileSync("./src/components/workspaces/ExecutiveCommandCenter.jsx", "utf8");
+  const fin = fs.readFileSync("./src/components/workspaces/FinanceCommandCenter.jsx", "utf8");
+  assert(exec.includes("useLanguage"), "ExecutiveCommandCenter must import useLanguage");
+  assert(exec.includes("hdr_executive_command_center"), "Executive header must be translated");
+  assert(exec.includes("kpi_total_revenue"), "Total revenue KPI must be translated");
+  assert(fin.includes("useLanguage"), "FinanceCommandCenter must import useLanguage");
+  assert(fin.includes("hdr_finance_command_center"), "Finance header must be translated");
+  assert(fin.includes("sec_financial_metrics"), "Financial metrics section must be translated");
+});
+
+test("i18n 6: WorkspaceCommandCenter translates action cards, lineage, and upload buttons", () => {
+  const ws = fs.readFileSync("./src/components/command-center/WorkspaceCommandCenter.jsx", "utf8");
+  assert(ws.includes("useLanguage"), "WorkspaceCommandCenter must import useLanguage");
+  assert(ws.includes("kpi_data_health"), "Data health card must be translated");
+  assert(ws.includes("btn_upload_dataset"), "Upload dataset button must be translated");
+  assert(ws.includes("btn_view_lineage"), "Data Lineage button must be translated");
+});
+
+test("i18n 7: BeginnerModePanel translates guided steps, glossary button, and next action spotlight", () => {
+  const beg = fs.readFileSync("./src/components/beginner/BeginnerModePanel.jsx", "utf8");
+  assert(beg.includes("useLanguage"), "BeginnerModePanel must import useLanguage");
+  assert(beg.includes("lbl_beginner_guided_mode"), "Beginner header must be translated");
+  assert(beg.includes("lbl_recommended_next_action"), "Recommended next action must be translated");
+  assert(beg.includes("step_connect_data"), "Steps must be translated");
+  assert(beg.includes("glossary_btn"), "Glossary button must be translated");
+});
+
+test("i18n 8: PowerBiDashboard translates executive dashboard title, filters, and action buttons", () => {
+  const pbi = fs.readFileSync("./src/components/dashboard/PowerBiDashboard.jsx", "utf8");
+  assert(pbi.includes("useLanguage"), "PowerBiDashboard must import useLanguage");
+  assert(pbi.includes("hdr_executive_dashboard"), "Executive dashboard header must be translated");
+  assert(pbi.includes("filter_by"), "Filters label must be translated");
+  assert(pbi.includes("btn_reset_filters"), "Reset filters button must be translated");
+  assert(pbi.includes("btn_ask_copilot"), "Ask Copilot must be translated");
+});
+
+test("i18n 9: DataAnalystDashboardBot translates sidebar actions and recent file state", () => {
+  const bot = fs.readFileSync("./src/DataAnalystDashboardBot.jsx", "utf8");
+  assert(bot.includes("nav_new_analysis"), "New analysis button must be translated");
+  assert(bot.includes("nav_import_sheet"), "Import sheet button must be translated");
+  assert(bot.includes("nav_recent"), "Recent section header must be translated");
+  assert(bot.includes("nav_no_recent"), "No recent files message must be translated");
+});
+
 console.log("\n================================================================================");
 console.log(` ALL ${passed}/${total} I18N TRANSLATION TESTS PASSED!`);
 console.log("================================================================================");

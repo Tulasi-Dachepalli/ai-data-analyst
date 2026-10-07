@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { getRoleConfig } from "../../config/roleConfigs";
 import { useDataset } from "../../context/DatasetContext";
+import { useLanguage } from "../../utils/i18n";
 
 export default function FinanceCommandCenter({ onAskQuestion }) {
+  const { t } = useLanguage();
   const config = getRoleConfig("finance");
   const { activeDataset, activeRows, activeCols } = useDataset() || {};
   const [query, setQuery] = useState("");
@@ -40,35 +42,35 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
 
     displayKpiCards = [
       {
-        title: "Total Revenue",
+        title: t("kpi_total_revenue", "Total Revenue"),
         value: revenueFormatted,
         trend: "+12.4%",
         status: "positive",
         detail: revenueDetail
       },
       {
-        title: "Operating Cost",
+        title: t("kpi_operating_cost", "Operating Cost"),
         value: profitCol && salesCol ? `₹${Math.round(totalSales - totalProfit).toLocaleString()}` : "N/A",
         trend: "-2.1%",
         status: "positive",
         detail: "Derived expense"
       },
       {
-        title: "Net EBITDA",
+        title: t("kpi_net_profit", "Net EBITDA"),
         value: profitCol ? `₹${Math.round(totalProfit).toLocaleString()}` : "N/A",
         trend: totalProfit >= 0 ? "+6.2%" : "-5.0%",
         status: totalProfit >= 0 ? "positive" : "warning",
         detail: `Net: ${margin}`
       },
       {
-        title: "Budget Variance",
+        title: t("kpi_budget_variance", "Budget Variance"),
         value: "+3.2%",
         trend: "Healthy",
         status: "positive",
         detail: "Under operating limit"
       },
       {
-        title: "Gross Margin",
+        title: t("kpi_gross_margin", "Gross Margin"),
         value: margin,
         trend: "+1.2%",
         status: "positive",
@@ -98,7 +100,7 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
               💰 FINANCE WORKSPACE
             </div>
             <h1 style={{ fontSize: "22px", fontWeight: 800, margin: "0 0 6px 0" }}>
-              Finance Command Center
+              {t("hdr_finance_command_center", "Finance Command Center")}
             </h1>
             <p style={{ fontSize: "14px", color: "#FEF3C7", margin: 0 }}>
               {hasActiveData ? `Financial metrics calculated from ${activeDataset?.name || "active dataset"}` : config.aiBrief.greeting}
@@ -120,7 +122,7 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: 8 }}>
           <div style={{ fontSize: "13px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)" }}>
-            Financial Performance Metrics
+            {t("sec_financial_metrics", "Financial Performance Metrics")}
           </div>
           <span style={{
             fontSize: "11.5px",
@@ -131,7 +133,7 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
             color: hasActiveData ? "#166534" : "#92400E",
             border: `1px solid ${hasActiveData ? "#86EFAC" : "#FDE68A"}`
           }}>
-            {hasActiveData ? `🟢 Calculated from ${activeDataset?.name || "Active Dataset"}` : "⚠️ Illustrative Template (Upload dataset to calculate live KPIs)"}
+            {hasActiveData ? `${t("lbl_calculated_from", "🟢 Calculated from")} ${activeDataset?.name || "Active Dataset"}` : t("lbl_illustrative_template", "⚠️ Illustrative Template (Upload dataset to calculate live KPIs)")}
           </span>
         </div>
         <div style={{
@@ -185,7 +187,7 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span style={{ fontSize: "18px" }}>⚠️</span>
           <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>
-            Financial Alerts & Budget Variance Highlights
+            {t("sec_needs_attention", "Financial Alerts & Budget Variance Highlights")}
           </h3>
         </div>
 
@@ -232,7 +234,7 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
         padding: "20px"
       }}>
         <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)", marginBottom: "8px" }}>
-          💬 Ask your Finance AI Assistant anything...
+          {t("copilot_ask_anything", "💬 Ask your Finance AI Assistant anything...")}
         </div>
         <form onSubmit={handleSubmit} style={{ display: "flex", gap: "10px" }}>
           <input
@@ -264,12 +266,12 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
               cursor: "pointer"
             }}
           >
-            Ask Finance AI →
+            {t("btn_ask_copilot", "Ask Finance AI →")}
           </button>
         </form>
 
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginTop: "12px" }}>
-          <span style={{ fontSize: "12px", color: "var(--text-muted)", alignSelf: "center" }}>Try asking:</span>
+          <span style={{ fontSize: "12px", color: "var(--text-muted)", alignSelf: "center" }}>{t("sec_try_asking", "Try asking:")}</span>
           {config.sampleQuestions.map((q, idx) => (
             <button
               key={idx}

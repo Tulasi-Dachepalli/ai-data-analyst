@@ -22,6 +22,7 @@ import {
 import { useCopilot } from "../../context/CopilotContext";
 import { useRole } from "../../context/RoleContext";
 import { useActivity } from "../../context/ActivityContext";
+import { useLanguage } from "../../utils/i18n";
 import ExecutiveReportGenerator from "../../ExecutiveReportGenerator";
 
 // Crisp modern palette inspired by Power BI & enterprise design
@@ -45,6 +46,7 @@ function formatMetricValue(val, colName = "") {
 }
 
 export default function PowerBiDashboard({ active, user, setView, onAskQuestion }) {
+  const { t } = useLanguage();
   const { askQuestion } = useCopilot();
   const { roleConfig } = useRole();
   const { logEvent } = useActivity();
@@ -443,7 +445,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
               fontFamily: "var(--font-heading, 'Manrope', sans-serif)",
               letterSpacing: "-0.02em"
             }}>
-              Executive Analytics Dashboard
+              {t("hdr_executive_dashboard", "Executive Analytics Dashboard")}
             </h1>
             <span style={{
               background: "#EFF6FF",
@@ -513,7 +515,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
             }}
           >
             <span>📄</span>
-            <span>Export PDF</span>
+            <span>{t("btn_generate_report", "Export PDF")}</span>
           </button>
 
           {/* Ask AI Copilot */}
@@ -535,7 +537,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
             }}
           >
             <span>🤖</span>
-            <span>Ask Copilot</span>
+            <span>{t("btn_ask_copilot", "Ask Copilot")}</span>
           </button>
         </div>
       </div>
@@ -555,7 +557,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: "#64748B", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", gap: 4 }}>
-            <span>🔍</span> FILTERS / SLICERS:
+            <span>🔍</span> {t("filter_by", "FILTERS / SLICERS")}:
           </span>
 
           {slicerColumns.map(col => {
@@ -580,7 +582,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
                     outline: "none"
                   }}
                 >
-                  <option value="All">All ({uniqueOptions.length})</option>
+                  <option value="All">{t("slicer_all_regions", "All")} ({uniqueOptions.length})</option>
                   {uniqueOptions.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
@@ -618,7 +620,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
                 padding: "2px 6px"
               }}
             >
-              ✕ Clear All Filters
+              ✕ {t("btn_reset_filters", "Clear All Filters")}
             </button>
           )}
         </div>
@@ -728,14 +730,14 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
                   title="Explain this chart with AI"
                   style={{ background: "#EFF6FF", color: "#2563EB", border: "1px solid #BFDBFE", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                 >
-                  ✨ Explain
+                  ✨ {t("btn_explain_charts", "Explain")}
                 </button>
                 <button
                   onClick={() => handleVisualAskCopilot(timeSeriesData.title)}
                   title="Ask Copilot about this visual"
                   style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
                 >
-                  🤖 Ask
+                  🤖 {t("btn_ask_copilot", "Ask")}
                 </button>
               </div>
             </div>
@@ -790,7 +792,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
                 onClick={() => handleVisualAskCopilot(geographicData.title)}
                 style={{ background: "#F1F5F9", color: "#475569", border: "none", borderRadius: 6, padding: "3px 8px", fontSize: 11, fontWeight: 700, cursor: "pointer" }}
               >
-                🤖 Ask
+                🤖 {t("btn_ask_copilot", "Ask")}
               </button>
             </div>
 
