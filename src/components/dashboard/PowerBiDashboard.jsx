@@ -383,7 +383,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
         type: "neutral",
         icon: "🛡️",
         headline: "Data Reliability & Quality Verified",
-        detail: `${filteredRows.length.toLocaleString()} rows audited. Schema integrity verified with zero mock injection.`
+        detail: `${filteredRows.length.toLocaleString()} rows audited. Tabular schema verified with client-side calculations.`
       });
     }
 
@@ -456,7 +456,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
               padding: "2px 8px",
               borderRadius: 12
             }}>
-              Power BI Engine
+              Power BI-Style Engine
             </span>
           </div>
           <div style={{ fontSize: 13, color: "var(--text-secondary, #64748B)", marginTop: 4 }}>

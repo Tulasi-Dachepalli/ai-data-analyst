@@ -28,26 +28,26 @@ export const ROLE_CONFIGS = {
       { id: "ai_copilot", label: "AI Executive Assistant", icon: "🤖" }
     ],
     kpiCards: [
-      { title: "Revenue", value: "₹24.6M", trend: "+12.4%", status: "positive", detail: "Quarterly Target: ₹22.0M" },
-      { title: "Net Profit", value: "₹5.8M", trend: "+8.6%", status: "positive", detail: "Margin: 23.5%" },
-      { title: "Growth", value: "+12.4%", trend: "YoY", status: "positive", detail: "Ahead of industry benchmark" },
-      { title: "Operating Expenses", value: "₹18.8M", trend: "+4.8%", status: "warning", detail: "Budget variance: +2.1%" },
-      { title: "Cash Position", value: "₹9.2M", trend: "Stable", status: "neutral", detail: "6.2 months runway" },
-      { title: "Customer Growth", value: "+11.0%", trend: "MoM", status: "positive", detail: "Active enterprise clients" },
-      { title: "Business Risk Score", value: "Medium", trend: "South Region", status: "warning", detail: "Regional revenue variance" }
+      { title: "Revenue", value: "₹24.6M", trend: "+12.4% (vs Target)", status: "positive", detail: "Quarterly Target: ₹22.0M", howCalculated: "Formula: Illustrative Q1 run-rate | Comparison: vs Target | Version: Template" },
+      { title: "Net Profit", value: "₹5.8M", trend: "+8.6% (vs Benchmark)", status: "positive", detail: "Margin: 23.5%", howCalculated: "Formula: Revenue - Operating Expenses | Comparison: vs Benchmark | Version: Template" },
+      { title: "Growth", value: "+12.4%", trend: "YoY Baseline", status: "positive", detail: "Ahead of industry benchmark", howCalculated: "Formula: (Current Q - Prior Q) / Prior Q | Comparison: YoY | Version: Template" },
+      { title: "Operating Expenses", value: "₹18.8M", trend: "+4.8% (vs Budget)", status: "warning", detail: "Budget variance: +2.1%", howCalculated: "Formula: Sum of OPEX line items | Comparison: vs Budget | Version: Template" },
+      { title: "Cash Position", value: "₹9.2M", trend: "Stable", status: "neutral", detail: "6.2 months runway", howCalculated: "Formula: Liquid assets + receivables | Version: Template" },
+      { title: "Customer Growth", value: "+11.0%", trend: "MoM Baseline", status: "positive", detail: "Active enterprise clients", howCalculated: "Formula: New clients / Total clients | Comparison: MoM | Version: Template" },
+      { title: "Business Risk Score", value: "Medium", trend: "Benchmark", status: "warning", detail: "Regional revenue variance", howCalculated: "Formula: Weighted composite risk index | Version: Template" }
     ],
     aiBrief: {
       greeting: "Good morning. Here is your executive summary.",
       highlights: [
-        { type: "positive", text: "Business performance is healthy with overall revenue up 12.4% this quarter." },
-        { type: "warning", text: "Operating expenses increased by 4.8% due to marketing expansion." },
-        { type: "danger", text: "The South region revenue is 8.2% below forecast target." }
+        { type: "positive", text: "Business performance is healthy with overall revenue up 12.4% this quarter (vs quarterly target)." },
+        { type: "warning", text: "Operating expenses increased by 4.8% due to marketing expansion (vs planned budget)." },
+        { type: "danger", text: "[Illustrative Benchmark] The South region revenue is 8.2% below forecast target (Requires target column)." }
       ],
       recommendedAction: "Review South region customer retention drivers and optimize marketing expenditure."
     },
     needsAttention: [
-      { area: "South Region Revenue", metric: "8.2% below target", urgency: "High", action: "Review regional pipeline" },
-      { area: "Operating Cost", metric: "2.1% above budget", urgency: "Medium", action: "Audit vendor expenses" }
+      { area: "South Region Revenue", metric: "[Illustrative Benchmark] 8.2% below target (Dataset has no target column)", urgency: "High", action: "Review regional pipeline" },
+      { area: "Operating Cost", metric: "[Illustrative Benchmark] 2.1% above budget (Dataset has no budget column)", urgency: "Medium", action: "Audit vendor expenses" }
     ],
     sampleQuestions: [
       "Why is revenue down in the South region?",
@@ -193,12 +193,12 @@ export const ROLE_CONFIGS = {
       { id: "ai_copilot", label: "AI Finance Assistant", icon: "🤖" }
     ],
     kpiCards: [
-      { title: "Total Revenue", value: "₹24.6M", trend: "+12.4%", status: "positive", detail: "QTD Actual" },
-      { title: "Operating Expenses", value: "₹18.8M", trend: "+4.8%", status: "warning", detail: "Budget: ₹18.4M" },
-      { title: "Gross Profit", value: "₹10.2M", trend: "41.5% Margin", status: "positive", detail: "Gross Margin %" },
-      { title: "Net Profit", value: "₹5.8M", trend: "+8.6%", status: "positive", detail: "Net Margin: 23.5%" },
-      { title: "Cash Balance", value: "₹9.2M", trend: "Healthy", status: "positive", detail: "Liquidity reserve" },
-      { title: "Budget Variance", value: "+₹400K", trend: "2.1% Over", status: "warning", detail: "Driven by marketing" }
+      { title: "Total Revenue", value: "₹24.6M", trend: "+12.4% (vs Target)", status: "positive", detail: "QTD Actual", howCalculated: "Formula: Sum of ledger revenue | Comparison: vs Target | Version: Template" },
+      { title: "Operating Expenses", value: "₹18.8M", trend: "+4.8% (vs Budget)", status: "warning", detail: "Budget: ₹18.4M", howCalculated: "Formula: Operating expenditures | Comparison: vs Budget | Version: Template" },
+      { title: "Gross Profit", value: "₹10.2M", trend: "41.5% Margin", status: "positive", detail: "Gross Margin %", howCalculated: "Formula: Revenue - Cost of Goods Sold | Version: Template" },
+      { title: "Net Profit", value: "₹5.8M", trend: "+8.6% (vs Benchmark)", status: "positive", detail: "Net Margin: 23.5%", howCalculated: "Formula: EBITDA - Taxes & Depreciation | Comparison: vs Benchmark | Version: Template" },
+      { title: "Cash Balance", value: "₹9.2M", trend: "Healthy", status: "positive", detail: "Liquidity reserve", howCalculated: "Formula: Cash & liquid reserves | Version: Template" },
+      { title: "Budget Variance", value: "+₹400K", trend: "2.1% Over Budget", status: "warning", detail: "Driven by marketing", howCalculated: "Formula: Actual spend - Planned budget | Comparison: vs Budget | Version: Template" }
     ],
     aiBrief: {
       greeting: "Good morning. Here is your financial summary.",
@@ -210,8 +210,8 @@ export const ROLE_CONFIGS = {
       recommendedAction: "Review marketing spending allocations and audit unbudgeted vendor payments."
     },
     needsAttention: [
-      { category: "Marketing Spend", metric: "14% above budget", urgency: "High", action: "Review campaign ROI" },
-      { category: "Software Licenses", metric: "Unusual transaction ₹185K", urgency: "High", action: "Audit invoice approval" }
+      { category: "Marketing Spend", metric: "[Illustrative Benchmark] 14% above budget (Dataset has no budget column)", urgency: "High", action: "Review campaign ROI" },
+      { category: "Software Licenses", metric: "[Illustrative Benchmark] Unusual transaction ₹185K (Dataset has no budget column)", urgency: "High", action: "Audit invoice approval" }
     ],
     sampleQuestions: [
       "Where are we overspending this month?",

@@ -51,7 +51,7 @@ export const TRANSLATIONS = {
     sign_out: "Sign Out",
 
     // Tabs
-    tab_dashboard: "📊 Power BI Dashboard",
+    tab_dashboard: "📊 Power BI-Style Dashboard",
     tab_data: "📁 01 Raw Data",
     tab_quality: "🛡️ 02 Data Quality",
     tab_cleaning: "🧹 03 Data Cleaning",
@@ -100,7 +100,7 @@ export const TRANSLATIONS = {
     btn_return_bi: "Return to BI Workspace",
 
     // Headers & Sections
-    hdr_executive_dashboard: "Executive Analytics Dashboard",
+    hdr_executive_dashboard: "Power BI-Style Analytics Dashboard",
     hdr_executive_command_center: "Executive Command Center",
     hdr_finance_command_center: "Finance Command Center",
     hdr_workspace_command_center: "Workspace Command Center",

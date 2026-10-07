@@ -81,6 +81,21 @@ export default function RecruitmentCommandCenter({ onAskQuestion }) {
               </span>
               <span style={{ color: "var(--text-muted, #94A3B8)" }}>{kpi.detail}</span>
             </div>
+            {kpi.howCalculated && (
+              <div style={{
+                marginTop: "4px",
+                padding: "4px 8px",
+                backgroundColor: "rgba(5, 150, 105, 0.05)",
+                border: "1px dashed rgba(5, 150, 105, 0.25)",
+                borderRadius: "6px",
+                fontSize: "10.5px",
+                color: "#065F46",
+                lineHeight: "1.3"
+              }}>
+                <span style={{ fontWeight: 700 }}>How calculated: </span>
+                {kpi.howCalculated}
+              </div>
+            )}
           </div>
         ))}
       </div>

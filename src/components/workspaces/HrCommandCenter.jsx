@@ -89,6 +89,21 @@ export default function HrCommandCenter({ onAskQuestion }) {
               </span>
               <span style={{ color: "var(--text-muted, #94A3B8)" }}>{kpi.detail}</span>
             </div>
+            {kpi.howCalculated && (
+              <div style={{
+                marginTop: "4px",
+                padding: "4px 8px",
+                backgroundColor: "rgba(99, 102, 241, 0.05)",
+                border: "1px dashed rgba(99, 102, 241, 0.25)",
+                borderRadius: "6px",
+                fontSize: "10.5px",
+                color: "#4338CA",
+                lineHeight: "1.3"
+              }}>
+                <span style={{ fontWeight: 700 }}>How calculated: </span>
+                {kpi.howCalculated}
+              </div>
+            )}
           </div>
         ))}
       </div>

@@ -16,7 +16,7 @@ export default function AIDecisionCenter({ setView }) {
   const rowCount = activeRows ? activeRows.length : (activeDataset?.rowCount || 0);
   const colCount = activeCols ? activeCols.length : (activeDataset?.columnCount || 0);
   const rawHash = activeDataset?.rawHash || (rawVersion ? rawVersion.hash : "sha256-root-hash");
-  const qualityScore = activeDataset?.quality?.score ?? (rowCount > 0 ? 96 : 0);
+  const qualityScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : (rowCount > 0 ? 100 : 0);
 
   const topDecision = pendingDecisions.length > 0 ? pendingDecisions[0] : null;
 

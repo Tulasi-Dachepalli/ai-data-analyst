@@ -2272,7 +2272,7 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
         {/* Clean Linear Workflow Stepper Bar (Canonical 9 Stages + Power BI Dashboard) */}
         <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "4px 0", alignItems: "center" }}>
           {[
-            { id: "dashboard", label: t("tab_dashboard", "📊 Power BI Dashboard"), icon: "📊", isPrimary: true },
+            { id: "dashboard", label: t("tab_dashboard", "📊 Power BI-Style Dashboard"), icon: "📊", isPrimary: true },
             { id: "data", label: t("tab_data", "01 Raw Data"), icon: "📁", stage: "raw" },
             { id: "quality", label: t("tab_quality", "02 Data Quality"), icon: "🛡️", stage: "quality" },
             { id: "cleaning", label: t("tab_cleaning", "03 Data Cleaning"), icon: "🧹", stage: "cleaning" },
@@ -6834,25 +6834,25 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
               </div>
             ))}
 
-            {/* Workspace Command Center & AI 4-Area Decision Center (Rendered ONLY when rows > 0) */}
-            {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && (
+            {/* Workspace Command Center & AI 4-Area Decision Center (Rendered in Pro Mode when rows > 0; combined into unified Executive Overview for Beginner Mode) */}
+            {!isBeginnerMode && Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && (
               <div style={{ display: "flex", flexDirection: "column", gap: 24, marginBottom: 24 }}>
                 <WorkspaceCommandCenter setView={setView} />
                 <AIDecisionCenter setView={setView} />
               </div>
             )}
-            {/* Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
+            {/* Unified Business Role Command Centers (CEO, HR, Recruiter, Finance) */}
             {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && (user?.role === "ceo" || !user?.role) && (
-              <ExecutiveCommandCenter onAskQuestion={(q) => handleSend(q)} />
+              <ExecutiveCommandCenter onAskQuestion={(q) => handleSend(q)} setView={setView} isBeginnerMode={isBeginnerMode} />
             )}
             {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "hr" && (
-              <HrCommandCenter onAskQuestion={(q) => handleSend(q)} />
+              <HrCommandCenter onAskQuestion={(q) => handleSend(q)} setView={setView} isBeginnerMode={isBeginnerMode} />
             )}
             {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "recruiter" && (
-              <RecruitmentCommandCenter onAskQuestion={(q) => handleSend(q)} />
+              <RecruitmentCommandCenter onAskQuestion={(q) => handleSend(q)} setView={setView} isBeginnerMode={isBeginnerMode} />
             )}
             {Boolean(active) && (active.rows || []).length > 0 && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "finance" && (
-              <FinanceCommandCenter onAskQuestion={(q) => handleSend(q)} />
+              <FinanceCommandCenter onAskQuestion={(q) => handleSend(q)} setView={setView} isBeginnerMode={isBeginnerMode} />
             )}
             {Boolean(active) && (["dashboard", "overview", "dashboards"].includes(currentView)) && user?.role === "data_scientist" && (
               <DataScientistStudio active={active} activeData={activeData} activeCols={activeCols} onAskQuestion={(q) => handleSend(q)} />

@@ -1,11 +1,14 @@
 // src/LandingPage.jsx
 import React, { useState, useEffect } from "react";
+import LegalHelpModal from "./components/common/LegalHelpModal";
 
 export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
   const [showWalkthrough, setShowWalkthrough] = useState(false);
   const [walkthroughStep, setWalkthroughStep] = useState(1);
   const [activeRoleTab, setActiveRoleTab] = useState("ceo");
   const [activeLevelTab, setActiveLevelTab] = useState("beginner");
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState("privacy");
 
   // Send visit events to backend analytics service to track site-wide unique browsers
   useEffect(() => {
@@ -237,7 +240,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
           <a href="#how-it-works" style={{ textDecoration: "none", color: "inherit" }}>How It Works</a>
           <a href="#experience-levels" style={{ textDecoration: "none", color: "inherit" }}>3 Experience Levels</a>
           <a href="#roles" style={{ textDecoration: "none", color: "inherit" }}>6 Roles</a>
-          <a href="#security" style={{ textDecoration: "none", color: "inherit" }}>Security & RBAC</a>
+          <a href="#security" style={{ textDecoration: "none", color: "inherit" }}>Security & Access</a>
           <button
             onClick={() => { setShowWalkthrough(true); setWalkthroughStep(1); }}
             style={{
@@ -323,7 +326,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
               marginBottom: 16
             }}>
               <span>🛡️</span>
-              <span>Enterprise AI Business Intelligence • RBAC Governed</span>
+              <span>Enterprise AI Business Intelligence • Access controlled by your role</span>
             </div>
 
             <h1 style={{
@@ -344,7 +347,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
               margin: "0 0 28px 0",
               maxWidth: 540
             }}>
-              Upload your spreadsheets, explore guided insights, and build interactive Power BI dashboards and executive reports—all in one workspace. Start with guidance or use advanced analysis tools.
+              Upload your spreadsheets, explore guided insights, and build interactive Power BI-style dashboards and executive reports—all in one workspace. Start with guidance or use advanced analysis tools.
             </p>
 
             {/* Main Action CTAs */}
@@ -417,7 +420,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
                 <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span> Zero training on customer data
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span> 6-Role RBAC access control
+                <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span> Access controlled by your role (6 Roles)
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span> Instant browser export
@@ -717,7 +720,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
             textTransform: "uppercase",
             marginBottom: 8
           }}>
-            Role-Based Access Control (RBAC)
+            Access Controlled by Your Role
           </div>
           <h2 style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", letterSpacing: "-0.02em", margin: "0 0 10px 0" }}>
             Tailored perspectives for every department leader.
@@ -949,11 +952,16 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
               © {new Date().getFullYear()} All rights reserved. Zero training binding on client records.
             </div>
           </div>
-          <div style={{ display: "flex", gap: 20 }}>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
             <a href="#how-it-works" style={{ textDecoration: "none", color: "#64748B" }}>How It Works</a>
             <a href="#experience-levels" style={{ textDecoration: "none", color: "#64748B" }}>Experience Levels</a>
             <a href="#security" style={{ textDecoration: "none", color: "#64748B" }}>Security</a>
             <span onClick={() => { setShowWalkthrough(true); setWalkthroughStep(1); }} style={{ color: "#2563EB", cursor: "pointer", fontWeight: 600 }}>Interactive Tour</span>
+            <span style={{ color: "#CBD5E1" }}>|</span>
+            <span onClick={() => { setLegalModalTab("privacy"); setLegalModalOpen(true); }} style={{ color: "#475569", cursor: "pointer", fontWeight: 600 }}>🔒 Privacy</span>
+            <span onClick={() => { setLegalModalTab("terms"); setLegalModalOpen(true); }} style={{ color: "#475569", cursor: "pointer", fontWeight: 600 }}>📜 Terms</span>
+            <span onClick={() => { setLegalModalTab("help"); setLegalModalOpen(true); }} style={{ color: "#475569", cursor: "pointer", fontWeight: 600 }}>❓ Help</span>
+            <span onClick={() => { setLegalModalTab("contact"); setLegalModalOpen(true); }} style={{ color: "#475569", cursor: "pointer", fontWeight: 600 }}>✉️ Contact</span>
           </div>
         </div>
       </footer>
@@ -1125,6 +1133,13 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
           </div>
         </div>
       )}
+
+      {/* Legal & Help Modal */}
+      <LegalHelpModal
+        isOpen={legalModalOpen}
+        tab={legalModalTab}
+        onClose={() => setLegalModalOpen(false)}
+      />
     </div>
   );
 }

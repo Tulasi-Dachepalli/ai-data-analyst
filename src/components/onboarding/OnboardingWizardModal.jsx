@@ -35,7 +35,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
     { id: "recruiter", icon: "🎯", label: "Recruiter", desc: "Talent • Pipeline • Funnel" }
   ];
 
-  const handleFinish = () => {
+  const handleFinish = (isSkipped = false) => {
     try {
       if (dontShowAgain) {
         localStorage.setItem("aida_onboarding_dismissed", "true");
@@ -48,8 +48,10 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
       if (typeof logEvent === "function") {
         logEvent({
           stage: "01 Raw Data",
-          action: "Completed Interactive AI Guide",
-          result: `Workspace configured for ${roleConfig?.title || "Executive"} (${displayName})`
+          action: isSkipped ? "Onboarding skipped" : "Completed Interactive AI Guide",
+          result: isSkipped
+            ? `User skipped onboarding guide to enter workspace directly`
+            : `Workspace configured for ${roleConfig?.title || "Executive"} (${displayName})`
         });
       }
     } catch (e) {
@@ -94,7 +96,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
     <div
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          handleFinish();
+          handleFinish(true);
         }
       }}
       style={{
@@ -162,7 +164,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
           </div>
 
           <button
-            onClick={handleFinish}
+            onClick={() => handleFinish(true)}
             title="Close Guide & Enter Workspace"
             style={{
               background: "rgba(255,255,255,0.12)",
@@ -470,7 +472,7 @@ export default function OnboardingWizardModal({ isOpen, onClose, onUploadClick, 
             {currentStep === 1 && (
               <button
                 type="button"
-                onClick={handleFinish}
+                onClick={() => handleFinish(true)}
                 style={{
                   background: "transparent",
                   color: "#64748B",

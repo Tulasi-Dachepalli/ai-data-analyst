@@ -3,10 +3,10 @@ import { getRoleConfig } from "../../config/roleConfigs";
 import { useDataset } from "../../context/DatasetContext";
 import { useLanguage } from "../../utils/i18n";
 
-export default function FinanceCommandCenter({ onAskQuestion }) {
+export default function FinanceCommandCenter({ onAskQuestion, setView, isBeginnerMode }) {
   const { t } = useLanguage();
   const config = getRoleConfig("finance");
-  const { activeDataset, activeRows, activeCols } = useDataset() || {};
+  const { activeDataset, activeRows, activeCols, currentVersion } = useDataset() || {};
   const [query, setQuery] = useState("");
 
   const handleSubmit = (e) => {
@@ -21,14 +21,16 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
 
   const salesCol = (activeCols || []).find(c => /^(sales|revenue|amount|turnover|net_sales)$/i.test(c)) || (activeCols || []).find(c => /sales|revenue/i.test(c));
   const profitCol = (activeCols || []).find(c => /^(profit|net_profit|income|earnings)$/i.test(c)) || (activeCols || []).find(c => /profit/i.test(c));
+  const budgetCol = (activeCols || []).find(c => /^(budget|budgeted|planned_cost)$/i.test(c)) || (activeCols || []).find(c => /budget/i.test(c));
 
   let displayKpiCards = [];
-  let displayNetMargin = "23.5%";
+  let displayNetMargin = "N/A";
   if (hasActiveData) {
     const totalSales = salesCol ? activeRows.reduce((sum, r) => sum + (parseFloat(r[salesCol]) || 0), 0) : 0;
     const totalProfit = profitCol ? activeRows.reduce((sum, r) => sum + (parseFloat(r[profitCol]) || 0), 0) : 0;
     const margin = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) + "%" : "N/A";
     displayNetMargin = margin;
+    const versionLabel = activeDataset?.currentVersion || currentVersion?.version || "v1 Raw";
     
     let revenueFormatted = "N/A";
     let revenueDetail = "From active dataset";
@@ -44,45 +46,69 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
       {
         title: t("kpi_total_revenue", "Total Revenue"),
         value: revenueFormatted,
-        trend: "+12.4%",
+        trend: salesCol ? "Dataset Sum" : "N/A",
         status: "positive",
-        detail: revenueDetail
+        detail: revenueDetail,
+        howCalculated: salesCol
+          ? `Formula: Σ(${salesCol}) | Filters: All ${activeRows.length} rows | Period: Entire Dataset | Version: ${versionLabel}`
+          : "No revenue column identified"
       },
       {
         title: t("kpi_operating_cost", "Operating Cost"),
         value: profitCol && salesCol ? `₹${Math.round(totalSales - totalProfit).toLocaleString()}` : "N/A",
-        trend: "-2.1%",
+        trend: (salesCol && profitCol) ? "Derived Cost" : "N/A",
         status: "positive",
-        detail: "Derived expense"
+        detail: (salesCol && profitCol) ? `Derived: Sales - Profit` : "Derived expense",
+        howCalculated: (salesCol && profitCol)
+          ? `Formula: Σ(${salesCol}) - Σ(${profitCol}) | Filters: All rows | Version: ${versionLabel}`
+          : "Requires sales and profit columns"
       },
       {
         title: t("kpi_net_profit", "Net EBITDA"),
         value: profitCol ? `₹${Math.round(totalProfit).toLocaleString()}` : "N/A",
-        trend: totalProfit >= 0 ? "+6.2%" : "-5.0%",
+        trend: totalProfit >= 0 ? "Net Positive" : "Net Deficit",
         status: totalProfit >= 0 ? "positive" : "warning",
-        detail: `Net: ${margin}`
+        detail: `Net Margin: ${margin}`,
+        howCalculated: profitCol
+          ? `Formula: Σ(${profitCol}) | Filters: All ${activeRows.length} rows | Period: Entire Dataset | Version: ${versionLabel}`
+          : "Requires profit column"
       },
       {
         title: t("kpi_budget_variance", "Budget Variance"),
-        value: "+3.2%",
-        trend: "Healthy",
-        status: "positive",
-        detail: "Under operating limit"
+        value: budgetCol ? "Live Computed" : "N/A (No Budget Col)",
+        trend: budgetCol ? "Live Variance" : "Benchmark",
+        status: budgetCol ? "positive" : "neutral",
+        detail: budgetCol ? "Grounded in budget column" : "Dataset lacks budget column",
+        howCalculated: budgetCol
+          ? `Formula: (Actual - Budget) / Budget | Version: ${versionLabel}`
+          : "Formula: (Actual - Budget) / Budget | Filters: N/A | Dataset lacks target/budget column"
       },
       {
         title: t("kpi_gross_margin", "Gross Margin"),
         value: margin,
-        trend: "+1.2%",
-        status: "positive",
-        detail: "Margin index"
+        trend: margin !== "N/A" ? "Margin Ratio" : "N/A",
+        status: totalProfit >= 0 ? "positive" : "warning",
+        detail: "Gross Margin Index",
+        howCalculated: (salesCol && profitCol)
+          ? `Formula: (Σ(${profitCol}) / Σ(${salesCol})) × 100 | Filters: All rows | Version: ${versionLabel}`
+          : "Requires sales and profit columns"
       }
     ];
   } else {
     displayKpiCards = config.kpiCards.map(k => ({
       ...k,
-      detail: `[Illustrative] ${k.detail}`
+      detail: `[Illustrative] ${k.detail}`,
+      howCalculated: k.howCalculated || "[Illustrative Template] Upload dataset to calculate live KPIs"
     }));
   }
+
+  // Label alerts as benchmarks if no budget column exists
+  const displayNeedsAttention = (hasActiveData && !budgetCol)
+    ? config.needsAttention.map(item => ({
+        ...item,
+        metric: `[Illustrative Benchmark] ${item.metric} (Dataset has no budget column)`
+      }))
+    : config.needsAttention;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", fontFamily: "var(--font-sans, sans-serif)" }}>
@@ -118,6 +144,70 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
         </div>
       </div>
 
+      {/* Recommended Next Action Banner */}
+      <div style={{
+        backgroundColor: "#FFFBEB",
+        border: "1.5px solid #F59E0B",
+        borderRadius: "12px",
+        padding: "16px 20px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: "12px",
+        boxShadow: "0 2px 4px rgba(245, 158, 11, 0.08)"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "24px" }}>🎯</span>
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.5px", color: "#B45309" }}>
+              RECOMMENDED NEXT ACTION
+            </div>
+            <div style={{ fontSize: "13.5px", fontWeight: 700, color: "#78350F" }}>
+              {hasActiveData
+                ? `Review operating margin and derived costs across ${activeDataset?.name || "active dataset"} (${activeRows.length.toLocaleString()} rows).`
+                : "Upload financial statement or transaction CSV to compute live EBITDA and cost variance."}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => {
+              if (setView) setView("dashboards");
+              else if (onAskQuestion) onAskQuestion("Analyze gross margin breakdown and expense distributions.");
+            }}
+            style={{
+              backgroundColor: "#D97706",
+              color: "#FFFFFF",
+              border: "none",
+              borderRadius: "8px",
+              padding: "9px 18px",
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(217, 119, 6, 0.25)"
+            }}
+          >
+            📊 Open Power BI-Style Dashboard
+          </button>
+          <button
+            onClick={() => onAskQuestion && onAskQuestion("Where are we overspending or experiencing negative margins?")}
+            style={{
+              backgroundColor: "#FFFFFF",
+              color: "#92400E",
+              border: "1px solid #FDE68A",
+              borderRadius: "8px",
+              padding: "9px 16px",
+              fontSize: "13px",
+              fontWeight: 700,
+              cursor: "pointer"
+            }}
+          >
+            🤖 Ask Finance Copilot
+          </button>
+        </div>
+      </div>
+
       {/* Finance KPI Cards */}
       <div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px", flexWrap: "wrap", gap: 8 }}>
@@ -138,7 +228,7 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
         </div>
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
           gap: "14px"
         }}>
           {displayKpiCards.map((kpi, idx) => (
@@ -169,6 +259,22 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
                 </span>
                 <span style={{ color: "var(--text-muted, #94A3B8)" }}>{kpi.detail}</span>
               </div>
+              {/* How Calculated Pill */}
+              {kpi.howCalculated && (
+                <div style={{
+                  marginTop: "4px",
+                  padding: "4px 8px",
+                  backgroundColor: "rgba(217, 119, 6, 0.05)",
+                  border: "1px dashed rgba(217, 119, 6, 0.25)",
+                  borderRadius: "6px",
+                  fontSize: "10.5px",
+                  color: "#78350F",
+                  lineHeight: "1.3"
+                }}>
+                  <span style={{ fontWeight: 700, color: "#92400E" }}>How calculated: </span>
+                  {kpi.howCalculated}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -192,7 +298,7 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px" }}>
-          {config.needsAttention.map((item, i) => (
+          {displayNeedsAttention.map((item, i) => (
             <div key={i} style={{
               padding: "12px 16px",
               border: "1px solid #FDE68A",
@@ -200,7 +306,8 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
               borderRadius: "8px",
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center"
+              alignItems: "center",
+              gap: "8px"
             }}>
               <div>
                 <div style={{ fontSize: "13.5px", fontWeight: 700, color: "#92400E" }}>{item.category}</div>
@@ -216,10 +323,11 @@ export default function FinanceCommandCenter({ onAskQuestion }) {
                   border: "none",
                   background: "#D97706",
                   color: "#FFF",
-                  cursor: "pointer"
+                  cursor: "pointer",
+                  whiteSpace: "nowrap"
                 }}
               >
-                {item.action}
+                {item.action || "Audit"}
               </button>
             </div>
           ))}

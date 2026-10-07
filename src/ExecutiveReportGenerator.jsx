@@ -123,7 +123,7 @@ export default function ExecutiveReportGenerator({ dataset, data = [], columns =
           <div class="section">
             <div class="section-title">💡 Strategic AI Takeaways & Executive Summary</div>
             <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:20px;font-size:13.5px;color:#334155;line-height:1.7;">
-              ${aiInsights || "Automated AI Analysis has scanned this dataset for variance distributions, correlations, and growth indicators. All metrics are grounded in verified rows with zero mock hallucination."}
+              ${aiInsights || "Automated AI Analysis has scanned this dataset for variance distributions, correlations, and growth indicators. All metrics are grounded in verified tabular rows."}
             </div>
           </div>
 
