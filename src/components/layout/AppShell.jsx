@@ -12,6 +12,7 @@ import { CollaborationProvider } from "../../context/CollaborationContext";
 import { SearchProvider } from "../../context/SearchContext";
 
 import OnboardingWizardModal from "../onboarding/OnboardingWizardModal";
+import LegalHelpModal from "../common/LegalHelpModal";
 
 export function AppShellContent({ user, currentView, setView, onLogout, onUserChange, children }) {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
@@ -30,6 +31,10 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
       return true;
     }
   });
+
+  // Legal & Support Help Modal state
+  const [legalModalOpen, setLegalModalOpen] = useState(false);
+  const [legalModalTab, setLegalModalTab] = useState("privacy");
 
   useEffect(() => {
     const handleOpenGuide = () => setIsGuideOpen(true);
@@ -177,6 +182,62 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
             </div>
           )}
           {children}
+
+          {/* Workspace Footer */}
+          <footer
+            data-testid="workspace-footer"
+            style={{
+              marginTop: "auto",
+              padding: "16px 24px",
+              borderTop: "1px solid var(--border-color, #E2E8F0)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+              fontSize: 12,
+              color: "var(--text-muted, #64748B)",
+              backgroundColor: "var(--bg-primary, #FFFFFF)"
+            }}
+          >
+            <div>
+              <strong>AI Business Copilot</strong> • Enterprise BI & Automated Analytics (Zero model retraining)
+            </div>
+            <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+              <button
+                type="button"
+                data-testid="footer-privacy-btn"
+                onClick={() => { setLegalModalTab("privacy"); setLegalModalOpen(true); }}
+                style={{ background: "none", border: "none", color: "var(--text-secondary, #475569)", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 12 }}
+              >
+                🔒 Privacy
+              </button>
+              <button
+                type="button"
+                data-testid="footer-terms-btn"
+                onClick={() => { setLegalModalTab("terms"); setLegalModalOpen(true); }}
+                style={{ background: "none", border: "none", color: "var(--text-secondary, #475569)", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 12 }}
+              >
+                📜 Terms
+              </button>
+              <button
+                type="button"
+                data-testid="footer-help-btn"
+                onClick={() => { setLegalModalTab("help"); setLegalModalOpen(true); }}
+                style={{ background: "none", border: "none", color: "var(--text-secondary, #475569)", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 12 }}
+              >
+                ❓ Help
+              </button>
+              <button
+                type="button"
+                data-testid="footer-contact-btn"
+                onClick={() => { setLegalModalTab("contact"); setLegalModalOpen(true); }}
+                style={{ background: "none", border: "none", color: "var(--text-secondary, #475569)", cursor: "pointer", fontWeight: 600, padding: 0, fontSize: 12 }}
+              >
+                ✉️ Contact
+              </button>
+            </div>
+          </footer>
         </div>
       </div>
 
@@ -217,6 +278,13 @@ export function AppShellContent({ user, currentView, setView, onLogout, onUserCh
         onUploadClick={() => window.dispatchEvent(new Event("trigger-file-upload"))}
         onGoogleSheetsClick={() => window.dispatchEvent(new Event("trigger-google-sheets"))}
         onExploreDemoClick={() => window.dispatchEvent(new Event("trigger-explore-demo"))}
+      />
+
+      {/* Legal, Privacy, Terms, Help & Contact Modal */}
+      <LegalHelpModal
+        isOpen={legalModalOpen}
+        onClose={() => setLegalModalOpen(false)}
+        tab={legalModalTab}
       />
     </div>
   );

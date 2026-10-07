@@ -5299,7 +5299,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     const demoId = "demo-superstore-sales";
 
     const kpis = [
-      { label: "Total Revenue", value: "₹12,070" },
+      { label: "Total Revenue", value: "₹12,170" },
       { label: "Net Profit", value: "₹2,680" },
       { label: "Profit Margin", value: "22.2%" },
       { label: "Total Orders", value: "10" }

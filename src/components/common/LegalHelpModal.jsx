@@ -31,7 +31,7 @@ export default function LegalHelpModal({ isOpen, onClose, tab = "privacy" }) {
         fontFamily: "var(--font-sans, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif)"
       }}
     >
-      <div style={{
+      <div data-testid="legal-help-modal" style={{
         backgroundColor: "#FFFFFF",
         width: 640,
         maxWidth: "95vw",
@@ -60,6 +60,7 @@ export default function LegalHelpModal({ isOpen, onClose, tab = "privacy" }) {
             </div>
           </div>
           <button
+            data-testid="legal-modal-close-btn"
             onClick={onClose}
             style={{
               background: "rgba(255,255,255,0.15)",

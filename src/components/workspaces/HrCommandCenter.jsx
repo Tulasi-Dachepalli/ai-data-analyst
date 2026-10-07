@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { getRoleConfig } from "../../config/roleConfigs";
 
-export default function HrCommandCenter({ onAskQuestion }) {
+export default function HrCommandCenter({ onAskQuestion, setView, isBeginnerMode = true }) {
   const config = getRoleConfig("hr");
   const [query, setQuery] = useState("");
 

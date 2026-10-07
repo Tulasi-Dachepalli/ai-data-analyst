@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { getRoleConfig } from "../../config/roleConfigs";
 
-export default function RecruitmentCommandCenter({ onAskQuestion }) {
+export default function RecruitmentCommandCenter({ onAskQuestion, setView, isBeginnerMode = true }) {
   const config = getRoleConfig("recruiter");
   const [query, setQuery] = useState("");
 

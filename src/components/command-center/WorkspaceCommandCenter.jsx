@@ -6,6 +6,7 @@ import { useActivity } from "../../context/ActivityContext";
 import { useRole } from "../../context/RoleContext";
 import { WORKFLOW_STAGES, getStageLockState } from "../../config/workflowStages";
 import { useLanguage } from "../../utils/i18n";
+import { calculateDataQuality } from "../../utils/dataQuality";
 
 export default function WorkspaceCommandCenter({ setView }) {
   const { t } = useLanguage();
@@ -20,7 +21,8 @@ export default function WorkspaceCommandCenter({ setView }) {
   const versionTag = currentVersion?.version || activeDataset?.currentVersion || "v1 Raw";
   const rowCount = activeRows ? activeRows.length : (activeDataset?.rowCount || 0);
   const colCount = activeCols ? activeCols.length : (activeDataset?.columnCount || 0);
-  const healthScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : null;
+  const calculatedQuality = (activeRows && activeCols && activeRows.length > 0) ? calculateDataQuality(activeRows, activeCols).score : null;
+  const healthScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : calculatedQuality;
   const rawHash = activeDataset?.rawHash || (rawVersion ? rawVersion.hash : "sha256-root-hash");
 
   // Dynamic time-based greeting

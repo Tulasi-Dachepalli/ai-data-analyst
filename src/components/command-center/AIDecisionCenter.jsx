@@ -4,6 +4,7 @@ import { useDataset } from "../../context/DatasetContext";
 import { useDecision } from "../../context/DecisionContext";
 import { useActivity } from "../../context/ActivityContext";
 import { useRole } from "../../context/RoleContext";
+import { calculateDataQuality } from "../../utils/dataQuality";
 
 export default function AIDecisionCenter({ setView }) {
   const { currentVersion, rawVersion, activeDataset, activeRows, activeCols, openInvestigation } = useDataset();
@@ -16,7 +17,8 @@ export default function AIDecisionCenter({ setView }) {
   const rowCount = activeRows ? activeRows.length : (activeDataset?.rowCount || 0);
   const colCount = activeCols ? activeCols.length : (activeDataset?.columnCount || 0);
   const rawHash = activeDataset?.rawHash || (rawVersion ? rawVersion.hash : "sha256-root-hash");
-  const qualityScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : (rowCount > 0 ? 100 : 0);
+  const calculatedQuality = (activeRows && activeCols && activeRows.length > 0) ? calculateDataQuality(activeRows, activeCols).score : null;
+  const qualityScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : calculatedQuality;
 
   const topDecision = pendingDecisions.length > 0 ? pendingDecisions[0] : null;
 
@@ -51,7 +53,7 @@ export default function AIDecisionCenter({ setView }) {
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span>
-              <span><strong>Data Quality Score: {qualityScore}/100</strong></span>
+              <span><strong>Data Quality Score: {qualityScore != null ? `${qualityScore}/100 (Calculated)` : "Not assessed"}</strong></span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span>

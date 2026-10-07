@@ -70,6 +70,43 @@ export function SettingsProvider({ children }) {
     return DEFAULT_SETTINGS;
   });
 
+  const [isBeginnerMode, setIsBeginnerModeState] = useState(() => {
+    try {
+      return localStorage.getItem("aida_user_mode") !== "pro";
+    } catch {
+      return true;
+    }
+  });
+
+  const setBeginnerMode = (val) => {
+    const isBeg = !!val;
+    setIsBeginnerModeState(isBeg);
+    try {
+      localStorage.setItem("aida_user_mode", isBeg ? "beginner" : "pro");
+      window.dispatchEvent(new Event("aida_mode_changed"));
+    } catch (e) {
+      console.warn("Error writing aida_user_mode to localStorage", e);
+    }
+  };
+
+  const toggleBeginnerMode = () => {
+    setBeginnerMode(!isBeginnerMode);
+  };
+
+  useEffect(() => {
+    const handleStorage = () => {
+      try {
+        setIsBeginnerModeState(localStorage.getItem("aida_user_mode") !== "pro");
+      } catch {}
+    };
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("aida_mode_changed", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("aida_mode_changed", handleStorage);
+    };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem("aida_settings", JSON.stringify(settings));
@@ -92,7 +129,10 @@ export function SettingsProvider({ children }) {
     <SettingsContext.Provider value={{
       settings,
       updateSection,
-      resetDefaults: () => setSettings(DEFAULT_SETTINGS)
+      resetDefaults: () => setSettings(DEFAULT_SETTINGS),
+      isBeginnerMode,
+      setIsBeginnerMode: setBeginnerMode,
+      toggleBeginnerMode
     }}>
       {children}
     </SettingsContext.Provider>
@@ -101,6 +141,24 @@ export function SettingsProvider({ children }) {
 
 export function useSettings() {
   const ctx = useContext(SettingsContext);
-  if (!ctx) throw new Error("useSettings must be used within a SettingsProvider");
+  if (!ctx) {
+    let fallbackBeginner = true;
+    try {
+      fallbackBeginner = localStorage.getItem("aida_user_mode") !== "pro";
+    } catch {}
+    return {
+      settings: DEFAULT_SETTINGS,
+      updateSection: () => {},
+      resetDefaults: () => {},
+      isBeginnerMode: fallbackBeginner,
+      setIsBeginnerMode: (val) => {
+        try {
+          localStorage.setItem("aida_user_mode", val ? "beginner" : "pro");
+          window.dispatchEvent(new Event("aida_mode_changed"));
+        } catch {}
+      },
+      toggleBeginnerMode: () => {}
+    };
+  }
   return ctx;
 }

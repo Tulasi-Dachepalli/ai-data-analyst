@@ -2,11 +2,14 @@ import React, { useState } from "react";
 import { getRoleConfig } from "../../config/roleConfigs";
 import { useDataset } from "../../context/DatasetContext";
 import { useLanguage } from "../../utils/i18n";
+import { useSettings } from "../../context/SettingsContext";
 
-export default function FinanceCommandCenter({ onAskQuestion, setView, isBeginnerMode }) {
+export default function FinanceCommandCenter({ onAskQuestion, setView, isBeginnerMode = true }) {
   const { t } = useLanguage();
   const config = getRoleConfig("finance");
   const { activeDataset, activeRows, activeCols, currentVersion } = useDataset() || {};
+  const { isBeginnerMode: settingsBeginnerMode } = useSettings();
+  const effectiveBeginnerMode = isBeginnerMode ?? settingsBeginnerMode ?? true;
   const [query, setQuery] = useState("");
 
   const handleSubmit = (e) => {
@@ -18,6 +21,7 @@ export default function FinanceCommandCenter({ onAskQuestion, setView, isBeginne
   };
 
   const hasActiveData = !!(activeRows && activeRows.length > 0);
+  const isDemo = !!(activeDataset?.isDemo || activeDataset?.name?.toLowerCase().includes("demo") || activeDataset?.name?.toLowerCase().includes("superstore"));
 
   const salesCol = (activeCols || []).find(c => /^(sales|revenue|amount|turnover|net_sales)$/i.test(c)) || (activeCols || []).find(c => /sales|revenue/i.test(c));
   const profitCol = (activeCols || []).find(c => /^(profit|net_profit|income|earnings)$/i.test(c)) || (activeCols || []).find(c => /profit/i.test(c));
@@ -75,13 +79,13 @@ export default function FinanceCommandCenter({ onAskQuestion, setView, isBeginne
       },
       {
         title: t("kpi_budget_variance", "Budget Variance"),
-        value: budgetCol ? "Live Computed" : "N/A (No Budget Col)",
+        value: budgetCol ? "Live Computed" : (isDemo ? "[Demo Benchmark]" : "Not available—target/budget data required."),
         trend: budgetCol ? "Live Variance" : "Benchmark",
         status: budgetCol ? "positive" : "neutral",
         detail: budgetCol ? "Grounded in budget column" : "Dataset lacks budget column",
         howCalculated: budgetCol
           ? `Formula: (Actual - Budget) / Budget | Version: ${versionLabel}`
-          : "Formula: (Actual - Budget) / Budget | Filters: N/A | Dataset lacks target/budget column"
+          : (isDemo ? "[Demo Benchmark] Budget variance benchmark" : "Not available—target/budget data required.")
       },
       {
         title: t("kpi_gross_margin", "Gross Margin"),
@@ -106,7 +110,9 @@ export default function FinanceCommandCenter({ onAskQuestion, setView, isBeginne
   const displayNeedsAttention = (hasActiveData && !budgetCol)
     ? config.needsAttention.map(item => ({
         ...item,
-        metric: `[Illustrative Benchmark] ${item.metric} (Dataset has no budget column)`
+        metric: isDemo
+          ? `[Demo Benchmark] ${item.metric}`
+          : "Not available—target/budget data required."
       }))
     : config.needsAttention;
 

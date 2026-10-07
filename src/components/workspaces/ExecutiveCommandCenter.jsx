@@ -2,13 +2,17 @@ import React, { useState } from "react";
 import { getRoleConfig } from "../../config/roleConfigs";
 import { useDataset } from "../../context/DatasetContext";
 import { useDecision } from "../../context/DecisionContext";
+import { useSettings } from "../../context/SettingsContext";
+import { calculateDataQuality } from "../../utils/dataQuality";
 import { useLanguage } from "../../utils/i18n";
 
-export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBeginnerMode }) {
+export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBeginnerMode = true }) {
   const { t } = useLanguage();
   const config = getRoleConfig("ceo");
   const { activeDataset, activeRows, activeCols, currentVersion, rawVersion } = useDataset() || {};
-  const { pendingDecisions } = useDecision() || { pendingDecisions: [] };
+  const { pendingDecisions = [] } = useDecision() || {};
+  const { isBeginnerMode: settingsBeginnerMode } = useSettings();
+  const effectiveBeginnerMode = isBeginnerMode ?? settingsBeginnerMode ?? true;
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState("kpis"); // "kpis" | "decision_hub"
 
@@ -21,11 +25,18 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
   };
 
   const hasActiveData = !!(activeRows && activeRows.length > 0);
+  const isDemo = !!(activeDataset?.isDemo || activeDataset?.name?.toLowerCase().includes("demo") || activeDataset?.name?.toLowerCase().includes("superstore"));
 
   const salesCol = (activeCols || []).find(c => /^(sales|revenue|amount|turnover|net_sales)$/i.test(c)) || (activeCols || []).find(c => /sales|revenue/i.test(c));
   const profitCol = (activeCols || []).find(c => /^(profit|net_profit|income|earnings)$/i.test(c)) || (activeCols || []).find(c => /profit/i.test(c));
   const targetCol = (activeCols || []).find(c => /^(target|quota|goal|forecast_target)$/i.test(c)) || (activeCols || []).find(c => /target/i.test(c));
   const budgetCol = (activeCols || []).find(c => /^(budget|budgeted|planned_cost)$/i.test(c)) || (activeCols || []).find(c => /budget/i.test(c));
+
+  const qualityCalculation = hasActiveData ? calculateDataQuality(activeRows, activeCols) : null;
+  const qualityScore = activeDataset?.quality?.score != null
+    ? activeDataset.quality.score
+    : (qualityCalculation?.score != null ? qualityCalculation.score : null);
+  const qualityDisplay = qualityScore != null ? `${qualityScore}/100` : "Not assessed";
 
   let displayKpiCards = [];
   if (hasActiveData) {
@@ -85,11 +96,13 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
       },
       {
         title: t("kpi_data_health", "Data Quality Health"),
-        value: activeDataset?.quality?.score != null ? `${activeDataset.quality.score}/100` : "100/100",
-        trend: "Authoritative",
-        status: (activeDataset?.quality?.score || 100) >= 80 ? "positive" : "warning",
-        detail: "Authoritative score",
-        howCalculated: `Formula: 100 - (missing_values_penalty + type_mismatch_penalty + duplicate_penalty) | Filters: All cells | Version: ${versionLabel}`
+        value: qualityDisplay,
+        trend: qualityScore != null ? "Calculated" : "Pending",
+        status: (qualityScore || 0) >= 80 ? "positive" : "warning",
+        detail: "Authoritative health score",
+        howCalculated: qualityScore != null
+          ? `Formula: Math.round((1 - missing_cells_rate) * 100) across ${activeRows.length} rows | Filters: None | Version: ${versionLabel}`
+          : "Dataset quality not yet evaluated"
       }
     ];
   } else {
@@ -117,7 +130,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
       area: "South Region Revenue",
       metric: targetCol
         ? "Live Target Variance Calculated"
-        : "[Illustrative Benchmark] 8.2% below target (Dataset has no target column)",
+        : (isDemo ? "[Demo Benchmark] South Region: 8.2% below target" : "Not available—target/budget data required."),
       urgency: "Medium",
       action: "Review regional pipeline",
       isLive: !!targetCol
@@ -126,7 +139,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
       area: "Operating Cost",
       metric: budgetCol
         ? "Live Budget Variance Calculated"
-        : "[Illustrative Benchmark] 2.1% above budget (Dataset has no budget column)",
+        : (isDemo ? "[Demo Benchmark] Operating Cost: 2.1% above budget" : "Not available—target/budget data required."),
       urgency: "Medium",
       action: "Audit vendor expenses",
       isLive: !!budgetCol
@@ -136,7 +149,6 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
   }
 
   const rawHash = activeDataset?.rawHash || (rawVersion ? rawVersion.hash : "sha256-verified-root");
-  const qualityScore = activeDataset?.quality?.score != null ? activeDataset.quality.score : 100;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", fontFamily: "var(--font-sans, sans-serif)" }}>
@@ -380,7 +392,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
                 {(hasActiveData ? [
                   { type: "positive", text: `Active Dataset Ingested: ${activeDataset?.name || "Dataset"} with ${activeRows.length.toLocaleString()} records and ${(activeCols || []).length} columns.` },
                   { type: "positive", text: `Revenue Verified: Total revenue computed at ${displayKpiCards[0]?.value} (${displayKpiCards[0]?.detail}).` },
-                  { type: "positive", text: `Data Health Score: Authoritative index at ${activeDataset?.quality?.score != null ? activeDataset.quality.score : 100}/100 across tabular schema.` }
+                  { type: "positive", text: `Data Health Score: Authoritative index at ${qualityScore != null ? `${qualityScore}/100` : "Not assessed"} across tabular schema.` }
                 ] : config.aiBrief.highlights.map(h => ({ ...h, text: `[Illustrative] ${h.text}` }))).map((h, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "8px", fontSize: "13px", lineHeight: "1.5" }}>
                     <span>{h.type === "positive" ? "🟢" : h.type === "warning" ? "🟡" : "🔴"}</span>
@@ -498,7 +510,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span>
-                  <span><strong>Data Quality Score: {qualityScore}/100</strong> (Authoritative)</span>
+                  <span><strong>Data Quality Score: {qualityScore != null ? `${qualityScore}/100` : "Not assessed"}</strong> (Calculated)</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ color: "#16A34A", fontWeight: 800 }}>✓</span>
@@ -536,7 +548,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
                 </div>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                   <span style={{ color: "#D97706", fontWeight: 800 }}>⚠</span>
-                  <span>{displayAlerts[1]?.metric || "Target variance monitoring benchmark"}</span>
+                  <span>{displayAlerts[1]?.metric || (isDemo ? "[Demo Benchmark] Target variance monitoring" : "Not available—target/budget data required.")}</span>
                 </div>
               </div>
             </div>
