@@ -133,7 +133,7 @@ export const TRANSLATIONS = {
     chart_revenue_by_cat: "Revenue by Category",
     chart_orders_by_region: "Orders by Region",
     chart_sales_over_time: "Sales Over Time",
-    slicer_all_regions: "All Regions",
+    slicer_all_regions: "All Options",
     filter_by: "Filter by"
   },
   te: {

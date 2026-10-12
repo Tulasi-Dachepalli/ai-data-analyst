@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useDataset } from "../../context/DatasetContext";
 import { useRole } from "../../context/RoleContext";
+import { detectColumnType, getColumnTypeBadge } from "../../utils/columnTypes";
 
 export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
   const { activeDataset, loadDataset, resetFilters } = useDataset();
@@ -13,6 +14,7 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
   // Modals state
   const [schemaModalDataset, setSchemaModalDataset] = useState(null);
   const [deleteModalDataset, setDeleteModalDataset] = useState(null);
+  const [confirmDeleteChecked, setConfirmDeleteChecked] = useState(false);
 
   // Fetch datasets from backend API (if available and not in guest demo mode)
   useEffect(() => {
@@ -61,7 +63,19 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
   // Compile unified list: activeDataset from context + any saved server datasets
   const datasets = [];
   if (activeDataset && activeDataset.name) {
-    const isGuest = !localStorage.getItem("aida_token");
+    const token = localStorage.getItem("aida_token") || "";
+    const isGuest = !token ||
+      token.startsWith("demo-") ||
+      !!user?.isDemo ||
+      !!activeDataset.isDemo ||
+      activeDataset.id === "demo-dataset" ||
+      String(activeDataset.name || "").toLowerCase().includes("demo") ||
+      String(activeDataset.name || "").toLowerCase().includes("sample");
+
+    const storageLocation = isGuest
+      ? "In-Browser Sandbox (Local Session Memory)"
+      : "Cloud Database (PostgreSQL Encrypted)";
+
     datasets.push({
       id: activeDataset.id || "active-ds",
       name: activeDataset.name,
@@ -69,7 +83,7 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
       rows: activeDataset.rowCount || activeDataset.rows?.length || 0,
       cols: activeDataset.columnCount || activeDataset.columns?.length || 0,
       size: `${Math.max(1, Math.round((activeDataset.size || 1024) / 1024))} KB`,
-      storageLocation: isGuest ? "In-Browser Sandbox (Zero Server Transmission)" : "PostgreSQL Multi-Tenant Encrypted",
+      storageLocation,
       health: activeDataset?.quality?.score != null ? `${activeDataset.quality.score}/100` : "Assessed (100/100)",
       updated: "Active in Workspace",
       color: "#16A34A",
@@ -384,7 +398,10 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
                 </button>
 
                 <button
-                  onClick={() => setDeleteModalDataset(d)}
+                  onClick={() => {
+                    setDeleteModalDataset(d);
+                    setConfirmDeleteChecked(false);
+                  }}
                   style={{
                     background: "#FFF1F2",
                     color: "#BE123C",
@@ -464,14 +481,29 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
                 <tbody>
                   {(schemaModalDataset.columns || []).map((col, idx) => {
                     const sampleVal = schemaModalDataset.rowsData?.[0]?.[col] ?? "N/A";
-                    const isDate = /date|time/i.test(col);
-                    const isNum = typeof sampleVal === "number" || (!isNaN(Number(sampleVal)) && sampleVal !== "");
-                    const typeLabel = isDate ? "📅 Date" : isNum ? "🔢 Numeric" : "🔤 Categorical";
+                    const sampleValues = (schemaModalDataset.rowsData || []).map(r => r[col]);
+                    const detectedType = detectColumnType(sampleValues, col);
+                    const badge = getColumnTypeBadge(detectedType);
 
                     return (
                       <tr key={idx} style={{ borderBottom: "1px solid #F1F5F9" }}>
                         <td style={{ padding: "8px 10px", fontWeight: 700, color: "#0F172A" }}>{col}</td>
-                        <td style={{ padding: "8px 10px", color: isDate ? "#0284C7" : isNum ? "#16A34A" : "#64748B" }}>{typeLabel}</td>
+                        <td style={{ padding: "8px 10px" }}>
+                          <span style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            padding: "2px 8px",
+                            borderRadius: 6,
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            backgroundColor: badge.bg,
+                            color: badge.color,
+                            border: `1px solid ${badge.border}`
+                          }}>
+                            <span>{badge.icon}</span> {badge.label}
+                          </span>
+                        </td>
                         <td style={{ padding: "8px 10px", color: "#64748B" }}>0 (0.0%)</td>
                         <td style={{ padding: "8px 10px", color: "#334155", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{String(sampleVal)}</td>
                       </tr>
@@ -525,7 +557,7 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
                   Confirm Permanent Dataset Deletion
                 </div>
                 <div style={{ fontSize: 12, color: "#BE123C" }}>
-                  Action cannot be undone • Immediate cache and storage purge
+                  Action is irreversible • Immediate local cache and database purge
                 </div>
               </div>
             </div>
@@ -534,20 +566,40 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
               <p style={{ margin: "0 0 12px 0" }}>
                 Are you sure you want to permanently delete <strong>"{deleteModalDataset.name}"</strong>?
               </p>
+
               <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
-                <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 6, fontSize: 12 }}>
-                  Explicit Deletion Consequences:
+                <div style={{ fontWeight: 700, color: "#0F172A", marginBottom: 8, fontSize: 12 }}>
+                  Comprehensive Deletion Impact Review:
                 </div>
-                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#475569", display: "flex", flexDirection: "column", gap: 4 }}>
-                  <li>Raw ingested data rows and schema metadata will be permanently deleted.</li>
-                  <li>Lineage transformation history and all historical snapshots (v1–v4) will be discarded.</li>
-                  <li>Active slicer filters, saved analysis views, and AI conversation history will be erased.</li>
-                  <li>In-browser memory and encrypted tenant database rows are permanently wiped.</li>
-                </ul>
+                <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: "6px 12px", fontSize: 12, marginBottom: 10 }}>
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Affected Rows:</span>
+                  <span style={{ color: "#0F172A", fontWeight: 700 }}>{deleteModalDataset.rows?.toLocaleString() || 0} rows ({deleteModalDataset.cols || 0} columns)</span>
+
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Version Stack:</span>
+                  <span style={{ color: "#0F172A" }}>{deleteModalDataset.version || "v1 Raw"} (and all lineage snapshots)</span>
+
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Storage Location:</span>
+                  <span style={{ color: "#0F172A", fontWeight: 700 }}>{deleteModalDataset.storageLocation}</span>
+
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Downstream Assets:</span>
+                  <span style={{ color: "#0F172A" }}>Active KPI calculations, executive PDF snapshots, and Copilot history</span>
+
+                  <span style={{ color: "#DC2626", fontWeight: 700 }}>Recovery Status:</span>
+                  <span style={{ color: "#DC2626", fontWeight: 700 }}>Irreversible — No undelete or backup recovery available</span>
+                </div>
+
+                <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 8 }}>
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "#0F172A", cursor: "pointer", fontWeight: 600 }}>
+                    <input
+                      type="checkbox"
+                      checked={confirmDeleteChecked}
+                      onChange={(e) => setConfirmDeleteChecked(e.target.checked)}
+                      style={{ marginTop: 2, cursor: "pointer" }}
+                    />
+                    <span>I understand this deletion is permanent and irreversible, and I authorize removing this dataset and all associated analysis artifacts.</span>
+                  </label>
+                </div>
               </div>
-              <p style={{ margin: 0, fontSize: 12, color: "#64748B" }}>
-                Storage Location: <em>{deleteModalDataset.storageLocation}</em>
-              </p>
             </div>
 
             <div style={{ padding: "14px 22px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
@@ -568,16 +620,17 @@ export default function DatasetLibrary({ onOpenWorkspace, onOpenImport }) {
               </button>
               <button
                 onClick={handleConfirmDelete}
+                disabled={!confirmDeleteChecked}
                 style={{
-                  background: "#E11D48",
+                  background: confirmDeleteChecked ? "#E11D48" : "#FDA4AF",
                   color: "#FFFFFF",
                   border: "none",
                   borderRadius: 6,
                   padding: "8px 16px",
                   fontSize: 12.5,
                   fontWeight: 700,
-                  cursor: "pointer",
-                  boxShadow: "0 2px 6px rgba(225,29,72,0.3)"
+                  cursor: confirmDeleteChecked ? "pointer" : "not-allowed",
+                  boxShadow: confirmDeleteChecked ? "0 2px 6px rgba(225,29,72,0.3)" : "none"
                 }}
               >
                 Confirm Permanent Deletion

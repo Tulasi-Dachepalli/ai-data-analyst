@@ -46,7 +46,7 @@ function formatMetricValue(val, colName = "") {
   return formatted;
 }
 
-export default function PowerBiDashboard({ active, user, setView, onAskQuestion }) {
+export default function PowerBiDashboard({ active, user, setView, onAskQuestion, isBeginnerMode = false }) {
   const { t } = useLanguage();
   const { askQuestion } = useCopilot();
   const { roleConfig } = useRole();
@@ -197,26 +197,61 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
       }
       while (sparkline.length < 10) sparkline.push(avg);
 
-      // Growth delta with explicit comparison periods
-      const half = Math.floor(vals.length / 2);
-      const firstHalfVals = vals.slice(0, half);
-      const secondHalfVals = vals.slice(half);
-      const firstHalfAvg = firstHalfVals.length ? firstHalfVals.reduce((a, b) => a + b, 0) / firstHalfVals.length : 0;
-      const secondHalfAvg = secondHalfVals.length ? secondHalfVals.reduce((a, b) => a + b, 0) / secondHalfVals.length : 0;
-      const deltaPct = firstHalfAvg !== 0 ? (((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100).toFixed(1) : "0";
-      const isPositive = parseFloat(deltaPct) >= 0;
+      // Equal Calendar Period Comparison (or fallback to half records if no dates)
+      let deltaPct = "0";
+      let isPositive = true;
+      let periodComparisonText = "Recent vs prior period";
 
-      // Extract period dates if a date column is present
-      let periodComparisonText = "2nd half vs 1st half";
       if (columnRoles.dates.length > 0 && filteredRows.length >= 2) {
         const dCol = columnRoles.dates[0];
-        const p1Dates = filteredRows.slice(0, half).map(r => String(r[dCol] || "")).filter(Boolean);
-        const p2Dates = filteredRows.slice(half).map(r => String(r[dCol] || "")).filter(Boolean);
-        if (p1Dates.length > 0 && p2Dates.length > 0) {
-          const p1Range = `${p1Dates[0]}–${p1Dates[p1Dates.length - 1]}`;
-          const p2Range = `${p2Dates[0]}–${p2Dates[p2Dates.length - 1]}`;
-          periodComparisonText = `${p2Range} vs ${p1Range}`;
+        const rowsWithDates = filteredRows
+          .map(r => ({ ts: Date.parse(r[dCol]), val: Number(r[metric]) }))
+          .filter(r => !isNaN(r.ts) && !isNaN(r.val))
+          .sort((a, b) => a.ts - b.ts);
+
+        if (rowsWithDates.length >= 2) {
+          const minTs = rowsWithDates[0].ts;
+          const maxTs = rowsWithDates[rowsWithDates.length - 1].ts;
+          const spanMs = maxTs - minTs;
+
+          if (spanMs > 0) {
+            const midTs = minTs + (spanMs / 2);
+            const p1Rows = rowsWithDates.filter(r => r.ts < midTs);
+            const p2Rows = rowsWithDates.filter(r => r.ts >= midTs);
+
+            const p1Sum = p1Rows.reduce((acc, r) => acc + r.val, 0);
+            const p2Sum = p2Rows.reduce((acc, r) => acc + r.val, 0);
+
+            const daysEach = Math.max(1, Math.round(spanMs / (2 * 86400000)));
+            const fmt = (ts) => new Date(ts).toISOString().slice(0, 10);
+            const p1Range = `${fmt(minTs)}–${fmt(midTs)}`;
+            const p2Range = `${fmt(midTs)}–${fmt(maxTs)}`;
+
+            if (p1Sum > 0) {
+              const diff = (((p2Sum - p1Sum) / p1Sum) * 100).toFixed(1);
+              deltaPct = diff;
+              isPositive = parseFloat(diff) >= 0;
+            } else if (p2Sum > 0) {
+              deltaPct = "100.0";
+              isPositive = true;
+            }
+            periodComparisonText = `${p2Range} vs ${p1Range} (${daysEach}d equal periods)`;
+          } else {
+            periodComparisonText = `Same-day records (${new Date(minTs).toISOString().slice(0, 10)})`;
+          }
         }
+      } else if (vals.length >= 2) {
+        // Record count fallback
+        const half = Math.floor(vals.length / 2);
+        const firstHalfVals = vals.slice(0, half);
+        const secondHalfVals = vals.slice(half);
+        const firstHalfSum = firstHalfVals.reduce((a, b) => a + b, 0);
+        const secondHalfSum = secondHalfVals.reduce((a, b) => a + b, 0);
+        if (firstHalfSum > 0) {
+          deltaPct = (((secondHalfSum - firstHalfSum) / firstHalfSum) * 100).toFixed(1);
+          isPositive = parseFloat(deltaPct) >= 0;
+        }
+        periodComparisonText = "Recent 50% vs Prior 50% records";
       }
 
       const trendText = vals.length > 1
@@ -570,6 +605,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
       </div>
 
       {/* 2. POWER BI-STYLE SLICERS / INTERACTIVE GLOBAL FILTERS BAR */}
+      {!isBeginnerMode && slicerColumns.length > 0 && (
       <div style={{
         background: "var(--bg-secondary, #FFFFFF)",
         border: "1px solid var(--border-color, #E2E8F0)",
@@ -609,7 +645,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
                     outline: "none"
                   }}
                 >
-                  <option value="All">{t("slicer_all_regions", "All")} ({uniqueOptions.length})</option>
+                  <option value="All">All {col.replace(/_/g, " ")} ({uniqueOptions.length})</option>
                   {uniqueOptions.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
@@ -652,6 +688,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
           )}
         </div>
       </div>
+      )}
 
       {/* 3. INTERACTIVE KPI CARDS GRID (WITH MINI-SPARKLINES) */}
       <div style={{

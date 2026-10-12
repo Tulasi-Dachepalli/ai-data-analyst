@@ -117,8 +117,10 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
     }));
   }
 
-  // Authoritative alerts: compute from live data if possible, or clearly label illustrative benchmarks
+  // Authoritative alerts: compute from live data only; illustrative benchmarks separated into Demo Examples
   const displayAlerts = [];
+  const demoBenchmarks = [];
+
   if (hasActiveData) {
     const lossRows = activeRows.filter(r => profitCol && (parseFloat(r[profitCol]) || 0) < 0);
     if (lossRows.length > 0) {
@@ -130,24 +132,57 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
         isLive: true
       });
     }
-    displayAlerts.push({
-      area: "South Region Revenue",
-      metric: targetCol
-        ? "Live Target Variance Calculated"
-        : (isDemo ? "[Demo Benchmark] South Region: 8.2% below target" : "Not available—target/budget data required."),
-      urgency: "Medium",
-      action: "Review regional pipeline",
-      isLive: !!targetCol
-    });
-    displayAlerts.push({
-      area: "Operating Cost",
-      metric: budgetCol
-        ? "Live Budget Variance Calculated"
-        : (isDemo ? "[Demo Benchmark] Operating Cost: 2.1% above budget" : "Not available—target/budget data required."),
-      urgency: "Medium",
-      action: "Audit vendor expenses",
-      isLive: !!budgetCol
-    });
+
+    if (activeDataset?.quality?.missingCells > 0) {
+      displayAlerts.push({
+        area: "Missing Data Entries",
+        metric: `${activeDataset.quality.missingCells} missing cell(s) detected in dataset`,
+        urgency: "Medium",
+        action: "Inspect Quality",
+        isLive: true
+      });
+    }
+
+    if (displayAlerts.length === 0) {
+      displayAlerts.push({
+        area: "Data Health & Hygiene",
+        metric: `All ${activeRows.length} active rows operate with 100% complete records`,
+        urgency: "Low",
+        action: "View Quality",
+        isLive: true
+      });
+    }
+
+    // Benchmark examples moved out of Needs Attention into separate demoBenchmarks!
+    if (targetCol) {
+      displayAlerts.push({
+        area: "Target Variance",
+        metric: "Live Target Variance Calculated",
+        urgency: "Medium",
+        action: "Review regional pipeline",
+        isLive: true
+      });
+    } else {
+      demoBenchmarks.push({
+        area: "Regional Target Benchmark",
+        metric: isDemo ? "South Region: 8.2% below target [Illustrative Demo]" : "Not available—target/budget data required."
+      });
+    }
+
+    if (budgetCol) {
+      displayAlerts.push({
+        area: "Operating Cost Variance",
+        metric: "Live Budget Variance Calculated",
+        urgency: "Medium",
+        action: "Audit vendor expenses",
+        isLive: true
+      });
+    } else {
+      demoBenchmarks.push({
+        area: "Operating Cost Budget Benchmark",
+        metric: isDemo ? "Operating Cost: 2.1% above budget [Illustrative Demo]" : "Not available—target/budget data required."
+      });
+    }
   } else {
     displayAlerts.push(...config.needsAttention);
   }
@@ -469,6 +504,37 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
                   </div>
                 ))}
               </div>
+
+              {/* Separate Demo Examples & Benchmarks Section */}
+              {demoBenchmarks.length > 0 && (
+                <div style={{
+                  marginTop: 10,
+                  padding: "12px 14px",
+                  background: "#F8FAFC",
+                  border: "1px dashed #CBD5E1",
+                  borderRadius: "8px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "11.5px", fontWeight: 700, color: "#475569" }}>
+                      📋 Illustrative Demo Benchmarks
+                    </span>
+                    <span style={{ fontSize: "10px", background: "#E2E8F0", color: "#475569", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>
+                      Demo Examples
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "11px", color: "#64748B" }}>
+                    Variance tracking requires target or budget columns in your uploaded file.
+                  </div>
+                  {demoBenchmarks.map((bench, idx) => (
+                    <div key={idx} style={{ fontSize: "11.5px", color: "#334155", background: "#FFFFFF", padding: "6px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                      <strong>{bench.area}:</strong> {bench.metric}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </>

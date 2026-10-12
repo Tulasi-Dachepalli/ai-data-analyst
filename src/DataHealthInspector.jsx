@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import { detectColumnType, getColumnTypeBadge } from "./utils/columnTypes";
 
 export default function DataHealthInspector({ dataset, data = [], columns = [], onUpdateDataset }) {
   const [cleanedData, setCleanedData] = useState(null);
@@ -34,13 +35,16 @@ export default function DataHealthInspector({ dataset, data = [], columns = [], 
       });
 
       const uniqueCount = new Set(values).size;
-      const isNumeric = values.length > 0 && values.every(v => typeof v === "number" || !isNaN(Number(v)));
+      const detectedType = detectColumnType(values, col);
+      const isNumeric = detectedType === "numeric";
+      const isDate = detectedType === "date";
+      const isId = detectedType === "id";
       
       let outlierCount = 0;
       if (isNumeric && values.length > 3) {
-        const numVals = values.map(v => Number(v));
-        const mean = numVals.reduce((a, b) => a + b, 0) / numVals.length;
-        const std = Math.sqrt(numVals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / numVals.length);
+        const numVals = values.map(v => Number(v)).filter(v => !isNaN(v));
+        const mean = numVals.length > 0 ? numVals.reduce((a, b) => a + b, 0) / numVals.length : 0;
+        const std = Math.sqrt(numVals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (numVals.length || 1));
         if (std > 0) {
           outlierCount = numVals.filter(v => Math.abs(v - mean) > 3 * std).length;
         }
@@ -51,6 +55,9 @@ export default function DataHealthInspector({ dataset, data = [], columns = [], 
         nullPct: Math.round((nulls / totalRows) * 100),
         uniqueCount,
         isNumeric,
+        isDate,
+        isId,
+        detectedType,
         outlierCount
       };
     });
@@ -233,11 +240,27 @@ export default function DataHealthInspector({ dataset, data = [], columns = [], 
               {columns.map(col => {
                 const stat = analysis.columnStats[col];
                 const isHealthy = stat.nullCount === 0 && stat.outlierCount === 0;
+                const badge = getColumnTypeBadge(stat.detectedType || (stat.isNumeric ? "numeric" : stat.isDate ? "date" : "categorical"));
 
                 return (
                   <tr key={col} style={{ borderBottom: "1px solid #F3F4F6" }}>
                     <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1F2937" }}>{col}</td>
-                    <td style={{ padding: "10px 12px", color: "#6B7280" }}>{stat.isNumeric ? "🔢 Numeric" : "🔤 Categorical"}</td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        backgroundColor: badge.bg,
+                        color: badge.color,
+                        border: `1px solid ${badge.border}`
+                      }}>
+                        <span>{badge.icon}</span> {badge.label}
+                      </span>
+                    </td>
                     <td style={{ padding: "10px 12px", color: stat.nullCount > 0 ? "#F59E0B" : "#10B981", fontWeight: stat.nullCount > 0 ? 700 : 400 }}>
                       {stat.nullCount} ({stat.nullPct}%)
                     </td>

@@ -201,7 +201,7 @@ function mapBackendStats(backendStats) {
     const dtype = String(s.dtype || "").toLowerCase();
     if (dtype.includes("int") || dtype.includes("float") || dtype.includes("num")) {
       type = "numeric";
-    } else if (dtype.includes("date") || dtype.includes("time")) {
+    } else if (dtype.includes("date") || dtype.includes("time") || /(date|time|timestamp|day|dob|^dt$)/i.test(s.name || "")) {
       type = "date";
     }
     return {
@@ -2321,7 +2321,7 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
                   transition: "all 0.15s ease"
                 }}
               >
-                <span>{tab.icon}</span> {tab.label}
+                <span>{tab.icon}</span> {tab.label.replace(/^[\p{Extended_Pictographic}\uFE0F\s]+/u, "").trim() || tab.label}
               </button>
             );
           })}
@@ -2366,6 +2366,7 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
               active={active}
               user={user}
               setView={setView || (() => {})}
+              isBeginnerMode={isBeginnerMode}
               onAskQuestion={(q) => {
                 if (typeof window !== "undefined" && window.aidaAskQuestion) {
                   window.aidaAskQuestion(q);
