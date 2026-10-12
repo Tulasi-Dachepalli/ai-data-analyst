@@ -68,6 +68,8 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
   const [tableSearch, setTableSearch] = useState("");
   // Selected category for cross-filtering from chart clicks
   const [highlightedCategory, setHighlightedCategory] = useState(null);
+  // Period Comparison Mode: "equal" | "mom" | "qoq"
+  const [comparisonMode, setComparisonMode] = useState("equal");
 
   const datasetCtx = useDataset() || {};
   const { activeRows: ctxActiveRows, filteredRows: ctxFilteredRows } = datasetCtx;
@@ -197,7 +199,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
       }
       while (sparkline.length < 10) sparkline.push(avg);
 
-      // Equal Calendar Period Comparison (or fallback to half records if no dates)
+      // Equal Calendar Period Comparison, MoM, or QoQ
       let deltaPct = "0";
       let isPositive = true;
       let periodComparisonText = "Recent vs prior period";
@@ -205,7 +207,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
       if (columnRoles.dates.length > 0 && filteredRows.length >= 2) {
         const dCol = columnRoles.dates[0];
         const rowsWithDates = filteredRows
-          .map(r => ({ ts: Date.parse(r[dCol]), val: Number(r[metric]) }))
+          .map(r => ({ ts: Date.parse(r[dCol]), dateStr: String(r[dCol] || ""), val: Number(r[metric]) }))
           .filter(r => !isNaN(r.ts) && !isNaN(r.val))
           .sort((a, b) => a.ts - b.ts);
 
@@ -214,30 +216,91 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
           const maxTs = rowsWithDates[rowsWithDates.length - 1].ts;
           const spanMs = maxTs - minTs;
 
-          if (spanMs > 0) {
-            const midTs = minTs + (spanMs / 2);
-            const p1Rows = rowsWithDates.filter(r => r.ts < midTs);
-            const p2Rows = rowsWithDates.filter(r => r.ts >= midTs);
-
-            const p1Sum = p1Rows.reduce((acc, r) => acc + r.val, 0);
-            const p2Sum = p2Rows.reduce((acc, r) => acc + r.val, 0);
-
-            const daysEach = Math.max(1, Math.round(spanMs / (2 * 86400000)));
-            const fmt = (ts) => new Date(ts).toISOString().slice(0, 10);
-            const p1Range = `${fmt(minTs)}–${fmt(midTs)}`;
-            const p2Range = `${fmt(midTs)}–${fmt(maxTs)}`;
-
-            if (p1Sum > 0) {
-              const diff = (((p2Sum - p1Sum) / p1Sum) * 100).toFixed(1);
-              deltaPct = diff;
-              isPositive = parseFloat(diff) >= 0;
-            } else if (p2Sum > 0) {
-              deltaPct = "100.0";
-              isPositive = true;
+          if (comparisonMode === "mom") {
+            // Group by Month (YYYY-MM)
+            const monthBuckets = {};
+            rowsWithDates.forEach(r => {
+              const mKey = new Date(r.ts).toISOString().slice(0, 7);
+              if (!monthBuckets[mKey]) monthBuckets[mKey] = [];
+              monthBuckets[mKey].push(r);
+            });
+            const sortedMonths = Object.keys(monthBuckets).sort();
+            if (sortedMonths.length >= 2) {
+              const mPrior = sortedMonths[sortedMonths.length - 2];
+              const mCur = sortedMonths[sortedMonths.length - 1];
+              const p1Rows = monthBuckets[mPrior];
+              const p2Rows = monthBuckets[mCur];
+              const p1Sum = p1Rows.reduce((acc, r) => acc + r.val, 0);
+              const p2Sum = p2Rows.reduce((acc, r) => acc + r.val, 0);
+              if (p1Sum > 0) {
+                const diff = (((p2Sum - p1Sum) / p1Sum) * 100).toFixed(1);
+                deltaPct = diff;
+                isPositive = parseFloat(diff) >= 0;
+              } else if (p2Sum > 0) {
+                deltaPct = "100.0";
+                isPositive = true;
+              }
+              periodComparisonText = `${mCur} vs ${mPrior} (MoM • ${p2Rows.length} vs ${p1Rows.length} records)`;
+            } else {
+              periodComparisonText = `Single month active (${sortedMonths[0] || "Baseline"})`;
             }
-            periodComparisonText = `${p2Range} vs ${p1Range} (${daysEach}d equal periods)`;
+          } else if (comparisonMode === "qoq") {
+            // Group by Quarter (YYYY-Q#)
+            const qBuckets = {};
+            rowsWithDates.forEach(r => {
+              const d = new Date(r.ts);
+              const qNum = Math.floor(d.getMonth() / 3) + 1;
+              const qKey = `${d.getFullYear()}-Q${qNum}`;
+              if (!qBuckets[qKey]) qBuckets[qKey] = [];
+              qBuckets[qKey].push(r);
+            });
+            const sortedQuarters = Object.keys(qBuckets).sort();
+            if (sortedQuarters.length >= 2) {
+              const qPrior = sortedQuarters[sortedQuarters.length - 2];
+              const qCur = sortedQuarters[sortedQuarters.length - 1];
+              const p1Rows = qBuckets[qPrior];
+              const p2Rows = qBuckets[qCur];
+              const p1Sum = p1Rows.reduce((acc, r) => acc + r.val, 0);
+              const p2Sum = p2Rows.reduce((acc, r) => acc + r.val, 0);
+              if (p1Sum > 0) {
+                const diff = (((p2Sum - p1Sum) / p1Sum) * 100).toFixed(1);
+                deltaPct = diff;
+                isPositive = parseFloat(diff) >= 0;
+              } else if (p2Sum > 0) {
+                deltaPct = "100.0";
+                isPositive = true;
+              }
+              periodComparisonText = `${qCur} vs ${qPrior} (QoQ • ${p2Rows.length} vs ${p1Rows.length} records)`;
+            } else {
+              periodComparisonText = `Single quarter active (${sortedQuarters[0] || "Baseline"})`;
+            }
           } else {
-            periodComparisonText = `Same-day records (${new Date(minTs).toISOString().slice(0, 10)})`;
+            // Default "equal": Equal Calendar Period Comparison
+            if (spanMs > 0) {
+              const midTs = minTs + (spanMs / 2);
+              const p1Rows = rowsWithDates.filter(r => r.ts < midTs);
+              const p2Rows = rowsWithDates.filter(r => r.ts >= midTs);
+
+              const p1Sum = p1Rows.reduce((acc, r) => acc + r.val, 0);
+              const p2Sum = p2Rows.reduce((acc, r) => acc + r.val, 0);
+
+              const daysEach = Math.max(1, Math.round(spanMs / (2 * 86400000)));
+              const fmt = (ts) => new Date(ts).toISOString().slice(0, 10);
+              const p1Range = `${fmt(minTs)}–${fmt(midTs)}`;
+              const p2Range = `${fmt(midTs)}–${fmt(maxTs)}`;
+
+              if (p1Sum > 0) {
+                const diff = (((p2Sum - p1Sum) / p1Sum) * 100).toFixed(1);
+                deltaPct = diff;
+                isPositive = parseFloat(diff) >= 0;
+              } else if (p2Sum > 0) {
+                deltaPct = "100.0";
+                isPositive = true;
+              }
+              periodComparisonText = `${p2Range} vs ${p1Range} (${daysEach}d equal periods)`;
+            } else {
+              periodComparisonText = `Same-day records (${new Date(minTs).toISOString().slice(0, 10)})`;
+            }
           }
         }
       } else if (vals.length >= 2) {
@@ -269,7 +332,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
         rawTotal: total
       };
     });
-  }, [columnRoles, filteredRows]);
+  }, [columnRoles, filteredRows, comparisonMode]);
 
   // Primary Time-Series Trend Data (Visual 1)
   const timeSeriesData = useMemo(() => {
@@ -689,6 +752,46 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
         </div>
       </div>
       )}
+
+      {/* 2.5 COMPARISON SELECTOR & COVERAGE BAR */}
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 8,
+        background: "var(--bg-secondary, #FFFFFF)",
+        border: "1px solid var(--border-color, #E2E8F0)",
+        borderRadius: 10,
+        padding: "8px 16px",
+        fontSize: 12
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontWeight: 700, color: "var(--text-secondary, #475569)" }}>📅 Period Comparison:</span>
+          <select
+            value={comparisonMode}
+            onChange={(e) => setComparisonMode(e.target.value)}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid #CBD5E1",
+              fontSize: 12,
+              background: "#FFFFFF",
+              fontWeight: 600,
+              cursor: "pointer",
+              color: "#0F172A"
+            }}
+          >
+            <option value="equal">Equal Calendar Periods (Default)</option>
+            <option value="mom">Month-over-Month (MoM)</option>
+            <option value="qoq">Quarter-over-Quarter (QoQ)</option>
+          </select>
+        </div>
+        <div style={{ fontSize: 11.5, color: "var(--text-secondary, #64748B)" }}>
+          <span>Coverage: </span>
+          <strong style={{ color: "var(--text-primary, #0F172A)" }}>{filteredRows.length} active records</strong>
+        </div>
+      </div>
 
       {/* 3. INTERACTIVE KPI CARDS GRID (WITH MINI-SPARKLINES) */}
       <div style={{

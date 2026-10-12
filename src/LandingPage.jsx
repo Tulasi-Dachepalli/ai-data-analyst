@@ -642,7 +642,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
 
           <div style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 12, padding: 22, boxShadow: "0 2px 6px rgba(15, 23, 42, 0.04)" }}>
             <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", margin: "0 0 6px 0" }}>2. Power BI Dashboards</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#0F172A", margin: "0 0 6px 0" }}>2. Power BI-Style Interactive Dashboards</h3>
             <p style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5, margin: 0 }}>
               Interactive slicers synchronously filter KPIs, charts, and tables in real-time. Cross-filter by department, region, customer segment, or fiscal quarter.
             </p>
@@ -687,7 +687,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
             {[
               { step: "01", title: "Upload or Connect", desc: "Drop your CSV or Excel file, or connect live Google Sheets. Records are immutably ingested." },
               { step: "02", title: "Automatic Quality Check", desc: "Schema validation inspects health, flags missing values, and prepares cleaned version v2." },
-              { step: "03", title: "Explore with Cross-Filtering", desc: "Interact with Power BI visuals, adjust slicers, and chat with grounded AI Copilot." },
+              { step: "03", title: "Explore with Cross-Filtering", desc: "Interact with Power BI-style visuals, adjust slicers, and chat with grounded AI Copilot." },
               { step: "04", title: "Export & Dispatch", desc: "Download high-resolution PDF report to local drive or dispatch scheduled summary emails." }
             ].map(s => (
               <div key={s.step} style={{ background: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: 10, padding: 20 }}>
@@ -836,7 +836,7 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
               Enterprise Grade Protection
             </div>
             <h2 style={{ fontSize: 28, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.02em", margin: "0 0 10px 0" }}>
-              Verified security and zero training guarantees.
+              Verified security controls and zero-training policies.
             </h2>
             <p style={{ fontSize: 14, color: "#94A3B8", maxWidth: 560, margin: "0 auto" }}>
               Your business data is strictly private. We implement defensible controls at every layer.
@@ -846,9 +846,9 @@ export default function LandingPage({ onGetStarted, onSignIn, onExploreDemo }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20 }}>
             <div style={{ background: "#1E293B", border: "1px solid #334155", borderRadius: 10, padding: 20 }}>
               <div style={{ fontSize: 20, marginBottom: 8 }}>🔒</div>
-              <div style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 6 }}>Zero-Training AI Binding</div>
+              <div style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 6 }}>Zero-Training Commercial API Terms</div>
               <div style={{ fontSize: 12, color: "#94A3B8", lineHeight: 1.5 }}>
-                Under Anthropic Commercial Terms and Gemini Paid Enterprise API agreements, customer prompts and datasets are never used for model training.
+                Under Anthropic and Gemini Commercial API terms, customer prompts and datasets are never used to train or fine-tune public models. Stateless API logs are retained for up to 30 days strictly for security monitoring before permanent deletion.
               </div>
             </div>
 

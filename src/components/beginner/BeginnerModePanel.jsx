@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useRole } from "../../context/RoleContext";
 import { useDataset } from "../../context/DatasetContext";
 import { useLanguage } from "../../utils/i18n";
-import { detectColumnMappings, assessDataReadiness, getColumnTypeBadge } from "../../utils/columnTypes";
+import { detectColumnMappings, assessDataReadiness, getColumnTypeBadge, validateColumnMapping } from "../../utils/columnTypes";
 
 const GLOSSARY_TERMS = [
   {
@@ -54,6 +54,7 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
   const [showSavedModal, setShowSavedModal] = useState(false);
   const [showTasksModal, setShowTasksModal] = useState(false);
   const [showGlossary, setShowGlossary] = useState(false);
+  const [showReportPreview, setShowReportPreview] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [snapshotName, setSnapshotName] = useState("");
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
@@ -308,10 +309,10 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
     {
       num: 5,
       title: t("step_exec_report", "Generate Executive Report"),
-      desc: "Create an audited, board-ready executive PDF deck to share with leadership.",
+      desc: "Review metrics, scope, and verified audit limitations before generating executive PDF.",
       isDone: false,
       actionLabel: t("btn_generate_report", "Generate PDF Report"),
-      action: onExportReport
+      action: () => setShowReportPreview(true)
     }
   ];
 
@@ -508,16 +509,41 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
             <div style={{ fontSize: 11.5, fontWeight: 700, color: "#475569", marginBottom: 6 }}>
               Feasibility of Analytical Features:
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {readinessData.checks.map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "6px 10px", background: "#FFFFFF", borderRadius: 6, border: "1px solid #E2E8F0" }}>
-                  <span>{c.isReady ? "✅" : "⚠️"}</span>
-                  <div>
-                    <strong style={{ color: c.isReady ? "#166534" : "#9A3412" }}>{c.title}: </strong>
-                    <span style={{ color: "#475569" }}>{c.isReady ? c.readyDetail : c.missingDetail}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {readinessData.checks.map(c => {
+                const isAvail = c.status === "available";
+                const isNeedsData = c.status === "needs_more_data";
+                const badgeColor = isAvail ? "#166534" : isNeedsData ? "#B45309" : "#991B1B";
+                const badgeBg = isAvail ? "#DCFCE7" : isNeedsData ? "#FEF3C7" : "#FEE2E2";
+                const badgeBorder = isAvail ? "#BBF7D0" : isNeedsData ? "#FDE68A" : "#FECACA";
+                const badgeIcon = isAvail ? "✅" : isNeedsData ? "⏳" : "⚠️";
+
+                return (
+                  <div key={c.id} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 12px", background: "#FFFFFF", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                      <span style={{ fontWeight: 700, color: "#0F172A", fontSize: 12 }}>{c.title}</span>
+                      <span style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: badgeColor,
+                        background: badgeBg,
+                        border: `1px solid ${badgeBorder}`,
+                        borderRadius: 12,
+                        padding: "2px 8px"
+                      }}>
+                        <span>{badgeIcon}</span>
+                        <span>{c.statusLabel || (isAvail ? "Available" : isNeedsData ? "Needs more data" : "Missing required columns")}</span>
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#475569", lineHeight: 1.4 }}>
+                      {isAvail ? c.readyDetail : c.missingDetail}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -692,10 +718,10 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
               <button onClick={() => setShowMappingModal(false)} aria-label="Close Column Mappings" style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#64748B" }}>✕</button>
             </div>
             <p style={{ fontSize: 12.5, color: "#64748B", margin: "0 0 14px 0" }}>
-              Confirm detected column semantic roles before analyzing. This guarantees trends, forecasts, and calculations use the correct metrics.
+              Confirm detected column semantic roles before analyzing. Helps ensure the correct columns are used for trends, forecasts, and calculations.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 320, overflowY: "auto", paddingRight: 4 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 340, overflowY: "auto", paddingRight: 4 }}>
               {[
                 { key: "date", label: "Date / Time Dimension", icon: "📅" },
                 { key: "revenue", label: "Revenue / Sales Column", icon: "💰" },
@@ -704,24 +730,56 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
                 { key: "category", label: "Primary Category Dimension", icon: "🔤" },
                 { key: "geography", label: "Geographic / Regional Column", icon: "🗺️" },
                 { key: "identifier", label: "Order / Record Identifier", icon: "🔑" }
-              ].map(field => (
-                <div key={field.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "8px 10px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1E293B", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>{field.icon}</span>
-                    <span>{field.label}:</span>
+              ].map(field => {
+                const selectedCol = columnMappings[field.key] || "";
+                const valResult = validateColumnMapping(selectedCol, field.key, activeRows || []);
+
+                return (
+                  <div key={field.key} style={{ display: "flex", flexDirection: "column", gap: 4, padding: "8px 10px", background: "#F8FAFC", borderRadius: 8, border: "1px solid #E2E8F0" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#1E293B", display: "flex", alignItems: "center", gap: 6 }}>
+                        <span>{field.icon}</span>
+                        <span>{field.label}:</span>
+                      </div>
+                      <select
+                        data-testid={`mapping-select-${field.key}`}
+                        aria-label={field.label}
+                        value={selectedCol}
+                        onChange={e => setColumnMappings(prev => ({ ...prev, [field.key]: e.target.value || null }))}
+                        style={{
+                          padding: "4px 8px",
+                          borderRadius: 6,
+                          border: valResult.status === "warning" ? "1.5px solid #F59E0B" : "1px solid #CBD5E1",
+                          fontSize: 12,
+                          background: "#FFFFFF",
+                          cursor: "pointer",
+                          maxWidth: 200
+                        }}
+                      >
+                        <option value="">Not available (None)</option>
+                        {(activeCols || []).map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Mapping Validation Feedback Pill */}
+                    {valResult && (
+                      <div style={{
+                        fontSize: 11,
+                        color: valResult.status === "warning" ? "#B45309" : valResult.status === "error" ? "#B91C1C" : valResult.status === "valid" ? "#15803D" : "#64748B",
+                        background: valResult.status === "warning" ? "#FEF3C7" : valResult.status === "error" ? "#FEE2E2" : valResult.status === "valid" ? "#F0FDF4" : "transparent",
+                        padding: valResult.status !== "not_available" ? "3px 8px" : "1px 0",
+                        borderRadius: 4,
+                        lineHeight: 1.3
+                      }}>
+                        {valResult.status === "warning" ? "⚠️ " : valResult.status === "valid" ? "✓ " : ""}
+                        {valResult.message}
+                      </div>
+                    )}
                   </div>
-                  <select
-                    value={columnMappings[field.key] || ""}
-                    onChange={e => setColumnMappings(prev => ({ ...prev, [field.key]: e.target.value || null }))}
-                    style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 12, background: "#FFFFFF", cursor: "pointer" }}
-                  >
-                    <option value="">-- None / Auto --</option>
-                    {(activeCols || []).map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
@@ -973,6 +1031,109 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
                 <div style={{ fontSize: 11, color: "#451A03", lineHeight: 1.4 }}>{item.meaning}</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 📑 Executive Report Pre-Export Review Modal */}
+      {showReportPreview && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.65)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: 16
+        }}>
+          <div style={{
+            background: "#FFFFFF",
+            borderRadius: 14,
+            maxWidth: 540,
+            width: "100%",
+            padding: 24,
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
+                📑 Executive Report Pre-Export Review
+              </div>
+              <button
+                onClick={() => setShowReportPreview(false)}
+                aria-label="Close Report Preview"
+                style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: "#64748B" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ fontSize: 12.5, color: "#64748B", margin: "0 0 16px 0" }}>
+              Review active filters, calculated metrics, and verified limitations before generating the executive PDF deck.
+            </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 12, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 14, marginBottom: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12 }}>
+                <div>
+                  <strong style={{ color: "#475569" }}>Active Dataset:</strong>
+                  <div style={{ fontWeight: 700, color: "#0F172A" }}>{activeDataset?.name || "Verified Dataset"} ({activeDataset?.currentVersion || "v1 Raw"})</div>
+                </div>
+                <div>
+                  <strong style={{ color: "#475569" }}>Filter Scope:</strong>
+                  <div style={{ fontWeight: 700, color: isFiltered ? "#2563EB" : "#0F172A" }}>
+                    {isFiltered ? `Filtered (${rowsCount} of ${unfilteredRows?.length || rowsCount} rows)` : "All dataset rows (Unfiltered)"}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 10 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#475569", marginBottom: 6 }}>Calculated Executive Metrics:</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                  <div style={{ background: "#FFFFFF", padding: "8px 10px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                    <div style={{ fontSize: 10.5, color: "#64748B" }}>Total Sales</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
+                      ₹{Math.round((columnMappings.revenue ? activeRows.reduce((s, r) => s + (parseFloat(r[columnMappings.revenue]) || 0), 0) : 0)).toLocaleString()}
+                    </div>
+                  </div>
+                  <div style={{ background: "#FFFFFF", padding: "8px 10px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                    <div style={{ fontSize: 10.5, color: "#64748B" }}>Total Profit</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
+                      ₹{Math.round((columnMappings.profit ? activeRows.reduce((s, r) => s + (parseFloat(r[columnMappings.profit]) || 0), 0) : 0)).toLocaleString()}
+                    </div>
+                  </div>
+                  <div style={{ background: "#FFFFFF", padding: "8px 10px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                    <div style={{ fontSize: 10.5, color: "#64748B" }}>Record Coverage</div>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>{rowsCount} verified rows</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 10, fontSize: 11, color: "#64748B", lineHeight: 1.4 }}>
+                <strong>Audit & Limitation Disclosures:</strong>
+                <div>• All metrics calculated strictly from active tabular records.</div>
+                <div>• Operating expense analysis is omitted unless a genuine currency expense column is mapped.</div>
+                <div>• Budget targets are illustrative reference benchmarks provided for demo guidance.</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setShowReportPreview(false)}
+                style={{ padding: "8px 14px", borderRadius: 6, border: "1px solid #CBD5E1", background: "#FFF", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowReportPreview(false);
+                  if (onExportReport) onExportReport();
+                }}
+                style={{ padding: "8px 18px", borderRadius: 6, border: "none", background: "#0F172A", color: "#FFF", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+              >
+                ✓ Confirm & Export PDF Deck
+              </button>
+            </div>
           </div>
         </div>
       )}

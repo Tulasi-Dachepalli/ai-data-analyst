@@ -56,6 +56,13 @@ test.describe('Column Types Consistency, Accurate Storage, Equal Calendar Period
     await expect(mappingBtn).toBeVisible();
     await mappingBtn.click();
     await expect(page.locator('text=Confirm detected column semantic roles before analyzing')).toBeVisible();
+    await expect(page.locator('text=Helps ensure the correct columns are used')).toBeVisible();
+    await expect(page.locator('text=This guarantees')).not.toBeVisible();
+
+    // Verify Cost / Spend defaults to "Not available (None)", NOT "Discount"
+    const costSelect = page.locator('[data-testid="mapping-select-cost"]');
+    await expect(costSelect).toHaveValue('');
+
     const confirmMappingsBtn = page.getByRole('button', { name: /Confirm Mappings/i });
     await confirmMappingsBtn.click();
 
@@ -64,6 +71,9 @@ test.describe('Column Types Consistency, Accurate Storage, Equal Calendar Period
     await expect(readinessBtn).toBeVisible();
     await readinessBtn.click();
     await expect(page.locator('text=Feasibility of Analytical Features:')).toBeVisible();
+    await expect(page.locator('text=Time-Series Historical Trend Charts')).toBeVisible();
+    await expect(page.locator('text=Available').first()).toBeVisible();
+    await expect(page.locator('text=Needs more data').first()).toBeVisible();
     await expect(page.locator('text=Time-Series Trend & Forecasting')).toBeVisible();
     await expect(page.locator('text=Profitability & Margin Analysis')).toBeVisible();
 
@@ -87,6 +97,15 @@ test.describe('Column Types Consistency, Accurate Storage, Equal Calendar Period
     await expect(page.locator('text=Q1 Demo Snapshot Audit')).toBeVisible();
     // Close modal
     await page.getByRole('button', { name: 'Close Saved Analysis' }).click();
+
+    // E. Verify Executive Report Pre-Export Review Modal
+    const reportStep = page.locator('text=5. Generate Executive Report');
+    if (await reportStep.isVisible().catch(() => false)) {
+      await reportStep.click();
+      await expect(page.locator('text=Executive Report Pre-Export Review')).toBeVisible();
+      await expect(page.locator('text=Audit & Limitation Disclosures:')).toBeVisible();
+      await page.getByRole('button', { name: 'Close Report Preview' }).click();
+    }
 
     // 5. Navigate to 02 Data Quality Tab & Verify Order_Date is Date / Temporal
     const qualityTabBtn = page.locator('button:has-text("Data Quality")').first();
