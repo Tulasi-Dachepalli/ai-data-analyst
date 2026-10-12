@@ -61,9 +61,11 @@ import AuditCenter from "./components/audit/AuditCenter";
 import CommentsPanel from "./components/collaboration/CommentsPanel";
 import DatasetWorkspace from "./components/workspace/DatasetWorkspace";
 import PowerBiDashboard from "./components/dashboard/PowerBiDashboard";
+import InvestigationDrawer from "./components/workspace/InvestigationDrawer";
 import ExplainableErrorCard from "./components/common/ExplainableErrorCard";
 import BeginnerModePanel from "./components/beginner/BeginnerModePanel";
 import DataPrivacyPreviewModal from "./components/privacy/DataPrivacyPreviewModal";
+import DatasetLibrary from "./components/library/DatasetLibrary";
 import StageDataQuality from "./components/stages/StageDataQuality";
 import StageCleanedData from "./components/stages/StageCleanedData";
 import { explainErrorForCopilot, createExplainableError, ERROR_CATEGORIES } from "./utils/errorExplainer.js";
@@ -1130,8 +1132,10 @@ function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slice
       return false;
     }
   }, [user]);
-
-  const currentRows = filteredRows && filteredRows.length > 0 ? filteredRows : (dashboard?.rawRows || []);
+  const datasetCtx = useDataset() || {};
+  const currentRows = datasetCtx.filteredRows !== undefined
+    ? datasetCtx.filteredRows
+    : (filteredRows !== undefined ? filteredRows : (dashboard?.rawRows || []));
   const validCols = useMemo(() => (columns || []).filter(c => c && !c.startsWith("__") && !/AI DATA ANALYSIS REPORT|__EMPTY|Report|Summary|Metadata/i.test(c)), [columns]);
   const quality = useMemo(() => calculateDataQuality(currentRows, (validCols.length > 0 ? validCols : columns || []).filter(c => c && !c.startsWith("__"))), [currentRows, validCols, columns]);
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -1682,7 +1686,7 @@ function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slice
   };
 
   useEffect(() => {
-    if (currentView === "datasets") {
+    if (currentView === "raw-data" || currentView === "table") {
       setActiveTab("data");
     } else if (currentView === "dashboards") {
       setActiveTab("dashboard");
@@ -4239,7 +4243,7 @@ const SAMPLE_DATASETS = [];
 export default function DataAnalystDashboardBot({ currentView, setView, user: propUser }) {
   const user = propUser || JSON.parse(localStorage.getItem("aida_user") || "null");
   const { lang, t } = useLanguage();
-  const { activeDataset, loadDataset, setActiveDatasetFromThread, setCurrentStage } = useDataset();
+  const { activeDataset, loadDataset, setActiveDatasetFromThread, setCurrentStage, filteredRows: botFilteredRows, unfilteredRows: botUnfilteredRows, isFiltered, filters: botFilters } = useDataset();
   const [threads, setThreads] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [serverStatus, setServerStatus] = useState("connected");
@@ -4429,7 +4433,11 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
 
   const active = activeId ? (threads.find(t => t.id === activeId) || null) : null;
 
-  const activeData = useMemo(() => (active?.rows && active.rows.length > 0) ? active.rows : [], [active]);
+  const activeData = useMemo(() => {
+    if (botFilteredRows !== undefined && isFiltered) return botFilteredRows;
+    if (active?.rows && active.rows.length > 0) return active.rows;
+    return [];
+  }, [active, botFilteredRows, isFiltered]);
   const activeCols = useMemo(() => (active?.columns && active.columns.length > 0) ? active.columns : [], [active]);
 
   const suggestedQuestions = useMemo(() => {
@@ -4488,12 +4496,14 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     setChartTypes({});
   }, [activeId]);
 
-  const filteredRows = active && active.rows ? active.rows.filter(row => {
-    return Object.entries(slicerFilters).every(([col, val]) => {
-      if (!val) return true;
-      return String(row[col]) === val;
-    });
-  }) : [];
+  const filteredRows = (botFilteredRows !== undefined && isFiltered)
+    ? botFilteredRows
+    : (active && active.rows ? active.rows.filter(row => {
+        return Object.entries(slicerFilters).every(([col, val]) => {
+          if (!val) return true;
+          return String(row[col]) === val;
+        });
+      }) : []);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -4854,7 +4864,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     console.warn("[SECURITY] Sample dataset loading is disabled in production to enforce dynamic dataset source of truth.");
   };
 
-  const answerQueryLocally = (question, rows, stats, quality, dashboard) => {
+  const answerQueryLocally = (question, rows, stats, quality, dashboard, meta = {}) => {
     const q = question.toLowerCase();
     const numCols = (stats || []).filter(s => s.type === "numeric");
     const catCols = (stats || []).filter(s => s.type === "categorical");
@@ -4868,6 +4878,90 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         const availCat = catCols.map(c => c.name).join(", ") || "None";
         return `The column **"${word}"** isn't available in this dataset.\n\n**Available numeric columns:** ${availNum}\n**Available categorical columns:** ${availCat}`;
       }
+    }
+
+    // 0. Comprehensive Multi-Metric & Calculation Evaluator (e.g. "total sales and profit, with calculations")
+    const isMultiMetricOrCalc = (
+      (q.includes("sales") && q.includes("profit")) ||
+      (q.includes("revenue") && q.includes("profit")) ||
+      (q.includes("revenue") && q.includes("cost")) ||
+      (q.includes("sales") && q.includes("cost")) ||
+      (q.includes("total") && (q.includes("and") || q.includes("&") || q.includes("both"))) ||
+      q.includes("calculation") ||
+      q.includes("with calculation") ||
+      q.includes("formula")
+    );
+
+    const targetCols = numCols.filter(col => {
+      const cLower = col.name.toLowerCase();
+      if (q.includes(cLower)) return true;
+      if (cLower.includes("sale") && (q.includes("sale") || q.includes("revenue"))) return true;
+      if (cLower.includes("profit") && q.includes("profit")) return true;
+      if (cLower.includes("cost") && q.includes("cost")) return true;
+      if (cLower.includes("discount") && q.includes("discount")) return true;
+      if (cLower.includes("quantity") && q.includes("quantity")) return true;
+      return false;
+    });
+
+    if (targetCols.length >= 2 || (targetCols.length >= 1 && isMultiMetricOrCalc)) {
+      const metricOutputs = [];
+      let totalSales = null;
+      let totalProfit = null;
+      let salesColName = null;
+      let profitColName = null;
+
+      targetCols.forEach(col => {
+        const vals = (rows || []).map(r => parseFloat(r[col.name]) || 0);
+        const sum = vals.reduce((a, b) => a + b, 0);
+        const avg = vals.length ? sum / vals.length : 0;
+        const isCurrency = /sale|revenue|profit|cost|price|salary|budget/i.test(col.name);
+        const formattedSum = isCurrency ? (sum >= 0 ? `₹${Math.round(sum).toLocaleString()}` : `-₹${Math.abs(Math.round(sum)).toLocaleString()}`) : sum.toLocaleString();
+        const formattedAvg = isCurrency ? (avg >= 0 ? `₹${avg.toFixed(2)}` : `-₹${Math.abs(avg).toFixed(2)}`) : avg.toFixed(2);
+
+        if (/sale|revenue/i.test(col.name)) {
+          totalSales = sum;
+          salesColName = col.name;
+        }
+        if (/profit/i.test(col.name)) {
+          totalProfit = sum;
+          profitColName = col.name;
+        }
+
+        const breakdownSample = vals.slice(0, 5).map(v => isCurrency ? (v >= 0 ? `₹${v}` : `-₹${Math.abs(v)}`) : v).join(" + ") + (vals.length > 5 ? ` + ... (${vals.length - 5} more)` : "");
+
+        metricOutputs.push({
+          name: col.name,
+          sum: formattedSum,
+          avg: formattedAvg,
+          rawSum: sum,
+          formula: `Σ(${col.name}) across ${rows.length} row(s) [${breakdownSample} = ${formattedSum}]`
+        });
+      });
+
+      let marginOutput = "";
+      if (totalSales !== null && totalProfit !== null && totalSales !== 0) {
+        const marginPct = ((totalProfit / totalSales) * 100).toFixed(1) + "%";
+        marginOutput = `\n• **Operating Margin**: **${marginPct}**\n  — *Formula*: (Σ(${profitColName}) / Σ(${salesColName})) × 100 = (${totalProfit >= 0 ? "₹" : "-₹"}${Math.abs(Math.round(totalProfit)).toLocaleString()} / ₹${Math.round(totalSales).toLocaleString()}) × 100`;
+      }
+
+      // Filter description
+      let filterDesc = "None (All " + (rows || []).length + " rows evaluated)";
+      if (meta?.isFiltered && meta?.filters) {
+        const f = meta.filters;
+        const activeParts = [];
+        if (f.searchTerm) activeParts.push(`Search "${f.searchTerm}"`);
+        if (f.categoryCol && f.categoryVal !== "all") activeParts.push(`${f.categoryCol} = "${f.categoryVal}"`);
+        if (f.metricCol && (f.minVal || f.maxVal)) activeParts.push(`${f.metricCol} in [${f.minVal || "min"}–${f.maxVal || "max"}]`);
+        if (f.dateCol && (f.startDate || f.endDate)) activeParts.push(`${f.dateCol} in [${f.startDate || "start"}–${f.endDate || "end"}]`);
+        filterDesc = `${activeParts.join(", ") || "Active Filters"} (${rows.length} row(s) matching)`;
+      }
+
+      const versionLabel = meta?.version || "v1 Raw";
+      const datasetName = meta?.datasetName || active?.name || "Verified Dataset";
+
+      const lines = metricOutputs.map(m => `• **Total ${m.name}**: **${m.sum}**\n  — *Formula & Calculation*: ${m.formula}`);
+
+      return `**Financial & Metric Aggregation Analysis:**\n\n${lines.join("\n")}${marginOutput}\n\n**Audit Context & Filter Scope:**\n• **Active Filters**: ${filterDesc}\n• **Dataset Version**: ${versionLabel} (${datasetName})`;
     }
 
     // 1. Forecasting / Future Projections queries
@@ -5454,8 +5548,8 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     const id = currentActive.id;
     const serverId = currentActive.serverId;
 
-    // Use stats-based fallback when rows are empty (avoids blocking on empty row arrays)
-    const effectiveRows = currentActive.rows || [];
+    // Use synchronized filtered rows if filters are active, or fall back to dataset rows
+    const effectiveRows = (botFilteredRows !== undefined && isFiltered) ? botFilteredRows : (currentActive.rows || []);
     const effectiveStats = currentActive.stats || [];
 
     try {
@@ -5524,8 +5618,15 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
         }
       }
 
+      const queryContextMeta = {
+        filters: botFilters,
+        isFiltered,
+        version: activeDataset?.currentVersion || currentActive?.currentVersion || "v1 Raw",
+        datasetName: activeDataset?.name || currentActive?.name || "Active Dataset"
+      };
+
       // ── Local grounded answer (always computed — never returns null) ────────
-      const localAnswer = answerQueryLocally(question, effectiveRows, effectiveStats, currentActive.quality, currentActive.dashboard);
+      const localAnswer = answerQueryLocally(question, effectiveRows, effectiveStats, currentActive.quality, currentActive.dashboard, queryContextMeta);
 
       // Always show local answer immediately for non-server datasets, or when
       // a local answer is available (non-null, non-empty) for server datasets
@@ -5558,8 +5659,14 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
       }
     } catch (err) {
       console.error("Chat evaluation fallback:", err);
+      const queryContextMeta = {
+        filters: botFilters,
+        isFiltered,
+        version: activeDataset?.currentVersion || currentActive?.currentVersion || "v1 Raw",
+        datasetName: activeDataset?.name || currentActive?.name || "Active Dataset"
+      };
       // Final safety net: always produce an answer even if everything above failed
-      const fallbackAnswer = answerQueryLocally(question, effectiveRows, effectiveStats, currentActive.quality, currentActive.dashboard)
+      const fallbackAnswer = answerQueryLocally(question, effectiveRows, effectiveStats, currentActive.quality, currentActive.dashboard, queryContextMeta)
         || `I analyzed your dataset for **"${question}"**. Check the Dashboard tab for visual insights across ${effectiveRows.length.toLocaleString()} rows.`;
       updateThread(id, t => ({
         ...t,
@@ -6506,6 +6613,17 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
                       data={activeData}
                       columns={activeCols}
                       onFilterChange={(rows) => setGlobalFilteredRows(rows)}
+                    />
+                  )}
+                  {currentView === "datasets" && (
+                    <DatasetLibrary
+                      onOpenWorkspace={() => {
+                        if (typeof setView === "function") setView("dashboard");
+                      }}
+                      onOpenImport={() => {
+                        const fileInput = document.querySelector('input[type="file"]');
+                        if (fileInput) fileInput.click();
+                      }}
                     />
                   )}
                   {currentView === "health" && (
@@ -7608,6 +7726,8 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
           onPaymentSuccess={handleCheckoutSuccess}
         />
       )}
+
+      <InvestigationDrawer />
     </div>
   );
 }

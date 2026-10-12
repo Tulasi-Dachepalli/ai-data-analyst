@@ -22,6 +22,7 @@ import {
 import { useCopilot } from "../../context/CopilotContext";
 import { useRole } from "../../context/RoleContext";
 import { useActivity } from "../../context/ActivityContext";
+import { useDataset } from "../../context/DatasetContext";
 import { useLanguage } from "../../utils/i18n";
 import ExecutiveReportGenerator from "../../ExecutiveReportGenerator";
 
@@ -68,7 +69,14 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
   // Selected category for cross-filtering from chart clicks
   const [highlightedCategory, setHighlightedCategory] = useState(null);
 
-  const rawRows = useMemo(() => active?.rows || [], [active]);
+  const datasetCtx = useDataset() || {};
+  const { activeRows: ctxActiveRows, filteredRows: ctxFilteredRows } = datasetCtx;
+
+  const rawRows = useMemo(() => {
+    if (ctxFilteredRows && ctxFilteredRows.length > 0) return ctxFilteredRows;
+    if (ctxActiveRows && ctxActiveRows.length > 0) return ctxActiveRows;
+    return active?.rows || [];
+  }, [ctxFilteredRows, ctxActiveRows, active]);
   const columns = useMemo(() => active?.columns || (rawRows.length ? Object.keys(rawRows[0]) : []), [active, rawRows]);
   const stats = useMemo(() => active?.stats || [], [active]);
 
@@ -189,19 +197,38 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion 
       }
       while (sparkline.length < 10) sparkline.push(avg);
 
-      // Simple growth delta (second half vs first half)
+      // Growth delta with explicit comparison periods
       const half = Math.floor(vals.length / 2);
-      const firstHalfAvg = vals.slice(0, half).reduce((a, b) => a + b, 0) / (half || 1);
-      const secondHalfAvg = vals.slice(half).reduce((a, b) => a + b, 0) / (vals.length - half || 1);
+      const firstHalfVals = vals.slice(0, half);
+      const secondHalfVals = vals.slice(half);
+      const firstHalfAvg = firstHalfVals.length ? firstHalfVals.reduce((a, b) => a + b, 0) / firstHalfVals.length : 0;
+      const secondHalfAvg = secondHalfVals.length ? secondHalfVals.reduce((a, b) => a + b, 0) / secondHalfVals.length : 0;
       const deltaPct = firstHalfAvg !== 0 ? (((secondHalfAvg - firstHalfAvg) / firstHalfAvg) * 100).toFixed(1) : "0";
       const isPositive = parseFloat(deltaPct) >= 0;
+
+      // Extract period dates if a date column is present
+      let periodComparisonText = "2nd half vs 1st half";
+      if (columnRoles.dates.length > 0 && filteredRows.length >= 2) {
+        const dCol = columnRoles.dates[0];
+        const p1Dates = filteredRows.slice(0, half).map(r => String(r[dCol] || "")).filter(Boolean);
+        const p2Dates = filteredRows.slice(half).map(r => String(r[dCol] || "")).filter(Boolean);
+        if (p1Dates.length > 0 && p2Dates.length > 0) {
+          const p1Range = `${p1Dates[0]}–${p1Dates[p1Dates.length - 1]}`;
+          const p2Range = `${p2Dates[0]}–${p2Dates[p2Dates.length - 1]}`;
+          periodComparisonText = `${p2Range} vs ${p1Range}`;
+        }
+      }
+
+      const trendText = vals.length > 1
+        ? `${isPositive ? "↑" : "↓"} ${Math.abs(deltaPct)}% (${periodComparisonText})`
+        : `Single active record (Baseline)`;
 
       return {
         id: metric,
         name: metric.replace(/_/g, " "),
         value: formatMetricValue(total, metric),
         avgValue: formatMetricValue(avg, metric),
-        trendText: `${isPositive ? "↑" : "↓"} ${Math.abs(deltaPct)}% vs prior period`,
+        trendText,
         isPositive,
         sparkline: sparkline.slice(0, 10),
         rawTotal: total

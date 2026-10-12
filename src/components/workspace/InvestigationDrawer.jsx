@@ -106,9 +106,25 @@ export default function InvestigationDrawer() {
             <div style={{ border: "1px solid #E2E8F0", borderRadius: 10, padding: 12, background: "#F8FAFC" }}>
               <div style={{ fontSize: 11, color: "#64748B", fontWeight: 600 }}>Evidence Base</div>
               <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A", marginTop: 2 }}>
-                {investigationItem.affectedRows || "3,842"} Records
+                {investigationItem.affectedRows || "Verified Records"}
               </div>
               <div style={{ fontSize: 11, color: "#16A34A", fontWeight: 700, marginTop: 2 }}>Grounding: 100% Deterministic</div>
+            </div>
+          </div>
+
+          {/* Mathematical Formula, Filter Scope & Limitations Card */}
+          <div style={{ border: "1px solid #BFDBFE", background: "#EFF6FF", borderRadius: 10, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "#1E40AF" }}>
+              📐 Metric Formula & Evidence Scope
+            </div>
+            <div style={{ fontSize: 12, color: "#1E3A8A" }}>
+              <strong>Formula:</strong> {investigationItem.formula || "Σ(Metric Values) across verified tabular records"}
+            </div>
+            <div style={{ fontSize: 12, color: "#1E3A8A" }}>
+              <strong>Filter Scope:</strong> {investigationItem.filters || "All active dataset rows (Global Filter Bar synchronized)"}
+            </div>
+            <div style={{ fontSize: 11.5, color: "#475569", background: "rgba(255,255,255,0.7)", padding: "6px 10px", borderRadius: 6, border: "1px solid #DBEAFE", marginTop: 4 }}>
+              <strong>Known Limitations & Integrity Notes:</strong> {investigationItem.limitations || "Computed directly from ingested tabular data; external target and budget benchmarks are not present in active schema."}
             </div>
           </div>
 

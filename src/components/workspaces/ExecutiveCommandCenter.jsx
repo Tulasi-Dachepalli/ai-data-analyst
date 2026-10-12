@@ -9,7 +9,7 @@ import { useLanguage } from "../../utils/i18n";
 export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBeginnerMode = true }) {
   const { t } = useLanguage();
   const config = getRoleConfig("ceo");
-  const { activeDataset, activeRows, activeCols, currentVersion, rawVersion } = useDataset() || {};
+  const { activeDataset, activeRows, activeCols, currentVersion, rawVersion, unfilteredRows, isFiltered, filters } = useDataset() || {};
   const { pendingDecisions = [] } = useDecision() || {};
   const { isBeginnerMode: settingsBeginnerMode } = useSettings();
   const effectiveBeginnerMode = isBeginnerMode ?? settingsBeginnerMode ?? true;
@@ -55,25 +55,29 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
       revenueDetail = `Sum: ₹${Math.round(totalSales).toLocaleString()}`;
     }
 
+    const filterScopeText = isFiltered
+      ? `Filters: Active (${activeRows.length} of ${unfilteredRows?.length || activeRows.length} rows)`
+      : `Filters: All ${activeRows.length} rows`;
+
     displayKpiCards = [
       {
         title: t("kpi_total_revenue", "Total Revenue"),
         value: revenueFormatted,
-        trend: salesCol ? "Dataset Sum" : "N/A",
+        trend: salesCol ? (isFiltered ? "Filtered Sum" : "Dataset Sum") : "N/A",
         status: "positive",
         detail: revenueDetail,
         howCalculated: salesCol
-          ? `Formula: Σ(${salesCol}) | Filters: All ${activeRows.length} rows | Period: Entire Dataset | Version: ${versionLabel}`
+          ? `Formula: Σ(${salesCol}) | ${filterScopeText} | Period: Entire Dataset | Version: ${versionLabel}`
           : "No revenue column identified"
       },
       {
         title: t("kpi_net_profit", "Net Profit"),
-        value: profitCol ? `₹${Math.round(totalProfit).toLocaleString()}` : "N/A",
+        value: profitCol ? (totalProfit >= 0 ? `₹${Math.round(totalProfit).toLocaleString()}` : `-₹${Math.abs(Math.round(totalProfit)).toLocaleString()}`) : "N/A",
         trend: profitCol ? (totalProfit >= 0 ? "Net Positive" : "Net Deficit") : "N/A",
         status: totalProfit >= 0 ? "positive" : "warning",
         detail: profitCol ? `Margin: ${margin}` : "Profit metric",
         howCalculated: profitCol
-          ? `Formula: Σ(${profitCol}) | Filters: All ${activeRows.length} rows | Period: Entire Dataset | Version: ${versionLabel}`
+          ? `Formula: Σ(${profitCol}) | ${filterScopeText} | Period: Entire Dataset | Version: ${versionLabel}`
           : "No profit column identified"
       },
       {
@@ -83,25 +87,25 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
         status: totalProfit >= 0 ? "positive" : "warning",
         detail: "Net margin index",
         howCalculated: (salesCol && profitCol)
-          ? `Formula: (Σ(${profitCol}) / Σ(${salesCol})) × 100 | Filters: All rows | Version: ${versionLabel}`
+          ? `Formula: (Σ(${profitCol}) / Σ(${salesCol})) × 100 | ${filterScopeText} | Version: ${versionLabel}`
           : "Requires sales and profit columns"
       },
       {
         title: t("kpi_total_orders", "Total Records / Orders"),
         value: activeRows.length.toLocaleString(),
-        trend: "Live Count",
+        trend: isFiltered ? "Filtered Count" : "Live Count",
         status: "positive",
         detail: `${(activeCols || []).length} active columns`,
-        howCalculated: `Formula: Count(*) rows | Filters: None | Period: Entire Dataset | Version: ${versionLabel}`
+        howCalculated: `Formula: Count(*) rows | ${filterScopeText} | Period: Entire Dataset | Version: ${versionLabel}`
       },
       {
-        title: t("kpi_data_health", "Data Quality Health"),
+        title: t("kpi_data_health", "Data Quality & Completeness"),
         value: qualityDisplay,
         trend: qualityScore != null ? "Calculated" : "Pending",
         status: (qualityScore || 0) >= 80 ? "positive" : "warning",
-        detail: "Authoritative health score",
+        detail: "Completeness & uniqueness score",
         howCalculated: qualityScore != null
-          ? `Formula: Math.round((1 - missing_cells_rate) * 100) across ${activeRows.length} rows | Filters: None | Version: ${versionLabel}`
+          ? `Formula: Composite (70% Completeness + 30% Uniqueness) across ${activeRows.length} rows | ${filterScopeText} | Version: ${versionLabel}`
           : "Dataset quality not yet evaluated"
       }
     ];

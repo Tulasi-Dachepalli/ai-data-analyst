@@ -7,7 +7,7 @@ const DatasetContext = createContext(null);
 
 function computeAuthoritativeQuality(rows, cols) {
   if (!rows || rows.length === 0 || !cols || cols.length === 0) {
-    return { score: null, status: "not_assessed", missingCells: 0, missingRate: 0, duplicateRows: 0 };
+    return { score: null, status: "not_assessed", missingCells: 0, missingRate: 0, duplicateRows: 0, completeness: 0, validity: 100 };
   }
   const evalRows = rows.length > 2500 ? rows.slice(0, 2500) : rows;
   const sampleCells = evalRows.length * cols.length;
@@ -21,13 +21,24 @@ function computeAuthoritativeQuality(rows, cols) {
     });
   });
   const missingRate = sampleCells > 0 ? missingCells / sampleCells : 0;
-  const score = Math.max(0, Math.round((1 - missingRate) * 100));
+  const completeness = Math.max(0, Math.round((1 - missingRate) * 100));
+
+  // Duplicate rows evaluation
+  const rowStrings = evalRows.map(r => JSON.stringify(r));
+  const duplicateRows = evalRows.length - new Set(rowStrings).size;
+  const duplicateRate = evalRows.length > 0 ? duplicateRows / evalRows.length : 0;
+
+  // Composite health score: 70% completeness, 30% uniqueness
+  const score = Math.max(0, Math.round((completeness * 0.7) + (Math.max(0, (1 - duplicateRate) * 100) * 0.3)));
+
   return {
     score,
+    completeness,
+    validity: 100,
     status: "assessed",
     missingCells,
     missingRate: +(missingRate * 100).toFixed(2),
-    duplicateRows: 0
+    duplicateRows
   };
 }
 
@@ -191,8 +202,108 @@ export function DatasetProvider({ children }) {
   const rawVersion = versionStack?.rawVersion || null;
   const history = versionStack?.history || [];
 
-  const activeRows = currentVersion ? currentVersion.rows : (activeDataset?.rawRows || []);
+  const unfilteredRows = currentVersion ? currentVersion.rows : (activeDataset?.rawRows || []);
   const activeCols = currentVersion ? currentVersion.columns : (activeDataset?.rawCols || []);
+
+  const defaultFilters = useMemo(() => ({
+    searchTerm: "",
+    categoryCol: "",
+    categoryVal: "all",
+    metricCol: "",
+    minVal: "",
+    maxVal: "",
+    dateCol: "",
+    startDate: "",
+    endDate: ""
+  }), []);
+
+  const [filters, setFilters] = useState({
+    searchTerm: "",
+    categoryCol: "",
+    categoryVal: "all",
+    metricCol: "",
+    minVal: "",
+    maxVal: "",
+    dateCol: "",
+    startDate: "",
+    endDate: ""
+  });
+
+  const updateFilter = (patch) => {
+    setFilters(prev => ({ ...prev, ...patch }));
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      searchTerm: "",
+      categoryCol: "",
+      categoryVal: "all",
+      metricCol: "",
+      minVal: "",
+      maxVal: "",
+      dateCol: "",
+      startDate: "",
+      endDate: ""
+    });
+  };
+
+  const filteredRows = useMemo(() => {
+    if (!unfilteredRows || unfilteredRows.length === 0) return [];
+
+    const hasSearch = Boolean(filters.searchTerm && filters.searchTerm.trim());
+    const hasCategory = Boolean(filters.categoryCol && filters.categoryVal && filters.categoryVal !== "all");
+    const hasMetric = Boolean(filters.metricCol && (filters.minVal !== "" || filters.maxVal !== ""));
+    const hasDate = Boolean(filters.dateCol && (filters.startDate !== "" || filters.endDate !== ""));
+
+    if (!hasSearch && !hasCategory && !hasMetric && !hasDate) {
+      return unfilteredRows;
+    }
+
+    const query = hasSearch ? filters.searchTerm.trim().toLowerCase() : "";
+    const minNum = filters.minVal !== "" ? Number(filters.minVal) : -Infinity;
+    const maxNum = filters.maxVal !== "" ? Number(filters.maxVal) : Infinity;
+
+    return unfilteredRows.filter(row => {
+      // 1. Text Search across all columns
+      if (hasSearch) {
+        const matches = Object.values(row).some(v => v != null && String(v).toLowerCase().includes(query));
+        if (!matches) return false;
+      }
+
+      // 2. Category Match
+      if (hasCategory) {
+        if (String(row[filters.categoryCol] ?? "") !== String(filters.categoryVal)) return false;
+      }
+
+      // 3. Metric Range Match
+      if (hasMetric) {
+        const num = Number(row[filters.metricCol]);
+        if (isNaN(num)) return false;
+        if (num < minNum || num > maxNum) return false;
+      }
+
+      // 4. Date Range Match
+      if (hasDate) {
+        const rowDateStr = String(row[filters.dateCol] ?? "");
+        const rowTime = new Date(rowDateStr).getTime();
+        if (!isNaN(rowTime)) {
+          if (filters.startDate) {
+            const startTime = new Date(filters.startDate).getTime();
+            if (!isNaN(startTime) && rowTime < startTime) return false;
+          }
+          if (filters.endDate) {
+            const endTime = new Date(filters.endDate).getTime();
+            if (!isNaN(endTime) && rowTime > endTime) return false;
+          }
+        }
+      }
+
+      return true;
+    });
+  }, [unfilteredRows, filters]);
+
+  // Synchronized active rows across all components
+  const activeRows = filteredRows;
 
   const versionDiff = useMemo(() => {
     if (!rawVersion || !currentVersion) return null;
@@ -219,6 +330,12 @@ export function DatasetProvider({ children }) {
       history,
       activeRows,
       activeCols,
+      unfilteredRows,
+      filteredRows,
+      filters,
+      updateFilter,
+      resetFilters,
+      isFiltered: filteredRows.length !== unfilteredRows.length,
       versionDiff,
       loadDataset,
       setActiveDatasetFromThread,
@@ -247,6 +364,22 @@ export function useDataset() {
       history: [],
       activeRows: [],
       activeCols: [],
+      unfilteredRows: [],
+      filteredRows: [],
+      filters: {
+        searchTerm: "",
+        categoryCol: "",
+        categoryVal: "all",
+        metricCol: "",
+        minVal: "",
+        maxVal: "",
+        dateCol: "",
+        startDate: "",
+        endDate: ""
+      },
+      updateFilter: () => {},
+      resetFilters: () => {},
+      isFiltered: false,
       versionDiff: null,
       loadDataset: () => {},
       setActiveDatasetFromThread: () => {},

@@ -1,147 +1,289 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useMemo, useEffect } from "react";
+import { useDataset } from "./context/DatasetContext";
 
-export default function GlobalFilterBar({ data = [], columns = [], onFilterChange }) {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [categoryCol, setCategoryCol] = useState("");
-  const [categoryVal, setCategoryVal] = useState("all");
-  const [metricCol, setMetricCol] = useState("");
-  const [minVal, setMinVal] = useState("");
-  const [maxVal, setMaxVal] = useState("");
+export default function GlobalFilterBar({ data: propData = [], columns: propCols = [], onFilterChange }) {
+  const datasetCtx = useDataset();
 
-  // Detect column types
-  const { catCols, numCols, uniqueCatVals } = useMemo(() => {
+  // Prefer context if available, otherwise fallback to props
+  const datasetFilters = datasetCtx?.filters;
+  const updateFilter = datasetCtx?.updateFilter;
+  const resetFilters = datasetCtx?.resetFilters;
+  const ctxFilteredRows = datasetCtx?.filteredRows;
+  const ctxUnfilteredRows = datasetCtx?.unfilteredRows;
+
+  const data = (ctxUnfilteredRows && ctxUnfilteredRows.length > 0) ? ctxUnfilteredRows : propData;
+  const columns = (datasetCtx?.activeCols && datasetCtx.activeCols.length > 0) ? datasetCtx.activeCols : propCols;
+
+  // Local fallback state if used outside DatasetProvider
+  const [localFilters, setLocalFilters] = React.useState({
+    searchTerm: "",
+    categoryCol: "",
+    categoryVal: "all",
+    metricCol: "",
+    minVal: "",
+    maxVal: "",
+    dateCol: "",
+    startDate: "",
+    endDate: ""
+  });
+
+  const filters = datasetFilters || localFilters;
+  const handleUpdate = (patch) => {
+    if (updateFilter) {
+      updateFilter(patch);
+    } else {
+      setLocalFilters(prev => ({ ...prev, ...patch }));
+    }
+  };
+  const handleReset = () => {
+    if (resetFilters) {
+      resetFilters();
+    } else {
+      setLocalFilters({
+        searchTerm: "",
+        categoryCol: "",
+        categoryVal: "all",
+        metricCol: "",
+        minVal: "",
+        maxVal: "",
+        dateCol: "",
+        startDate: "",
+        endDate: ""
+      });
+    }
+  };
+
+  // Detect column types: dates, metrics, and categories
+  const { dateCols, catCols, numCols, uniqueCatVals, dateBounds } = useMemo(() => {
     if (!data || data.length === 0 || !columns || columns.length === 0) {
-      return { catCols: [], numCols: [], uniqueCatVals: [] };
+      return { dateCols: [], catCols: [], numCols: [], uniqueCatVals: [], dateBounds: { min: "", max: "" } };
     }
 
     const evalRows = data.length > 3000 ? data.slice(0, 3000) : data;
     const num = [];
     const cat = [];
+    const date = [];
+
+    const dateRegex = /^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}/;
 
     columns.forEach(col => {
-      const isNum = evalRows.some(r => typeof r[col] === "number" || (!isNaN(Number(r[col])) && r[col] !== "" && r[col] !== null));
-      if (isNum) num.push(col);
-      else cat.push(col);
+      const lower = col.toLowerCase();
+      const isDateName = /date|time|period|month|year|timestamp|day|dob|^dt$/i.test(lower);
+      const isCodeOrId = /code|id|uuid|guid|sku|ref|token|hash|number|^aud/i.test(lower);
+
+      const nonEmpties = evalRows.map(r => r[col]).filter(v => v !== null && v !== undefined && String(v).trim() !== "");
+      const sample = nonEmpties.slice(0, 50);
+
+      const isSampleDate = sample.length > 0 && sample.filter(v => {
+        if (v instanceof Date && !isNaN(v.getTime())) return true;
+        const s = String(v).trim();
+        return dateRegex.test(s) || (!isNaN(Date.parse(s)) && isNaN(Number(s)));
+      }).length / sample.length > 0.6;
+
+      if ((isDateName || isSampleDate) && !isCodeOrId) {
+        date.push(col);
+      } else {
+        const isNum = sample.length > 0 && sample.filter(v => typeof v === "number" || (!isNaN(Number(v)) && String(v).trim() !== "")).length / sample.length > 0.8;
+        if (isNum && !isCodeOrId) {
+          num.push(col);
+        } else {
+          cat.push(col);
+        }
+      }
     });
 
-    const selectedCat = categoryCol || cat[0] || "";
+    // Unique category values for currently selected category
+    const selectedCat = filters.categoryCol || cat[0] || "";
     let vals = [];
     if (selectedCat) {
       const rawVals = new Set(evalRows.map(r => String(r[selectedCat] ?? "")).filter(Boolean));
       vals = Array.from(rawVals).slice(0, 50);
     }
 
-    return { catCols: cat, numCols: num, uniqueCatVals: vals };
-  }, [data, columns, categoryCol]);
+    // Min / Max bounds for primary date column
+    const selectedDateCol = filters.dateCol || date[0] || "";
+    let minDate = "";
+    let maxDate = "";
+    if (selectedDateCol) {
+      const parsedTimes = evalRows
+        .map(r => new Date(r[selectedDateCol]).getTime())
+        .filter(t => !isNaN(t));
+      if (parsedTimes.length > 0) {
+        minDate = new Date(Math.min(...parsedTimes)).toISOString().slice(0, 10);
+        maxDate = new Date(Math.max(...parsedTimes)).toISOString().slice(0, 10);
+      }
+    }
 
-  // Apply filtering logic
-  const filteredRows = useMemo(() => {
+    return {
+      dateCols: date,
+      catCols: cat,
+      numCols: num,
+      uniqueCatVals: vals,
+      dateBounds: { min: minDate, max: maxDate }
+    };
+  }, [data, columns, filters.categoryCol, filters.dateCol]);
+
+  // Derive filtered rows if not in context
+  const derivedFilteredRows = useMemo(() => {
+    if (ctxFilteredRows) return ctxFilteredRows;
     if (!data || data.length === 0) return [];
 
     return data.filter(row => {
-      // 1. Text Search Filter
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
-        const matchesText = columns.some(col => String(row[col] ?? "").toLowerCase().includes(query));
-        if (!matchesText) return false;
+      if (filters.searchTerm?.trim()) {
+        const q = filters.searchTerm.trim().toLowerCase();
+        const matches = Object.values(row).some(v => v != null && String(v).toLowerCase().includes(q));
+        if (!matches) return false;
       }
-
-      // 2. Category Filter
-      if (categoryCol && categoryVal !== "all") {
-        if (String(row[categoryCol] ?? "") !== categoryVal) return false;
+      if (filters.categoryCol && filters.categoryVal !== "all") {
+        if (String(row[filters.categoryCol] ?? "") !== filters.categoryVal) return false;
       }
-
-      // 3. Metric Range Filter
-      if (metricCol) {
-        const num = Number(row[metricCol]);
-        if (!isNaN(num)) {
-          if (minVal !== "" && num < Number(minVal)) return false;
-          if (maxVal !== "" && num > Number(maxVal)) return false;
+      if (filters.metricCol) {
+        const n = Number(row[filters.metricCol]);
+        if (isNaN(n)) return false;
+        if (filters.minVal !== "" && n < Number(filters.minVal)) return false;
+        if (filters.maxVal !== "" && n > Number(filters.maxVal)) return false;
+      }
+      if (filters.dateCol) {
+        const t = new Date(row[filters.dateCol]).getTime();
+        if (!isNaN(t)) {
+          if (filters.startDate && t < new Date(filters.startDate).getTime()) return false;
+          if (filters.endDate && t > new Date(filters.endDate).getTime()) return false;
         }
       }
-
       return true;
     });
-  }, [data, columns, searchTerm, categoryCol, categoryVal, metricCol, minVal, maxVal]);
+  }, [ctxFilteredRows, data, filters]);
 
-  // Trigger callback when filtered rows change
+  // Inform parent callback if passed
   useEffect(() => {
     if (typeof onFilterChange === "function") {
-      onFilterChange(filteredRows);
+      onFilterChange(derivedFilteredRows);
     }
-  }, [filteredRows, onFilterChange]);
+  }, [derivedFilteredRows, onFilterChange]);
 
   // Count active filters
   const activeFilterCount = [
-    searchTerm.trim() ? 1 : 0,
-    categoryCol && categoryVal !== "all" ? 1 : 0,
-    metricCol && (minVal !== "" || maxVal !== "") ? 1 : 0
-  ].reduce((a, b) => a + b, 0);
-
-  const handleReset = () => {
-    setSearchTerm("");
-    setCategoryVal("all");
-    setMinVal("");
-    setMaxVal("");
-  };
+    Boolean(filters.searchTerm?.trim()),
+    Boolean(filters.categoryCol && filters.categoryVal !== "all"),
+    Boolean(filters.metricCol && (filters.minVal !== "" || filters.maxVal !== "")),
+    Boolean(filters.dateCol && (filters.startDate !== "" || filters.endDate !== ""))
+  ].reduce((a, b) => a + (b ? 1 : 0), 0);
 
   if (!data || data.length === 0) return null;
 
   return (
-    <div style={{ position: "relative", zIndex: 10, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: "12px 16px", marginBottom: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.04)", fontFamily: "var(--font-sans, sans-serif)" }}>
+    <div
+      data-testid="global-filter-bar"
+      style={{
+        position: "relative",
+        zIndex: 10,
+        background: "#F8FAFC",
+        border: "1px solid #CBD5E1",
+        borderRadius: 10,
+        padding: "12px 16px",
+        marginBottom: 16,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+        fontFamily: "var(--font-sans, sans-serif)"
+      }}
+    >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 10 }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#1E293B", display: "flex", alignItems: "center", gap: 8 }}>
-          ⚡ Global Filter Control Bar
+          <span>⚡ Universal Filter Control Bar</span>
           {activeFilterCount > 0 && (
-            <span style={{ backgroundColor: "#3B82F6", color: "#FFF", fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 12 }}>
+            <span style={{ backgroundColor: "#2563EB", color: "#FFF", fontSize: 10.5, fontWeight: 800, padding: "2px 8px", borderRadius: 12 }}>
               {activeFilterCount} Active
             </span>
           )}
-          <span style={{ fontSize: 12, color: "#64748B", fontWeight: 500 }}>
-            ({filteredRows.length.toLocaleString()} / {data.length.toLocaleString()} rows visible)
+          <span data-testid="filter-visible-count" style={{ fontSize: 12, color: "#64748B", fontWeight: 600 }}>
+            ({derivedFilteredRows.length.toLocaleString()} / {data.length.toLocaleString()} rows visible)
           </span>
         </div>
 
         {activeFilterCount > 0 && (
           <button
             onClick={handleReset}
-            style={{ backgroundColor: "#F1F5F9", color: "#475569", border: "1px solid #CBD5E1", borderRadius: 6, padding: "4px 10px", fontSize: 11.5, fontWeight: 700, cursor: "pointer" }}
+            style={{
+              backgroundColor: "#EFF6FF",
+              color: "#1E40AF",
+              border: "1px solid #BFDBFE",
+              borderRadius: 6,
+              padding: "4px 10px",
+              fontSize: 11.5,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 4
+            }}
           >
-            🔄 Reset Filters
+            <span>🔄 Reset All Filters</span>
           </button>
         )}
       </div>
 
       {/* Filter Controls Grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "center" }}>
-        {/* Substring Search */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12, alignItems: "center" }}>
+        {/* Global Substring Search */}
         <div>
-          <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>Global Search:</label>
+          <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>
+            Global Search:
+          </label>
           <input
             type="text"
-            placeholder="Search dataset…"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 12, boxSizing: "border-box" }}
+            placeholder="Search dataset (e.g. CA-2024-1005)…"
+            value={filters.searchTerm || ""}
+            onChange={e => handleUpdate({ searchTerm: e.target.value })}
+            style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 12, boxSizing: "border-box", background: "#FFFFFF" }}
           />
         </div>
+
+        {/* Date Range Picker */}
+        {dateCols.length > 0 && (
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>
+              Date Range ({dateCols[0]}):
+            </label>
+            <div style={{ display: "flex", gap: 4 }}>
+              <input
+                type="date"
+                title="Start Date"
+                min={dateBounds.min}
+                max={dateBounds.max}
+                value={filters.startDate || ""}
+                onChange={e => handleUpdate({ dateCol: filters.dateCol || dateCols[0], startDate: e.target.value })}
+                style={{ width: "50%", padding: "5px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11, background: "#FFFFFF", boxSizing: "border-box" }}
+              />
+              <input
+                type="date"
+                title="End Date"
+                min={dateBounds.min}
+                max={dateBounds.max}
+                value={filters.endDate || ""}
+                onChange={e => handleUpdate({ dateCol: filters.dateCol || dateCols[0], endDate: e.target.value })}
+                style={{ width: "50%", padding: "5px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11, background: "#FFFFFF", boxSizing: "border-box" }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Category Slicer */}
         {catCols.length > 0 && (
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>Category Filter:</label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>
+              Category Filter:
+            </label>
             <div style={{ display: "flex", gap: 4 }}>
               <select
-                value={categoryCol || catCols[0]}
-                onChange={e => { setCategoryCol(e.target.value); setCategoryVal("all"); }}
-                style={{ width: "50%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, background: "#FFF" }}
+                value={filters.categoryCol || catCols[0]}
+                onChange={e => handleUpdate({ categoryCol: e.target.value, categoryVal: "all" })}
+                style={{ width: "50%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, background: "#FFFFFF" }}
               >
                 {catCols.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <select
-                value={categoryVal}
-                onChange={e => setCategoryVal(e.target.value)}
-                style={{ width: "50%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, background: "#FFF" }}
+                value={filters.categoryVal || "all"}
+                onChange={e => handleUpdate({ categoryCol: filters.categoryCol || catCols[0], categoryVal: e.target.value })}
+                style={{ width: "50%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, background: "#FFFFFF" }}
               >
                 <option value="all">All Values</option>
                 {uniqueCatVals.map(v => <option key={v} value={v}>{v}</option>)}
@@ -153,28 +295,30 @@ export default function GlobalFilterBar({ data = [], columns = [], onFilterChang
         {/* Metric Slicer */}
         {numCols.length > 0 && (
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>Metric Range (Min - Max):</label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 3 }}>
+              Metric Range (Min - Max):
+            </label>
             <div style={{ display: "flex", gap: 4 }}>
               <select
-                value={metricCol || numCols[0]}
-                onChange={e => setMetricCol(e.target.value)}
-                style={{ width: "40%", padding: "6px 4px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11, background: "#FFF" }}
+                value={filters.metricCol || numCols[0]}
+                onChange={e => handleUpdate({ metricCol: e.target.value })}
+                style={{ width: "40%", padding: "6px 4px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11, background: "#FFFFFF" }}
               >
                 {numCols.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               <input
                 type="number"
                 placeholder="Min"
-                value={minVal}
-                onChange={e => setMinVal(e.target.value)}
-                style={{ width: "30%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, boxSizing: "border-box" }}
+                value={filters.minVal ?? ""}
+                onChange={e => handleUpdate({ metricCol: filters.metricCol || numCols[0], minVal: e.target.value })}
+                style={{ width: "30%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, boxSizing: "border-box", background: "#FFFFFF" }}
               />
               <input
                 type="number"
                 placeholder="Max"
-                value={maxVal}
-                onChange={e => setMaxVal(e.target.value)}
-                style={{ width: "30%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, boxSizing: "border-box" }}
+                value={filters.maxVal ?? ""}
+                onChange={e => handleUpdate({ metricCol: filters.metricCol || numCols[0], maxVal: e.target.value })}
+                style={{ width: "30%", padding: "6px 6px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 11.5, boxSizing: "border-box", background: "#FFFFFF" }}
               />
             </div>
           </div>

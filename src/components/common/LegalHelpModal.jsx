@@ -109,11 +109,12 @@ export default function LegalHelpModal({ isOpen, onClose, tab = "privacy" }) {
         <div style={{ padding: "22px", overflowY: "auto", fontSize: 13.5, color: "#334155", lineHeight: 1.6, flex: 1 }}>
           {activeTab === "privacy" && (
             <div>
-              <h4 style={{ margin: "0 0 10px 0", color: "#0F172A", fontSize: 16 }}>Privacy Policy & Data Security</h4>
-              <p><strong>1. Zero Data Retention:</strong> Your uploaded business datasets, CSVs, and Excel files are parsed client-side in your browser. We never store, sell, or use your private data to train public foundation models.</p>
-              <p><strong>2. PII Protection:</strong> Automatic regex scanning scrubs Personally Identifiable Information (such as emails, phone numbers, and SSNs) before running statistical summaries.</p>
-              <p><strong>3. Role Access Controls:</strong> Restricted fields (such as salary and executive bonuses) are masked according to the role configuration you select.</p>
-              <p><strong>4. Local Storage:</strong> Workspace session states and language preferences are retained locally in your browser storage and can be cleared at any time via Reset Workspace.</p>
+              <h4 style={{ margin: "0 0 10px 0", color: "#0F172A", fontSize: 16 }}>Privacy Policy & Data Security Architecture</h4>
+              <p><strong>1. In-Browser Local Processing (Guest & Sandbox Mode):</strong> Uploaded CSV, Excel, and JSON files are parsed and profiled client-side directly within your browser. In guest sessions, data remains in transient browser memory with zero persistence to external servers unless an enterprise account is explicitly connected.</p>
+              <p><strong>2. Enterprise Cloud Storage & Tenant Isolation:</strong> For authenticated enterprise organizations, saved datasets and schema metadata are stored in dedicated PostgreSQL schemas protected by AES-256 encryption at rest and strict row-level tenant isolation (<code>company_id</code> verification on every query).</p>
+              <p><strong>3. Stateless AI Processing & Zero Model Training:</strong> AI statistical aggregations and Copilot queries are executed statelessly. Private customer data is strictly never used to train public foundation models or shared with third-party data brokers.</p>
+              <p><strong>4. Automated PII Protection:</strong> Heuristic and regex scans automatically detect and mask Personally Identifiable Information (such as emails, phone numbers, and SSNs) before metrics are rendered or shared.</p>
+              <p><strong>5. Retention & User-Initiated Permanent Deletion:</strong> Guest data expires when the session ends or when the browser tab is closed. Enterprise accounts adhere to configurable retention policies. Users maintain full sovereignty to permanently delete any dataset, version snapshot, or chat thread at any time from the Manage Data view.</p>
             </div>
           )}
 
