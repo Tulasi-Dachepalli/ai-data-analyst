@@ -14,6 +14,7 @@ export default function CopilotPanel({ onAskQuestion }) {
   const [input, setInput] = useState("");
   const [primaryMode, setPrimaryMode] = useState("ask"); // ask, investigate, act
   const [copiedIdx, setCopiedIdx] = useState(null);
+  const [taskAddedIdx, setTaskAddedIdx] = useState(null);
 
   const handleSend = (overrideQuery) => {
     const q = overrideQuery || input;
@@ -245,6 +246,43 @@ export default function CopilotPanel({ onAskQuestion }) {
                     title="Copy response to clipboard"
                   >
                     {copiedIdx === idx ? "✓ Copied!" : "📋 Copy"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      try {
+                        const stored = JSON.parse(localStorage.getItem("aida_action_tasks") || "[]");
+                        const cleanText = m.content.replace(/^#+\s*|\*+/g, "").trim();
+                        const title = cleanText.length > 70 ? cleanText.slice(0, 67) + "..." : cleanText;
+                        const newTask = {
+                          id: "task-" + Date.now(),
+                          title: title || "Investigate Copilot finding",
+                          owner: roleConfig?.label || "Operations Lead",
+                          dueDate: new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10),
+                          status: "in_progress",
+                          priority: "High"
+                        };
+                        const updated = [newTask, ...stored];
+                        localStorage.setItem("aida_action_tasks", JSON.stringify(updated));
+                        window.dispatchEvent(new Event("storage"));
+                        setTaskAddedIdx(idx);
+                        setTimeout(() => setTaskAddedIdx(null), 2000);
+                      } catch (err) {
+                        console.error("Failed to add task:", err);
+                      }
+                    }}
+                    style={{
+                      background: taskAddedIdx === idx ? "#ECFDF5" : "#F8FAFC",
+                      color: taskAddedIdx === idx ? "#059669" : "#334155",
+                      border: "1px solid #CBD5E1",
+                      borderRadius: 6,
+                      padding: "4px 10px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                    title="Track this Copilot insight as an action task with owner and due date"
+                  >
+                    {taskAddedIdx === idx ? "✓ Added to Tasks!" : "📌 Add to Tasks"}
                   </button>
                 </div>
               )}

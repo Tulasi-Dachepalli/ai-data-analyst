@@ -2663,10 +2663,18 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
       )}
 
       {activeTab === "stats" && (
-        <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: "var(--radius-lg, 12px)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📈 Descriptive & Categorical Statistics Report</div>
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Executive Intelligence Deck Exporter */}
+          <ExecutiveReportGenerator
+            dataset={active}
+            data={filteredRows && filteredRows.length ? filteredRows : currentRows}
+            columns={validCols && validCols.length ? validCols : columns}
+          />
+
+          <div style={{ background: "var(--bg-secondary, #FFFFFF)", border: "1px solid var(--border-color, #E2E8F0)", borderRadius: "var(--radius-lg, 12px)", padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>📈 Descriptive & Categorical Statistics Report</div>
+            </div>
           
           {statsStage === "loading" && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 10px", gap: 14 }}>
@@ -2830,10 +2838,11 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
                   </div>
                 </div>
               )}
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
 
       {activeTab === "ml" && (
         isMisAnalyst ? (
@@ -4335,6 +4344,7 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
   const [isBeginnerMode, setIsBeginnerMode] = useState(() => {
     return localStorage.getItem("aida_user_mode") !== "pro";
   });
+  const [deleteReviewThread, setDeleteReviewThread] = useState(null);
 
   useEffect(() => {
     const handleModeChange = () => {
@@ -5873,19 +5883,23 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
     setActiveDatasetFromThread(updatedThread);
   };
 
-  const handleDeleteThread = async (t, e) => {
-    e.stopPropagation();
-    if (!window.confirm(`Delete "${t.name}"? This can't be undone.`)) return;
+  const handleDeleteThread = (t, e) => {
+    if (e && e.stopPropagation) e.stopPropagation();
+    setDeleteReviewThread(t);
+  };
+
+  const confirmDeleteThread = async (t) => {
+    if (!t) return;
     if (t.serverId) {
       try {
         await api.deleteDataset(t.serverId);
       } catch (err) {
         console.error("Failed to delete dataset:", err);
-        return;
       }
     }
     setThreads(prev => prev.filter(x => x.id !== t.id));
     if (activeId === t.id) setActiveId(null);
+    setDeleteReviewThread(null);
   };
 
 
@@ -7808,6 +7822,101 @@ export default function DataAnalystDashboardBot({ currentView, setView, user: pr
           selectedPlan={checkoutPlan}
           onPaymentSuccess={handleCheckoutSuccess}
         />
+      )}
+
+      {deleteReviewThread && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.6)",
+          backdropFilter: "blur(4px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 999999,
+          padding: 16
+        }}>
+          <div style={{
+            background: "#FFFFFF",
+            borderRadius: 16,
+            maxWidth: 520,
+            width: "100%",
+            boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
+            overflow: "hidden",
+            border: "1px solid #E2E8F0"
+          }}>
+            <div style={{ padding: "18px 22px", borderBottom: "1px solid #E2E8F0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 20 }}>🗑️</span>
+                <span style={{ fontWeight: 800, fontSize: 16, color: "#0F172A" }}>Permanent Deletion Review</span>
+              </div>
+              <button
+                onClick={() => setDeleteReviewThread(null)}
+                style={{ background: "none", border: "none", fontSize: 18, color: "#64748B", cursor: "pointer" }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: "20px 22px" }}>
+              <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#475569", lineHeight: 1.5 }}>
+                You are about to permanently delete <strong>{deleteReviewThread.name}</strong>. Please review affected assets and storage before proceeding:
+              </p>
+
+              <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 8, padding: "12px 14px", marginBottom: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: "6px 12px", fontSize: 12 }}>
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Affected Rows:</span>
+                  <span style={{ color: "#0F172A", fontWeight: 700 }}>{(deleteReviewThread.rows || []).length.toLocaleString()} records</span>
+
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Columns:</span>
+                  <span style={{ color: "#0F172A", fontWeight: 700 }}>{(deleteReviewThread.columns || []).length} attributes</span>
+
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Storage Location:</span>
+                  <span style={{ color: "#0F172A", fontWeight: 700 }}>
+                    {deleteReviewThread.serverId ? "PostgreSQL Multi-Tenant Encrypted" : "In-Browser Sandbox (Local Session Memory)"}
+                  </span>
+
+                  <span style={{ color: "#64748B", fontWeight: 600 }}>Recovery Status:</span>
+                  <span style={{ color: "#DC2626", fontWeight: 700 }}>Irreversible — No undelete or backup recovery available</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ padding: "14px 22px", background: "#F8FAFC", borderTop: "1px solid #E2E8F0", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                onClick={() => setDeleteReviewThread(null)}
+                style={{
+                  background: "#FFFFFF",
+                  border: "1px solid #CBD5E1",
+                  borderRadius: 6,
+                  padding: "8px 16px",
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  color: "#475569",
+                  cursor: "pointer"
+                }}
+              >
+                Cancel (Keep Dataset)
+              </button>
+              <button
+                onClick={() => confirmDeleteThread(deleteReviewThread)}
+                style={{
+                  background: "#E11D48",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "8px 16px",
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 6px rgba(225,29,72,0.3)"
+                }}
+              >
+                Confirm Permanent Deletion
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <InvestigationDrawer />

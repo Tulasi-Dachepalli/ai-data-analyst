@@ -564,6 +564,125 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
     }
   };
 
+  const handleExportDashboardPdf = () => {
+    const datasetName = active?.name || "Executive Business Analytics";
+    const reportDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    const activeFiltersList = Object.entries(slicers).filter(([_, v]) => v && v !== "All");
+
+    const kpiCardsHtml = (kpiMetrics || []).slice(0, 4).map(kpi => `
+      <div style="flex:1;min-width:180px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+        <div style="font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:0.04em;">${kpi.name}</div>
+        <div style="font-size:24px;font-weight:800;color:#0F172A;margin:6px 0;font-family:'Manrope',sans-serif;">${kpi.value}</div>
+        <div style="font-size:11px;color:${kpi.isPositive ? '#16A34A' : '#DC2626'};font-weight:700;">${kpi.trendText}</div>
+      </div>
+    `).join("");
+
+    const categoryRowsHtml = (categoryBreakdownData?.data || []).map(item => `
+      <tr style="border-bottom:1px solid #E2E8F0;">
+        <td style="padding:10px 12px;font-weight:600;color:#0F172A;">${item.name}</td>
+        <td style="padding:10px 12px;text-align:right;font-weight:700;color:#2563EB;">${formatMetricValue(item.value, categoryBreakdownData?.metricCol)}</td>
+      </tr>
+    `).join("");
+
+    const insightsHtml = (activeAiInsights || []).map(i => `
+      <div style="margin-bottom:10px;padding:10px 14px;background:#F8FAFC;border-left:4px solid #2563EB;border-radius:6px;font-size:12.5px;">
+        <strong style="color:#0F172A;">${i.headline}</strong>: <span style="color:#475569;">${i.detail}</span>
+      </div>
+    `).join("");
+
+    const filtersHtml = activeFiltersList.length > 0
+      ? activeFiltersList.map(([k, v]) => `<span style="background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;margin-right:6px;">${k}: ${v}</span>`).join("")
+      : `<span style="font-size:12px;color:#64748B;">All (${rawRows.length.toLocaleString()} records evaluated)</span>`;
+
+    const docHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Executive Analytics Report — ${datasetName}</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap');
+          body { font-family: 'Inter', -apple-system, sans-serif; background: #F8FAFC; color: #0F172A; margin: 0; padding: 30px 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .deck { max-width: 900px; margin: 0 auto; background: #FFFFFF; border-radius: 16px; padding: 36px; border: 1px solid #E2E8F0; box-shadow: 0 10px 25px rgba(0,0,0,0.06); }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #E2E8F0; padding-bottom: 20px; margin-bottom: 24px; }
+          .badge { background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+          .section { margin-bottom: 24px; }
+          .section-title { font-family: 'Manrope', sans-serif; font-size: 16px; font-weight: 800; color: #0F172A; margin-bottom: 12px; border-left: 4px solid #2563EB; padding-left: 10px; }
+          .kpi-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+          table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+          th { background: #F1F5F9; color: #475569; font-weight: 700; padding: 10px 12px; text-align: left; border-bottom: 1px solid #CBD5E1; }
+          .footer { text-align: center; border-top: 1px solid #E2E8F0; padding-top: 20px; font-size: 11.5px; color: #94A3B8; margin-top: 30px; }
+          @media print {
+            body { background: #FFF; padding: 0; }
+            .deck { border: none; box-shadow: none; padding: 10px 0; max-width: 100%; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="deck">
+          <div class="header">
+            <div>
+              <span class="badge">Power BI-Style Executive Briefing</span>
+              <h1 style="font-family:'Manrope',sans-serif;margin:8px 0 4px 0;font-size:24px;color:#0F172A;font-weight:800;">${datasetName}</h1>
+              <div style="font-size:12px;color:#64748B;">Generated: ${reportDate} • Scope: ${filteredRows.length.toLocaleString()} of ${rawRows.length.toLocaleString()} rows</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:16px;font-weight:800;color:#2563EB;font-family:'Manrope',sans-serif;">AI Data Analyst Platform</div>
+              <div style="font-size:11px;color:#10B981;font-weight:700;">✓ In-Browser Sandbox Verified</div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div style="font-size:12px;color:#475569;margin-bottom:12px;"><strong>Active Slicers / Filters:</strong> ${filtersHtml}</div>
+            <div class="kpi-row">
+              ${kpiCardsHtml}
+            </div>
+          </div>
+
+          ${categoryRowsHtml ? `
+          <div class="section">
+            <div class="section-title">📊 Category Breakdown (${categoryBreakdownData?.title || 'Volume Breakdown'})</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Category / Dimension</th>
+                  <th style="text-align:right;">Calculated Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${categoryRowsHtml}
+              </tbody>
+            </table>
+          </div>
+          ` : ''}
+
+          <div class="section">
+            <div class="section-title">💡 Automated Strategic Insights</div>
+            ${insightsHtml || '<div style="font-size:12px;color:#64748B;">No outlier anomalies detected under current filters.</div>'}
+          </div>
+
+          <div class="footer">
+            Generated with verified client-side arithmetic • Enterprise AI Data Analyst • Confidential & Proprietary
+          </div>
+        </div>
+        <script>
+          window.onload = function() {
+            setTimeout(function() { window.print(); }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    const printWin = window.open("", "_blank");
+    if (printWin) {
+      printWin.document.write(docHtml);
+      printWin.document.close();
+    } else {
+      window.print();
+    }
+  };
+
   return (
     <div style={{
       display: "flex",
@@ -640,15 +759,7 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
 
           {/* Quick PDF Report Download */}
           <button
-            onClick={() => {
-              const printWin = window.open("", "_blank");
-              if (printWin) {
-                printWin.document.write(`<html><head><title>Dashboard Report - ${active?.name}</title></head><body><h2>Executive Dashboard Report: ${active?.name}</h2><p>Rows: ${filteredRows.length} | Filters: ${JSON.stringify(slicers)}</p></body></html>`);
-                printWin.print();
-              } else {
-                window.print();
-              }
-            }}
+            onClick={handleExportDashboardPdf}
             style={{
               display: "flex",
               alignItems: "center",

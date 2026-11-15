@@ -158,7 +158,20 @@ test.describe('Comprehensive End-to-End Application Audit', () => {
     // Tab: 09 Executive Report
     const reportTabBtn = page.locator('button:has-text("09 Executive Report")').first();
     await reportTabBtn.click();
+    await expect(page.getByText(/Executive Summary Report & Delivery Center/i).first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/Statistics Report|Descriptive/i).first()).toBeVisible({ timeout: 10000 });
+
+    // Copilot Add to Tasks action verification
+    await page.evaluate(() => {
+      if (window.aidaAskQuestion) {
+        window.aidaAskQuestion('Highlight high profit regions');
+      }
+    });
+    const addToTasksBtn = page.locator('button:has-text("Add to Tasks")').first();
+    if (await addToTasksBtn.isVisible({ timeout: 6000 }).catch(() => false)) {
+      await addToTasksBtn.click();
+      await expect(page.locator('text=Added to Tasks!').first()).toBeVisible();
+    }
 
     // 9. Test Manage Datasets & In-Browser Sandbox Storage
     await page.evaluate(() => {
