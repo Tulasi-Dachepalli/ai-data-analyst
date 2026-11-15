@@ -1147,6 +1147,7 @@ function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slice
     }
   }, [isMisAnalyst, activeTab]);
   const [dataPage, setDataPage] = useState(0);
+  const [rawTableSearch, setRawTableSearch] = useState("");
   const [sandboxVal, setSandboxVal] = useState("");
   const [sortKey, setSortKey] = useState(null);
   const [sortOrder, setSortOrder] = useState("asc");
@@ -1734,6 +1735,14 @@ function DashboardBlock({ active, dashboard, filteredRows, columns, stats, slice
     return sorted;
   }, [currentRows, sortKey, sortOrder]);
 
+  const filteredRawRows = useMemo(() => {
+    if (!rawTableSearch.trim()) return sortedRows;
+    const q = rawTableSearch.toLowerCase().trim();
+    return sortedRows.filter(r => 
+      Object.values(r).some(val => String(val ?? "").toLowerCase().includes(q))
+    );
+  }, [sortedRows, rawTableSearch]);
+
   const changePreviewRows = useMemo(() => {
     if (!cleaningSummary || !cleanedProfile) return [];
     
@@ -2154,6 +2163,25 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadRawCSV = () => {
+    const rowsToExport = (filteredRawRows && filteredRawRows.length) ? filteredRawRows : currentRows;
+    if (!rowsToExport || !rowsToExport.length) return;
+    const exportCols = columns && columns.length ? columns : Object.keys(rowsToExport[0]);
+    const csvContent = [
+      exportCols.join(","),
+      ...rowsToExport.map(r => exportCols.map(c => `"${String(r[c] ?? "").replace(/"/g, '""')}"`).join(","))
+    ].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${(datasetName || "raw_dataset").replace(/[\s.]+/g, "_")}_raw_export.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
 
@@ -4202,18 +4230,72 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
       )}
 
       {activeTab === "data" && (
-        <div style={{ background: "#FBFAF7", border: "1px solid #EAE7E0", borderRadius: 8, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#2B2A27" }}>📋 Raw Dataset Viewer</div>
+        <div style={{ background: "var(--bg-secondary, #FBFAF7)", border: "1px solid var(--border-color, #EAE7E0)", borderRadius: 10, padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary, #2B2A27)" }}>📋 Raw Dataset Viewer</div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary, #8A8580)", marginTop: 2 }}>
+                Verified records: {filteredRawRows.length} of {currentRows.length} rows visible • {columns.length} columns
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <input
+                type="text"
+                placeholder="Search table records..."
+                value={rawTableSearch}
+                onChange={e => {
+                  setRawTableSearch(e.target.value);
+                  setDataPage(0);
+                }}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "1px solid var(--border-color, #CBD5E1)",
+                  fontSize: 12,
+                  outline: "none",
+                  width: 220,
+                  backgroundColor: "var(--bg-primary, #FFFFFF)",
+                  color: "var(--text-primary, #0F172A)"
+                }}
+              />
+              {rawTableSearch && (
+                <button
+                  onClick={() => { setRawTableSearch(""); setDataPage(0); }}
+                  style={{ background: "none", border: "none", color: "#64748B", fontSize: 12, cursor: "pointer" }}
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={handleDownloadRawCSV}
+                style={{
+                  background: "#2563EB",
+                  color: "#FFFFFF",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5
+                }}
+              >
+                📥 Export CSV
+              </button>
+            </div>
+          </div>
           <Table
             headers={columns.map(c => ({ key: c, label: c, sortable: true }))}
-            data={sortedRows.slice(dataPage * 15, (dataPage + 1) * 15)}
+            data={filteredRawRows.slice(dataPage * 15, (dataPage + 1) * 15)}
             density="compact"
             sortKey={sortKey}
             sortOrder={sortOrder}
             onSort={handleSort}
           />
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-            <span style={{ fontSize: 12, color: "#8A8580" }}>Page {dataPage + 1} of {Math.ceil(currentRows.length / 15) || 1} ({currentRows.length} total rows)</span>
+            <span style={{ fontSize: 12, color: "#8A8580" }}>Page {dataPage + 1} of {Math.ceil(filteredRawRows.length / 15) || 1} ({filteredRawRows.length} filtered rows)</span>
             <div style={{ display: "flex", gap: 6 }}>
               <button
                 disabled={dataPage === 0}
@@ -4223,9 +4305,9 @@ function computeDomainPresetKpis(currentRows, columns, activePlan) {
                 Previous
               </button>
               <button
-                disabled={dataPage >= Math.ceil(currentRows.length / 15) - 1}
+                disabled={dataPage >= Math.ceil(filteredRawRows.length / 15) - 1}
                 onClick={() => setDataPage(p => p + 1)}
-                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #DDD8CE", background: "#fff", cursor: dataPage >= Math.ceil(currentRows.length / 15) - 1 ? "default" : "pointer", fontSize: 12 }}
+                style={{ padding: "4px 8px", borderRadius: 4, border: "1px solid #DDD8CE", background: "#fff", cursor: dataPage >= Math.ceil(filteredRawRows.length / 15) - 1 ? "default" : "pointer", fontSize: 12 }}
               >
                 Next
               </button>

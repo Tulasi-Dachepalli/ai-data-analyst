@@ -757,7 +757,16 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #E2E8F0", paddingBottom: 8 }}>
             <span style={{ fontWeight: 800, color: "#0F172A", fontSize: 13 }}>📋 Ingestion & Dataset Upload Readiness Review</span>
-            <span style={{ color: "#16A34A", fontWeight: 700 }}>Completeness: {readinessData.completenessScore}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ color: "#16A34A", fontWeight: 700 }}>Completeness: {readinessData.completenessScore}</span>
+              <button
+                onClick={() => setShowReadiness(false)}
+                aria-label="Close Readiness Review"
+                style={{ background: "none", border: "none", fontSize: 16, cursor: "pointer", color: "#64748B" }}
+              >
+                ✕
+              </button>
+            </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, color: "#334155" }}>

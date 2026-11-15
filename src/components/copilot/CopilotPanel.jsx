@@ -13,6 +13,7 @@ export default function CopilotPanel({ onAskQuestion }) {
   const { messages, loading, loadingLabel, askQuestion } = useCopilot();
   const [input, setInput] = useState("");
   const [primaryMode, setPrimaryMode] = useState("ask"); // ask, investigate, act
+  const [copiedIdx, setCopiedIdx] = useState(null);
 
   const handleSend = (overrideQuery) => {
     const q = overrideQuery || input;
@@ -202,7 +203,7 @@ export default function CopilotPanel({ onAskQuestion }) {
               <div>{m.content}</div>
 
               {m.role !== "user" && (
-                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <div style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center" }}>
                   <button
                     onClick={() => openInvestigation({
                       title: "Copilot Response Evidence",
@@ -222,6 +223,28 @@ export default function CopilotPanel({ onAskQuestion }) {
                     }}
                   >
                     🔬 Inspect Evidence
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (navigator?.clipboard?.writeText) {
+                        navigator.clipboard.writeText(m.content);
+                        setCopiedIdx(idx);
+                        setTimeout(() => setCopiedIdx(null), 2000);
+                      }
+                    }}
+                    style={{
+                      background: copiedIdx === idx ? "#ECFDF5" : "#F8FAFC",
+                      color: copiedIdx === idx ? "#059669" : "#334155",
+                      border: "1px solid #CBD5E1",
+                      borderRadius: 6,
+                      padding: "4px 10px",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                    title="Copy response to clipboard"
+                  >
+                    {copiedIdx === idx ? "✓ Copied!" : "📋 Copy"}
                   </button>
                 </div>
               )}

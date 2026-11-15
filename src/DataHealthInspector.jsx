@@ -4,8 +4,39 @@ import { detectColumnType, getColumnTypeBadge } from "./utils/columnTypes";
 export default function DataHealthInspector({ dataset, data = [], columns = [], onUpdateDataset }) {
   const [cleanedData, setCleanedData] = useState(null);
   const [activeFix, setActiveFix] = useState(null);
+  const [columnSearch, setColumnSearch] = useState("");
 
   const currentData = cleanedData || data;
+
+  const handleExportQualityAuditCSV = (analysisObj) => {
+    if (!analysisObj || !columns.length) return;
+    const headers = ["Column Name", "Data Type", "Null Count", "Null Pct (%)", "Unique Count", "Outliers (>3σ)", "Health Status"];
+    const rows = columns.map(col => {
+      const stat = analysisObj.columnStats[col];
+      if (!stat) return null;
+      const badge = getColumnTypeBadge(stat.detectedType || (stat.isNumeric ? "numeric" : stat.isDate ? "date" : "categorical"));
+      const isHealthy = stat.nullCount === 0 && stat.outlierCount === 0;
+      return [
+        `"${col}"`,
+        `"${badge.label}"`,
+        stat.nullCount,
+        `"${stat.nullPct}%"`,
+        stat.uniqueCount,
+        stat.outlierCount,
+        `"${isHealthy ? "Optimal" : "Needs Clean"}"`
+      ];
+    }).filter(Boolean);
+    const csvContent = [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Quality_Audit_${(dataset?.name || "dataset").replace(/[\s.]+/g, "_")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const analysis = useMemo(() => {
     if (!currentData || currentData.length === 0 || !columns || columns.length === 0) {
@@ -143,6 +174,12 @@ export default function DataHealthInspector({ dataset, data = [], columns = [], 
     if (onUpdateDataset) onUpdateDataset(filled);
   };
 
+  const displayedColumns = useMemo(() => {
+    if (!columnSearch.trim()) return columns;
+    const q = columnSearch.toLowerCase().trim();
+    return columns.filter(c => c.toLowerCase().includes(q));
+  }, [columns, columnSearch]);
+
   return (
     <div style={{ padding: "24px", maxWidth: "1100px", margin: "0 auto", fontFamily: "var(--font-sans, sans-serif)" }}>
       {/* Header Banner */}
@@ -220,9 +257,58 @@ export default function DataHealthInspector({ dataset, data = [], columns = [], 
 
       {/* Column Health Detail Table */}
       <div style={{ background: "#FFF", border: "1px solid #EAE7E0", borderRadius: 12, padding: 20 }}>
-        <h3 style={{ margin: "0 0 16px 0", fontSize: 16, fontWeight: 700, color: "#2B2A27" }}>
-          Attribute & Column Health Profiling
-        </h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#2B2A27" }}>
+              Attribute & Column Health Profiling
+            </h3>
+            <div style={{ fontSize: 12, color: "#8A8580", marginTop: 2 }}>
+              {displayedColumns.length} of {columns.length} columns displayed
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <input
+              type="text"
+              placeholder="Search column names..."
+              value={columnSearch}
+              onChange={e => setColumnSearch(e.target.value)}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: "1px solid #CBD5E1",
+                fontSize: 12,
+                outline: "none",
+                width: 180
+              }}
+            />
+            {columnSearch && (
+              <button
+                onClick={() => setColumnSearch("")}
+                style={{ background: "none", border: "none", color: "#64748B", fontSize: 12, cursor: "pointer" }}
+              >
+                Clear
+              </button>
+            )}
+            <button
+              onClick={() => handleExportQualityAuditCSV(analysis)}
+              style={{
+                background: "#0F172A",
+                color: "#FFFFFF",
+                border: "none",
+                borderRadius: 6,
+                padding: "6px 14px",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 5
+              }}
+            >
+              📥 Export Quality Audit (CSV)
+            </button>
+          </div>
+        </div>
 
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -237,7 +323,7 @@ export default function DataHealthInspector({ dataset, data = [], columns = [], 
               </tr>
             </thead>
             <tbody>
-              {columns.map(col => {
+              {displayedColumns.map(col => {
                 const stat = analysis.columnStats[col];
                 const isHealthy = stat.nullCount === 0 && stat.outlierCount === 0;
                 const badge = getColumnTypeBadge(stat.detectedType || (stat.isNumeric ? "numeric" : stat.isDate ? "date" : "categorical"));
