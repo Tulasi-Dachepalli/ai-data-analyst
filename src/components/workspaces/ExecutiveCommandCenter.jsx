@@ -654,7 +654,8 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
         </div>
       )}
 
-      {/* Executive AI Prompt Input Box */}
+      {/* Executive AI Prompt Input Box (Shown in Pro Mode; unified Copilot panel serves Beginner Mode) */}
+      {!effectiveBeginnerMode && (
       <div style={{
         backgroundColor: "var(--bg-secondary, #F8FAFC)",
         border: "1px solid var(--border-color, #E2E8F0)",
@@ -720,6 +721,7 @@ export default function ExecutiveCommandCenter({ onAskQuestion, setView, isBegin
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

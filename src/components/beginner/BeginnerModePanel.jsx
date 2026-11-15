@@ -58,6 +58,23 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
   const [searchTerm, setSearchTerm] = useState("");
   const [snapshotName, setSnapshotName] = useState("");
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
+  const [taskCopySuccess, setTaskCopySuccess] = useState(false);
+  const [reportTitle, setReportTitle] = useState("Executive Business Analytics Report");
+  const [reportCompany, setReportCompany] = useState("");
+  const [reportAuthor, setReportAuthor] = useState("Executive AI Data Analyst");
+  const [reportSections, setReportSections] = useState({
+    kpi: true,
+    margin: true,
+    breakdown: true,
+    tasks: true,
+    audit: true
+  });
+
+  useEffect(() => {
+    if (activeDataset?.name) {
+      setReportCompany(activeDataset.name.replace(/\.[^/.]+$/, "") + " Operations");
+    }
+  }, [activeDataset?.name]);
 
   // Column Mappings State
   const [columnMappings, setColumnMappings] = useState(() => {
@@ -261,6 +278,250 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
   };
 
   const completedTasksCount = tasks.filter(t => t.status === "completed").length;
+
+  // Action: Export Tasks as CSV
+  const handleExportTasksCSV = () => {
+    const headers = ["Task ID", "Title", "Owner", "Due Date", "Priority", "Status"];
+    const taskRows = tasks.map(t => [
+      `"${t.id}"`,
+      `"${(t.title || "").replace(/"/g, '""')}"`,
+      `"${(t.owner || "").replace(/"/g, '""')}"`,
+      `"${t.dueDate || ""}"`,
+      `"${t.priority || "High"}"`,
+      `"${t.status || "todo"}"`
+    ]);
+    const csvContent = [headers.join(","), ...taskRows.map(r => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `Action_Tasks_${(activeDataset?.name || "Dataset").replace(/[\s.]+/g, "_")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Action: Copy Tasks as Jira/Slack Markdown
+  const handleCopyTasksMarkdown = () => {
+    const text = `*Action Items — ${activeDataset?.name || "Dataset"}*\n` +
+      tasks.map(t => `- [${t.status === "completed" ? "x" : " "}] ${t.title} (Owner: ${t.owner || "Unassigned"} | Due: ${t.dueDate || "N/A"} | Status: ${t.status || "todo"})`).join("\n");
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text);
+    }
+    setTaskCopySuccess(true);
+    setTimeout(() => setTaskCopySuccess(false), 2500);
+  };
+
+  // Action: Generate & Print Custom Executive PDF Deck
+  const handleConfirmAndExportPdf = () => {
+    try {
+      const revCol = columnMappings.revenue;
+      const profCol = columnMappings.profit;
+      const catCol = columnMappings.category || (activeCols || []).find(c => /category|segment|department|region/i.test(c));
+
+      const totalSales = revCol ? activeRows.reduce((s, r) => s + (parseFloat(r[revCol]) || 0), 0) : 0;
+      const totalProfit = profCol ? activeRows.reduce((s, r) => s + (parseFloat(r[profCol]) || 0), 0) : 0;
+      const profitMarginPct = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : "0.0";
+      const avgOrder = rowsCount > 0 ? Math.round(totalSales / rowsCount) : 0;
+      const negProfitOrders = profCol ? activeRows.filter(r => (parseFloat(r[profCol]) || 0) < 0).length : 0;
+
+      // Category breakdown aggregation
+      let categoryBreakdownHtml = "";
+      if (catCol) {
+        const catMap = {};
+        activeRows.forEach(r => {
+          const c = String(r[catCol] || "Uncategorized");
+          const rev = revCol ? (parseFloat(r[revCol]) || 0) : 0;
+          const prof = profCol ? (parseFloat(r[profCol]) || 0) : 0;
+          if (!catMap[c]) catMap[c] = { sales: 0, profit: 0, count: 0 };
+          catMap[c].sales += rev;
+          catMap[c].profit += prof;
+          catMap[c].count += 1;
+        });
+        const catRows = Object.entries(catMap).slice(0, 8).map(([name, d]) => `
+          <tr style="border-bottom: 1px solid #E2E8F0;">
+            <td style="padding: 8px 12px; font-weight: 600;">${name}</td>
+            <td style="padding: 8px 12px; text-align: right;">₹${Math.round(d.sales).toLocaleString()}</td>
+            <td style="padding: 8px 12px; text-align: right; color: ${d.profit >= 0 ? '#166534' : '#DC2626'}; font-weight: 700;">₹${Math.round(d.profit).toLocaleString()}</td>
+            <td style="padding: 8px 12px; text-align: right;">${d.count}</td>
+          </tr>
+        `).join("");
+        categoryBreakdownHtml = `
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px;">
+            <thead>
+              <tr style="background: #F1F5F9; color: #475569; text-align: left;">
+                <th style="padding: 8px 12px;">Category / Segment</th>
+                <th style="padding: 8px 12px; text-align: right;">Sales</th>
+                <th style="padding: 8px 12px; text-align: right;">Profit</th>
+                <th style="padding: 8px 12px; text-align: right;">Orders</th>
+              </tr>
+            </thead>
+            <tbody>${catRows}</tbody>
+          </table>
+        `;
+      }
+
+      // Tasks table HTML
+      const tasksRowsHtml = tasks.map(t => `
+        <tr style="border-bottom: 1px solid #E2E8F0;">
+          <td style="padding: 8px 12px; font-weight: 600;">${t.title}</td>
+          <td style="padding: 8px 12px;">${t.owner}</td>
+          <td style="padding: 8px 12px;">${t.dueDate}</td>
+          <td style="padding: 8px 12px;">
+            <span style="background: ${t.status === 'completed' ? '#DCFCE7' : '#FEF3C7'}; color: ${t.status === 'completed' ? '#166534' : '#B45309'}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">
+              ${t.status === 'completed' ? 'Completed' : 'In Progress'}
+            </span>
+          </td>
+        </tr>
+      `).join("");
+
+      const docHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${reportTitle} — ${reportCompany || activeDataset?.name || "Verified Dataset"}</title>
+          <style>
+            @page { size: A4 portrait; margin: 16mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #FFF; color: #0F172A; margin: 0; padding: 24px; line-height: 1.5; }
+            .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0F172A; padding-bottom: 16px; margin-bottom: 24px; }
+            .badge { background: #0F172A; color: #FFF; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+            .section { margin-bottom: 24px; border: 1px solid #E2E8F0; border-radius: 10px; padding: 18px; background: #FAFAFA; page-break-inside: avoid; }
+            .section-title { font-size: 14px; font-weight: 800; color: #0F172A; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-left: 4px solid #2563EB; padding-left: 10px; }
+            .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+            .kpi-card { background: #FFF; border: 1px solid #E2E8F0; border-radius: 8px; padding: 14px; }
+            .kpi-label { font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; }
+            .kpi-value { font-size: 20px; font-weight: 800; color: #0F172A; margin-top: 4px; }
+            .footer { border-top: 1px solid #E2E8F0; padding-top: 14px; font-size: 11px; color: #94A3B8; display: flex; justify-content: space-between; margin-top: 36px; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <span class="badge">Verified Executive Deck</span>
+              <h1 style="margin: 8px 0 4px 0; font-size: 22px; color: #0F172A;">${reportTitle}</h1>
+              <div style="font-size: 12.5px; color: #64748B;">Organization: <strong>${reportCompany || activeDataset?.name || "Enterprise Analytics"}</strong> • Dataset: ${activeDataset?.name || "Verified Dataset"} (${activeDataset?.currentVersion || "v1 Raw"})</div>
+              <div style="font-size: 11.5px; color: #94A3B8; margin-top: 2px;">Generated: ${new Date().toLocaleDateString()} • Scope: ${isFiltered ? `Filtered (${rowsCount} rows)` : `All rows (${rowsCount} rows)`}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 15px; font-weight: 800; color: #2563EB;">AI Data Analyst</div>
+              <div style="font-size: 11px; color: #64748B;">Executive Certification</div>
+            </div>
+          </div>
+
+          ${reportSections.kpi ? `
+          <div class="section">
+            <div class="section-title">📊 Executive KPI Overview</div>
+            <div class="kpi-grid">
+              <div class="kpi-card">
+                <div class="kpi-label">Total Revenue</div>
+                <div class="kpi-value" style="color: #2563EB;">₹${Math.round(totalSales).toLocaleString()}</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Total Net Profit</div>
+                <div class="kpi-value" style="color: ${totalProfit >= 0 ? '#166534' : '#DC2626'};">₹${Math.round(totalProfit).toLocaleString()}</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Overall Profit Margin</div>
+                <div class="kpi-value">${profitMarginPct}%</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Verified Record Count</div>
+                <div class="kpi-value">${rowsCount.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+          ` : ""}
+
+          ${reportSections.margin ? `
+          <div class="section">
+            <div class="section-title">💰 Profitability & Margin Health</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 10px;">
+              <div class="kpi-card">
+                <div class="kpi-label">Average Order Value</div>
+                <div class="kpi-value">₹${avgOrder.toLocaleString()}</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Negative-Margin Orders</div>
+                <div class="kpi-value" style="color: ${negProfitOrders > 0 ? '#DC2626' : '#166534'};">${negProfitOrders}</div>
+              </div>
+              <div class="kpi-card">
+                <div class="kpi-label">Data Completeness</div>
+                <div class="kpi-value">${activeDataset?.quality?.completeness ?? 100}%</div>
+              </div>
+            </div>
+            <div style="font-size: 12px; color: #475569; line-height: 1.5;">
+              ${negProfitOrders > 0
+                ? `⚠️ <strong>Attention:</strong> ${negProfitOrders} order(s) generated negative net profit. Review discount policies and shipping costs to protect margin.`
+                : `✅ <strong>Healthy:</strong> Zero negative-margin transactions detected across the evaluated records.`}
+            </div>
+          </div>
+          ` : ""}
+
+          ${reportSections.breakdown && categoryBreakdownHtml ? `
+          <div class="section">
+            <div class="section-title">🏷️ Category & Segment Performance</div>
+            ${categoryBreakdownHtml}
+          </div>
+          ` : ""}
+
+          ${reportSections.tasks && tasks.length > 0 ? `
+          <div class="section">
+            <div class="section-title">📝 Action Items Tracking</div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background: #F1F5F9; color: #475569; text-align: left;">
+                  <th style="padding: 8px 12px;">Task Description</th>
+                  <th style="padding: 8px 12px;">Owner</th>
+                  <th style="padding: 8px 12px;">Due Date</th>
+                  <th style="padding: 8px 12px;">Status</th>
+                </tr>
+              </thead>
+              <tbody>${tasksRowsHtml}</tbody>
+            </table>
+          </div>
+          ` : ""}
+
+          ${reportSections.audit ? `
+          <div class="section" style="background: #F8FAFC;">
+            <div class="section-title">🛡️ Audit & Limitation Disclosures</div>
+            <div style="font-size: 11.5px; color: #64748B; line-height: 1.6;">
+              <div>• <strong>Single Source of Truth:</strong> All calculations derived deterministically from active tabular records. No synthetic figures injected.</div>
+              <div>• <strong>Storage Provenance:</strong> In-Browser Sandbox (Local Session Memory). Guest session files remain isolated in client memory.</div>
+              <div>• <strong>Expense Mapping Note:</strong> Operating cost analyses are omitted unless an explicit expense column is confirmed by user.</div>
+              <div>• <strong>AI Data Governance:</strong> Zero model training on uploaded data under verified commercial cloud API terms.</div>
+            </div>
+          </div>
+          ` : ""}
+
+          <div class="footer">
+            <span>Prepared by ${reportAuthor || "AI Data Analyst"} • Confidential Business Intelligence</span>
+            <span>Page 1 of 1</span>
+          </div>
+
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+              }, 400);
+            };
+          </script>
+        </body>
+        </html>
+      `;
+
+      const printWin = window.open("", "_blank", "width=900,height=900");
+      if (printWin) {
+        printWin.document.write(docHtml);
+        printWin.document.close();
+      }
+    } catch (err) {
+      console.error("Export PDF error:", err);
+    }
+    setShowReportPreview(false);
+    if (onExportReport) onExportReport();
+  };
 
   const steps = [
     {
@@ -987,6 +1248,76 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
                 </div>
               )}
             </div>
+
+            {/* Task Export & Share Actions */}
+            <div style={{
+              marginTop: 14,
+              paddingTop: 12,
+              borderTop: "1px solid #E2E8F0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 8
+            }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  onClick={handleExportTasksCSV}
+                  disabled={tasks.length === 0}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #CBD5E1",
+                    background: "#FFFFFF",
+                    color: "#334155",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: tasks.length === 0 ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5
+                  }}
+                  title="Download action tasks as CSV file"
+                >
+                  📥 Export CSV
+                </button>
+                <button
+                  onClick={handleCopyTasksMarkdown}
+                  disabled={tasks.length === 0}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #CBD5E1",
+                    background: taskCopySuccess ? "#ECFDF5" : "#FFFFFF",
+                    color: taskCopySuccess ? "#059669" : "#334155",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: tasks.length === 0 ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5
+                  }}
+                  title="Copy formatted markdown list for Jira, Slack, or Linear"
+                >
+                  {taskCopySuccess ? "✓ Copied Markdown!" : "📋 Copy for Jira/Slack"}
+                </button>
+              </div>
+              <button
+                onClick={() => setShowTasksModal(false)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: "#0F172A",
+                  color: "#FFF",
+                  fontSize: 11.5,
+                  fontWeight: 700,
+                  cursor: "pointer"
+                }}
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1051,12 +1382,14 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
           <div style={{
             background: "#FFFFFF",
             borderRadius: 14,
-            maxWidth: 540,
+            maxWidth: 580,
             width: "100%",
             padding: 24,
-            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            maxHeight: "90vh",
+            overflowY: "auto"
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <div style={{ fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
                 📑 Executive Report Pre-Export Review
               </div>
@@ -1069,51 +1402,106 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
               </button>
             </div>
 
-            <p style={{ fontSize: 12.5, color: "#64748B", margin: "0 0 16px 0" }}>
-              Review active filters, calculated metrics, and verified limitations before generating the executive PDF deck.
+            <p style={{ fontSize: 12.5, color: "#64748B", margin: "0 0 14px 0" }}>
+              Customize titles and select verified analysis sections before generating your executive PDF deck.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 14, marginBottom: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12 }}>
+            {/* Customization Inputs */}
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Report Header & Attribution:</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <strong style={{ color: "#475569" }}>Active Dataset:</strong>
-                  <div style={{ fontWeight: 700, color: "#0F172A" }}>{activeDataset?.name || "Verified Dataset"} ({activeDataset?.currentVersion || "v1 Raw"})</div>
+                  <label style={{ fontSize: 10.5, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 4 }}>Report Title</label>
+                  <input
+                    type="text"
+                    value={reportTitle}
+                    onChange={e => setReportTitle(e.target.value)}
+                    style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 12, boxSizing: "border-box" }}
+                  />
                 </div>
                 <div>
-                  <strong style={{ color: "#475569" }}>Filter Scope:</strong>
-                  <div style={{ fontWeight: 700, color: isFiltered ? "#2563EB" : "#0F172A" }}>
-                    {isFiltered ? `Filtered (${rowsCount} of ${unfilteredRows?.length || rowsCount} rows)` : "All dataset rows (Unfiltered)"}
-                  </div>
+                  <label style={{ fontSize: 10.5, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 4 }}>Prepared For / Entity</label>
+                  <input
+                    type="text"
+                    value={reportCompany}
+                    onChange={e => setReportCompany(e.target.value)}
+                    placeholder={activeDataset?.name || "Acme Operations"}
+                    style={{ width: "100%", padding: "7px 10px", borderRadius: 6, border: "1px solid #CBD5E1", fontSize: 12, boxSizing: "border-box" }}
+                  />
                 </div>
               </div>
+            </div>
 
-              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 10 }}>
-                <div style={{ fontSize: 11.5, fontWeight: 700, color: "#475569", marginBottom: 6 }}>Calculated Executive Metrics:</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                  <div style={{ background: "#FFFFFF", padding: "8px 10px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
-                    <div style={{ fontSize: 10.5, color: "#64748B" }}>Total Sales</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
-                      ₹{Math.round((columnMappings.revenue ? activeRows.reduce((s, r) => s + (parseFloat(r[columnMappings.revenue]) || 0), 0) : 0)).toLocaleString()}
-                    </div>
-                  </div>
-                  <div style={{ background: "#FFFFFF", padding: "8px 10px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
-                    <div style={{ fontSize: 10.5, color: "#64748B" }}>Total Profit</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>
-                      ₹{Math.round((columnMappings.profit ? activeRows.reduce((s, r) => s + (parseFloat(r[columnMappings.profit]) || 0), 0) : 0)).toLocaleString()}
-                    </div>
-                  </div>
-                  <div style={{ background: "#FFFFFF", padding: "8px 10px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
-                    <div style={{ fontSize: 10.5, color: "#64748B" }}>Record Coverage</div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: "#0F172A" }}>{rowsCount} verified rows</div>
+            {/* Section Toggles */}
+            <div style={{ background: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: 10, padding: 14, marginBottom: 14 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: "#334155", marginBottom: 8 }}>Sections to Include:</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#0F172A", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={reportSections.kpi}
+                    onChange={e => setReportSections(s => ({ ...s, kpi: e.target.checked }))}
+                  />
+                  <span><strong>Executive KPI Overview:</strong> Revenue, Net Profit, and Record Coverage</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#0F172A", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={reportSections.margin}
+                    onChange={e => setReportSections(s => ({ ...s, margin: e.target.checked }))}
+                  />
+                  <span><strong>Profitability & Margins:</strong> Net Margin %, AOV, Negative-Margin Alerts</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#0F172A", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={reportSections.breakdown}
+                    onChange={e => setReportSections(s => ({ ...s, breakdown: e.target.checked }))}
+                  />
+                  <span><strong>Category Breakdown:</strong> Sales and profit distribution table</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#0F172A", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={reportSections.tasks}
+                    onChange={e => setReportSections(s => ({ ...s, tasks: e.target.checked }))}
+                  />
+                  <span><strong>Action Tracking Items:</strong> Include {tasks.length} active business action tasks</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#0F172A", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={reportSections.audit}
+                    onChange={e => setReportSections(s => ({ ...s, audit: e.target.checked }))}
+                  />
+                  <span><strong>Audit & Limitation Disclosures:</strong> Verified single-source and sandbox provenance</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Calculated Metrics Preview Summary */}
+            <div style={{ background: "#F1F5F9", border: "1px solid #CBD5E1", borderRadius: 10, padding: 12, marginBottom: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Scope: {isFiltered ? `Filtered (${rowsCount} rows)` : `All rows (${rowsCount} rows)`}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#2563EB" }}>Dataset: {activeDataset?.name || "Active"}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                <div style={{ background: "#FFFFFF", padding: "6px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                  <div style={{ fontSize: 10, color: "#64748B" }}>Total Sales</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>
+                    ₹{Math.round((columnMappings.revenue ? activeRows.reduce((s, r) => s + (parseFloat(r[columnMappings.revenue]) || 0), 0) : 0)).toLocaleString()}
                   </div>
                 </div>
-              </div>
-
-              <div style={{ borderTop: "1px solid #E2E8F0", paddingTop: 10, fontSize: 11, color: "#64748B", lineHeight: 1.4 }}>
-                <strong>Audit & Limitation Disclosures:</strong>
-                <div>• All metrics calculated strictly from active tabular records.</div>
-                <div>• Operating expense analysis is omitted unless a genuine currency expense column is mapped.</div>
-                <div>• Budget targets are illustrative reference benchmarks provided for demo guidance.</div>
+                <div style={{ background: "#FFFFFF", padding: "6px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                  <div style={{ fontSize: 10, color: "#64748B" }}>Total Profit</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>
+                    ₹{Math.round((columnMappings.profit ? activeRows.reduce((s, r) => s + (parseFloat(r[columnMappings.profit]) || 0), 0) : 0)).toLocaleString()}
+                  </div>
+                </div>
+                <div style={{ background: "#FFFFFF", padding: "6px 8px", borderRadius: 6, border: "1px solid #E2E8F0" }}>
+                  <div style={{ fontSize: 10, color: "#64748B" }}>Verified Rows</div>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: "#0F172A" }}>{rowsCount} rows</div>
+                </div>
               </div>
             </div>
 
@@ -1125,10 +1513,7 @@ export default function BeginnerModePanel({ onOpenPrivacy, onOpenHealth, onAskCo
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  setShowReportPreview(false);
-                  if (onExportReport) onExportReport();
-                }}
+                onClick={handleConfirmAndExportPdf}
                 style={{ padding: "8px 18px", borderRadius: 6, border: "none", background: "#0F172A", color: "#FFF", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
               >
                 ✓ Confirm & Export PDF Deck

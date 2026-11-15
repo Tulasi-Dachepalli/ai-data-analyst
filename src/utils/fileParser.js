@@ -26,9 +26,31 @@ export async function computeDatasetHash(contentString) {
 }
 
 /**
+ * Inspect sheet names inside an Excel workbook file without full row parsing.
+ */
+export async function inspectExcelSheets(file) {
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (ext !== "xlsx" && ext !== "xls") return [];
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const buffer = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(buffer, { type: "array", bookSheets: true });
+        resolve(workbook.SheetNames || []);
+      } catch {
+        resolve([]);
+      }
+    };
+    reader.onerror = () => resolve([]);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
  * Universal client-side file parser for CSV, XLSX, XLS, TSV, JSON, and TXT files.
  */
-export async function parseDatasetFile(file) {
+export async function parseDatasetFile(file, options = {}) {
   const fileName = file.name;
   const ext = fileName.split(".").pop().toLowerCase();
 
@@ -84,12 +106,15 @@ export async function parseDatasetFile(file) {
         try {
           const buffer = new Uint8Array(e.target.result);
           const workbook = XLSX.read(buffer, { type: "array" });
-          const firstSheet = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[firstSheet];
+          const sheetNames = workbook.SheetNames || [];
+          const targetSheet = (options?.sheetName && sheetNames.includes(options.sheetName))
+            ? options.sheetName
+            : (sheetNames[0] || "");
+          const sheet = workbook.Sheets[targetSheet] || {};
           const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
           const columns = rows.length ? Object.keys(rows[0]).filter(k => k && !k.startsWith("__")) : [];
           const rawHash = await computeDatasetHash(JSON.stringify(rows));
-          resolve({ fileName, rows, columns, rawHash, fileType: ext, size: file.size });
+          resolve({ fileName, sheetNames, activeSheet: targetSheet, rows, columns, rawHash, fileType: ext, size: file.size });
         } catch (err) { reject(err); }
       };
       reader.onerror = reject;

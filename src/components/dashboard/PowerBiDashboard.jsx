@@ -68,8 +68,10 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
   const [tableSearch, setTableSearch] = useState("");
   // Selected category for cross-filtering from chart clicks
   const [highlightedCategory, setHighlightedCategory] = useState(null);
-  // Period Comparison Mode: "equal" | "mom" | "qoq"
+  // Period Comparison Mode: "equal" | "mom" | "qoq" | "custom"
   const [comparisonMode, setComparisonMode] = useState("equal");
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
 
   const datasetCtx = useDataset() || {};
   const { activeRows: ctxActiveRows, filteredRows: ctxFilteredRows } = datasetCtx;
@@ -273,6 +275,29 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
               periodComparisonText = `${qCur} vs ${qPrior} (QoQ • ${p2Rows.length} vs ${p1Rows.length} records)`;
             } else {
               periodComparisonText = `Single quarter active (${sortedQuarters[0] || "Baseline"})`;
+            }
+          } else if (comparisonMode === "custom") {
+            if (customStartDate && customEndDate) {
+              const cStartTs = Date.parse(customStartDate);
+              const cEndTs = Date.parse(customEndDate) + 86400000;
+              const customSpan = cEndTs - cStartTs;
+              const priorStartTs = cStartTs - customSpan;
+              const curRows = rowsWithDates.filter(r => r.ts >= cStartTs && r.ts < cEndTs);
+              const priorRows = rowsWithDates.filter(r => r.ts >= priorStartTs && r.ts < cStartTs);
+              const curSum = curRows.reduce((acc, r) => acc + r.val, 0);
+              const priorSum = priorRows.reduce((acc, r) => acc + r.val, 0);
+              if (priorSum > 0) {
+                const diff = (((curSum - priorSum) / priorSum) * 100).toFixed(1);
+                deltaPct = diff;
+                isPositive = parseFloat(diff) >= 0;
+              } else if (curSum > 0) {
+                deltaPct = "100.0";
+                isPositive = true;
+              }
+              const days = Math.max(1, Math.round(customSpan / 86400000));
+              periodComparisonText = `${customStartDate}–${customEndDate} vs prior ${days}d (${curRows.length} vs ${priorRows.length} records)`;
+            } else {
+              periodComparisonText = "Select custom start & end dates";
             }
           } else {
             // Default "equal": Equal Calendar Period Comparison
@@ -785,7 +810,40 @@ export default function PowerBiDashboard({ active, user, setView, onAskQuestion,
             <option value="equal">Equal Calendar Periods (Default)</option>
             <option value="mom">Month-over-Month (MoM)</option>
             <option value="qoq">Quarter-over-Quarter (QoQ)</option>
+            <option value="custom">Custom Date Range</option>
           </select>
+
+          {comparisonMode === "custom" && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                style={{
+                  padding: "3px 6px",
+                  borderRadius: 6,
+                  border: "1px solid #CBD5E1",
+                  fontSize: 11.5,
+                  background: "#FFFFFF",
+                  color: "#0F172A"
+                }}
+              />
+              <span style={{ fontSize: 11.5, color: "#64748B" }}>to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                style={{
+                  padding: "3px 6px",
+                  borderRadius: 6,
+                  border: "1px solid #CBD5E1",
+                  fontSize: 11.5,
+                  background: "#FFFFFF",
+                  color: "#0F172A"
+                }}
+              />
+            </div>
+          )}
         </div>
         <div style={{ fontSize: 11.5, color: "var(--text-secondary, #64748B)" }}>
           <span>Coverage: </span>

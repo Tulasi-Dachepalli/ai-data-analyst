@@ -85,6 +85,11 @@ test.describe('Column Types Consistency, Accurate Storage, Equal Calendar Period
     await page.getByPlaceholder(/Task title/i).fill('Review high-margin Technology sales strategy');
     await page.getByRole('button', { name: /Add Task/i }).click();
     await expect(page.locator('text=Review high-margin Technology sales strategy')).toBeVisible();
+    // Verify CSV Export and Jira/Slack copy buttons
+    await expect(page.getByRole('button', { name: /Export CSV/i })).toBeVisible();
+    const copySlackBtn = page.getByRole('button', { name: /Copy for Jira\/Slack/i });
+    await expect(copySlackBtn).toBeVisible();
+    await copySlackBtn.click();
     // Close modal
     await page.getByRole('button', { name: 'Close Action Tracking' }).click();
 
@@ -98,12 +103,15 @@ test.describe('Column Types Consistency, Accurate Storage, Equal Calendar Period
     // Close modal
     await page.getByRole('button', { name: 'Close Saved Analysis' }).click();
 
-    // E. Verify Executive Report Pre-Export Review Modal
+    // E. Verify Executive Report Pre-Export Review Modal with Customizable Sections
     const reportStep = page.locator('text=5. Generate Executive Report');
     if (await reportStep.isVisible().catch(() => false)) {
       await reportStep.click();
       await expect(page.locator('text=Executive Report Pre-Export Review')).toBeVisible();
-      await expect(page.locator('text=Audit & Limitation Disclosures:')).toBeVisible();
+      await expect(page.locator('text=Sections to Include:')).toBeVisible();
+      await expect(page.locator('text=Executive KPI Overview:')).toBeVisible();
+      await expect(page.locator('text=Profitability & Margins:')).toBeVisible();
+      await expect(page.locator('text=Action Tracking Items:')).toBeVisible();
       await page.getByRole('button', { name: 'Close Report Preview' }).click();
     }
 
@@ -167,6 +175,13 @@ test.describe('Column Types Consistency, Accurate Storage, Equal Calendar Period
     // Verify growth cards show equal periods
     const trendTextElement = page.locator('text=equal periods').first();
     await expect(trendTextElement).toBeVisible();
+
+    // Verify Custom Date Range selection in period comparison toolbar
+    const periodSelect = page.locator('select:has-text("Equal Calendar Periods")');
+    if (await periodSelect.isVisible().catch(() => false)) {
+      await periodSelect.selectOption('custom');
+      await expect(page.locator('input[type="date"]').first()).toBeVisible();
+    }
 
     // 8. Assert no critical script or runtime errors occurred
     const criticalErrors = errorLogs.filter(e =>

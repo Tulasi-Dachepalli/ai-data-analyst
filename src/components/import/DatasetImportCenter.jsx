@@ -7,7 +7,7 @@ import ImportResult from "./ImportResult";
 import SensitiveColumnDetector from "./SensitiveColumnDetector";
 import { useDataset } from "../../context/DatasetContext";
 import { useActivity } from "../../context/ActivityContext";
-import { parseDatasetFile } from "../../utils/fileParser";
+import { parseDatasetFile, inspectExcelSheets } from "../../utils/fileParser";
 
 export default function DatasetImportCenter({ isOpen, onClose }) {
   const { loadDataset } = useDataset();
@@ -15,6 +15,8 @@ export default function DatasetImportCenter({ isOpen, onClose }) {
 
   const [step, setStep] = useState("select"); // select, uploading, success, error
   const [file, setFile] = useState(null);
+  const [availableSheets, setAvailableSheets] = useState([]);
+  const [selectedSheet, setSelectedSheet] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [options, setOptions] = useState({
     detectTypes: true,
@@ -40,6 +42,16 @@ export default function DatasetImportCenter({ isOpen, onClose }) {
 
   const handleFileSelect = (selectedFile) => {
     setFile(selectedFile);
+    const ext = selectedFile.name.split(".").pop().toLowerCase();
+    if (ext === "xlsx" || ext === "xls") {
+      inspectExcelSheets(selectedFile).then((sheets) => {
+        setAvailableSheets(sheets || []);
+        if (sheets && sheets.length > 0) setSelectedSheet(sheets[0]);
+      });
+    } else {
+      setAvailableSheets([]);
+      setSelectedSheet("");
+    }
   };
 
   const handleStartImport = () => {
@@ -57,7 +69,11 @@ export default function DatasetImportCenter({ isOpen, onClose }) {
     setStep("uploading");
     setIsProcessing(true);
 
-    parseDatasetFile(file).then((parsed) => {
+    const targetDatasetName = (selectedSheet && availableSheets.length > 1)
+      ? `${file.name} (${selectedSheet})`
+      : file.name;
+
+    parseDatasetFile(file, { sheetName: selectedSheet }).then((parsed) => {
       let currentIdx = 0;
       const interval = setInterval(() => {
         setPipelineSteps(prev => prev.map((s, idx) => {
@@ -76,7 +92,7 @@ export default function DatasetImportCenter({ isOpen, onClose }) {
           const actualCols = parsed.columns || (actualRows.length ? Object.keys(actualRows[0]) : []);
 
           const res = {
-            name: file.name,
+            name: targetDatasetName,
             rows: actualRows,
             cols: actualCols,
             fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
@@ -84,15 +100,15 @@ export default function DatasetImportCenter({ isOpen, onClose }) {
           };
 
           setImportResultData(res);
-          loadDataset(file.name, actualRows, actualCols, { rawHash: res.hash, size: file.size, fileType: parsed.fileType });
+          loadDataset(targetDatasetName, actualRows, actualCols, { rawHash: res.hash, size: file.size, fileType: parsed.fileType, sheetName: parsed.activeSheet });
 
           logEvent({
             stage: "01 Raw Data",
-            action: `Imported dataset file ${file.name}`,
+            action: `Imported dataset file ${targetDatasetName}`,
             datasetVersion: "v1",
             affectedRows: actualRows.length,
             affectedColumns: actualCols.length,
-            result: `File ${file.name} successfully imported as Raw Dataset v1 (${res.hash})`
+            result: `File ${targetDatasetName} successfully imported as Raw Dataset v1 (${res.hash})`
           });
 
           setStep("success");
@@ -172,17 +188,45 @@ export default function DatasetImportCenter({ isOpen, onClose }) {
             <>
               <UploadDropzone onFileSelected={handleFileSelect} />
               {file && (
-                <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: "#1E4ED8" }}>Selected File:</span>
-                    <span style={{ fontSize: 13, color: "#1E3A8A", marginLeft: 6, fontWeight: 600 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                <div style={{ background: "#EFF6FF", border: "1px solid #BFDBFE", borderRadius: 10, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "#1E4ED8" }}>Selected File:</span>
+                      <span style={{ fontSize: 13, color: "#1E3A8A", marginLeft: 6, fontWeight: 600 }}>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button
+                      onClick={handleStartImport}
+                      style={{ background: "#2563EB", color: "#FFF", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
+                    >
+                      🚀 Import Dataset Now
+                    </button>
                   </div>
-                  <button
-                    onClick={handleStartImport}
-                    style={{ background: "#2563EB", color: "#FFF", border: "none", borderRadius: 6, padding: "8px 16px", fontSize: 12.5, fontWeight: 700, cursor: "pointer" }}
-                  >
-                    🚀 Import Dataset Now
-                  </button>
+                  {availableSheets.length > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, borderTop: "1px solid #DBEAFE", paddingTop: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#1E4ED8" }}>📑 Select Workbook Sheet:</span>
+                      <select
+                        value={selectedSheet}
+                        onChange={(e) => setSelectedSheet(e.target.value)}
+                        style={{
+                          padding: "5px 10px",
+                          borderRadius: 6,
+                          border: "1px solid #93C5FD",
+                          background: "#FFFFFF",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#1E3A8A",
+                          cursor: "pointer"
+                        }}
+                      >
+                        {availableSheets.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: 11.5, color: "#64748B" }}>
+                        ({availableSheets.length} sheets detected in workbook)
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
               <ImportOptions options={options} onChange={setOptions} />
